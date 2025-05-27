@@ -33,13 +33,8 @@ Route::middleware(['auth', 'role:usuario|administrador|administrador_sgi|jefe'])
 
     Route::post('/solicitudes/{solicitud}/finalizar', [SolicitudFormatoController::class, 'finalize'])->name('solicitudes.finalize');
 
-
-
-
-
     
 });
-
 
 
 //Usuarios
@@ -54,6 +49,11 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::put('/usuarios/{user}/toggle-estado', [UserController::class, 'toggleEstado'])->name('usuarios.toggleEstado');
 
 });
+
+Route::get('/register', function () {
+    return redirect()->route('login');
+});
+
 
 
 

@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-12" style="background-image: url('{{ asset('images/background-pattern.png') }}');">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="p-6 space-y-6 bg-white border border-gray-200 rounded-lg shadow">
 

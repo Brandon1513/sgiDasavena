@@ -5,9 +5,14 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-12" style="background-image: url('{{ asset('images/background-pattern.png') }}');">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg">
+                 @if (session('success'))
+                    <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+                        {{ session('success') }}
+                    </div>
+                @endif
                 <form method="GET" class="flex flex-wrap items-end gap-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium">Nombre</label>

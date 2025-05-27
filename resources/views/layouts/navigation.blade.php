@@ -11,6 +11,7 @@
                 </div>
 
                 <!-- Navigation Links -->
+                @if (Auth::check())
                 <div class="hidden space-x-8 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
@@ -81,6 +82,12 @@
                     </x-slot>
                 </x-dropdown>
             </div>
+            @else
+            <!-- Mostrar link de iniciar sesión si no está logueado -->
+                <div class="hidden sm:flex sm:items-center sm:ms-6">
+                    <a href="{{ route('login') }}" class="text-sm underline">Iniciar Sesión</a>
+                </div>
+            @endif
 
 
             <!-- Hamburger -->
@@ -101,15 +108,13 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.index')">
-                {{ __('Usuarios') }}
-            </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('solicitudes.index')" :active="request()->routeIs('solicitudes.index')">
-                {{ __('Solicitudes') }}
-            </x-responsive-nav-link>
+            
         </div>
 
         <!-- Responsive Settings Options -->
+        @if (Auth::check())
+            
+        
         <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="px-4">
                 <div class="text-base font-medium text-gray-800">{{ Auth::user()->name }}</div>
@@ -119,6 +124,13 @@
             <div class="mt-3 space-y-1">
                 <x-responsive-nav-link :href="route('profile.edit')">
                     {{ __('Profile') }}
+                </x-responsive-nav-link>
+
+                <x-responsive-nav-link :href="route('usuarios.index')" :active="request()->routeIs('usuarios.index')">
+                {{ __('Usuarios') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('solicitudes.index')" :active="request()->routeIs('solicitudes.index')">
+                    {{ __('Solicitudes') }}
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
@@ -133,5 +145,13 @@
                 </form>
             </div>
         </div>
+        @else
+        <!-- Mostrar link de iniciar sesión si no está logueado en menú responsive -->
+            <div class="pt-4 pb-1 border-t border-gray-200">
+                <x-responsive-nav-link :href="route('login')">
+                    {{ __('Iniciar Sesión') }}
+                </x-responsive-nav-link>
+            </div>
+        @endif
     </div>
 </nav>
