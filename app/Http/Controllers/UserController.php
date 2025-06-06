@@ -15,7 +15,7 @@ class UserController extends Controller
         if ($request->has('search')) {
             $search = $request->get('search');
             $query->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                ->orWhere('email', 'like', "%{$search}%");
         }
 
         $users = $query->with('roles')->paginate(10)->appends(['search' => $request->search]);

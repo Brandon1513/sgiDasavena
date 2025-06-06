@@ -55,6 +55,4 @@ Route::get('/register', function () {
 });
 
 
-
-
 require __DIR__.'/auth.php';
