@@ -150,28 +150,50 @@ public function index()
     }
 
     public function approveOrReject(Request $request, SolicitudFormato $solicitud)
-    {
-        $request->validate([
-            'decision' => 'required|in:aprobado_jefe,rechazado_jefe',
-            'observaciones_jefe' => 'nullable|string|max:1000',
-        ]);
+{
+    $user = auth()->user();
 
-        $solicitud->update([
-            'estado' => $request->decision,
-            'observaciones_jefe' => $request->observaciones_jefe,
-        ]);
+    // ✅ 1. Solo alguien con rol jefe puede usar este flujo (coordinador)
+    if (! $user->hasRole('jefe')) {
+        abort(403, 'No tienes permiso para aprobar o rechazar esta solicitud.');
+    }
 
-        // Notificar al administrador_sgi solo si fue aprobado
-        if ($request->decision === 'aprobado_jefe') {
-            $administradores = \App\Models\User::role('administrador_sgi')->get();
+    // ✅ 2. El jefe NO puede aprobar / rechazar sus propias solicitudes
+    if ($solicitud->user_id === $user->id) {
+        return redirect()
+            ->route('solicitudes.index')
+            ->withErrors('No puedes aprobar o rechazar tus propias solicitudes.');
+    }
 
-            foreach ($administradores as $admin) {
-                Mail::to($admin->email)->send(new SolicitudAprobadaSgiMailable($solicitud));
-            }
+    // ✅ 3. (Opcional pero recomendable) Validar que esta solicitud realmente le pertenece como jefe
+    if ($solicitud->jefe_id !== $user->id) {
+        abort(403, 'No estás asignado como jefe de esta solicitud.');
+    }
+
+    // Validación original
+    $request->validate([
+        'decision' => 'required|in:aprobado_jefe,rechazado_jefe',
+        'observaciones_jefe' => 'nullable|string|max:1000',
+    ]);
+
+    // Actualizar estado según la decisión del jefe
+    $solicitud->update([
+        'estado' => $request->decision,
+        'observaciones_jefe' => $request->observaciones_jefe,
+    ]);
+
+    // Notificar al administrador_sgi solo si fue aprobado por jefe
+    if ($request->decision === 'aprobado_jefe') {
+        $administradores = \App\Models\User::role('administrador_sgi')->get();
+
+        foreach ($administradores as $admin) {
+            Mail::to($admin->email)->send(new SolicitudAprobadaSgiMailable($solicitud));
         }
+    }
 
-        return redirect()->route('solicitudes.index')->with('success', 'Decisión registrada correctamente.');
+    return redirect()->route('solicitudes.index')->with('success', 'Decisión registrada correctamente.');
 }
+
     public function finalizeForm(SolicitudFormato $solicitud)
     {
         $usuarios = User::where('activo', 1)->get(); // Puedes agregar filtros si lo deseas

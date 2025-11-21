@@ -12,7 +12,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 flex flex-col items-center bg-gray-50 rounded-t-lg">
                     <!-- bienvenida a Dasavena AI -->
-                    <h1 class="text-2xl font-bold mb-4">Bienvenido a Dasavena AI</h1>
+                    <h1 class="text-2xl font-bold mb-4">Bienvenido a DasavenaSGI</h1>
                     <p class="mb-4 fot-blod ">Esta es tu área de trabajo donde puedes interactuar con nuestra inteligencia artificial para resolver tus dudas y obtener información.</p>
 
                 </div>
