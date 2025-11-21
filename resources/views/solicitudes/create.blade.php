@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12" style="background-image: url('{{ asset('images/background-pattern.png') }}');" >
+    <div class="py-12" style="background-image: url('{{ asset('images/background-pattern.png') }}');">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg">
 
@@ -15,19 +15,19 @@
                     <div class="mb-4">
                         <label class="block text-gray-700">Nombre</label>
                         <input type="text" value="{{ Auth::user()->name }}" readonly
-                               class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
+                            class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-gray-700">Área</label>
                         <input type="text" value="{{ Auth::user()->area ?? '' }}" readonly
-                               class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
+                            class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
                     </div>
 
                     <div class="mb-4">
                         <label class="block text-gray-700">Puesto</label>
                         <input type="text" value="{{ Auth::user()->puesto ?? '' }}" readonly
-                               class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
+                            class="w-full p-2 bg-gray-100 border border-gray-300 rounded">
                     </div>
 
                     <div class="mb-4">
@@ -46,18 +46,22 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-gray-700">Descripción</label>
-                        <textarea name="descripcion" rows="4" class="w-full p-2 border border-gray-300 rounded"></textarea>
-                    </div>
 
-                    <div class="flex justify-end">
-                        <button type="submit" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">
-                            Enviar Solicitud
-                        </button>
+                        <label class="block text-gray-700">cambios (modificaciones)</label>
+                        <textarea name="comentarios" rows="3"
+                            class="w-full p-2 border border-gray-300 rounded"
+                            placeholder="Escribe algún comentario adicional..."></textarea>
                     </div>
-                </form>
-
             </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700">
+                    Enviar Solicitud
+                </button>
+            </div>
+            </form>
+
         </div>
+    </div>
     </div>
 </x-app-layout>

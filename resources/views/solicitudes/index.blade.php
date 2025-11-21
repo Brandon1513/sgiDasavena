@@ -8,10 +8,10 @@
     <div class="py-12" style="background-image: url('{{ asset('images/background-pattern.png') }}');">
         <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
             <div class="p-6 overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                 @if (session('success'))
-                    <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
-                        {{ session('success') }}
-                    </div>
+                @if (session('success'))
+                <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+                    {{ session('success') }}
+                </div>
                 @endif
                 <form method="GET" class="flex flex-wrap items-end gap-4 mb-6">
                     <div>
@@ -24,9 +24,9 @@
                         <select name="estado" class="w-full p-2 border rounded">
                             <option value="">-- Todos --</option>
                             @foreach (['pendiente', 'aprobado_jefe', 'rechazado_jefe', 'atendido', 'rechazado_sgi'] as $estado)
-                                <option value="{{ $estado }}" {{ request('estado') === $estado ? 'selected' : '' }}>
-                                    {{ ucfirst(str_replace('_', ' ', $estado)) }}
-                                </option>
+                            <option value="{{ $estado }}" {{ request('estado') === $estado ? 'selected' : '' }}>
+                                {{ ucfirst(str_replace('_', ' ', $estado)) }}
+                            </option>
                             @endforeach
                         </select>
                     </div>
@@ -53,47 +53,59 @@
                 </div>
 
                 @if ($solicitudes->isEmpty())
-                    <p>No hay solicitudes para mostrar.</p>
+                <p>No hay solicitudes para mostrar.</p>
                 @else
-                    <table class="min-w-full table-auto">
-                        <thead>
-                            <tr>
-                                <th class="px-4 py-2">#</th>
-                                <th class="px-4 py-2">Solicitante</th>
-                                <th class="px-4 py-2">Acción</th>
-                                <th class="px-4 py-2">Estado</th>
-                                <th class="px-4 py-2">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach ($solicitudes as $solicitud)
-                                <tr class="border-t">
-                                    <td class="px-4 py-2">{{ $solicitud->id }}</td>
-                                    <td class="px-4 py-2">{{ optional($solicitud->usuario)->name ?? 'Sin usuario' }}</td>
-                                    <td class="px-4 py-2">{{ ucfirst($solicitud->accion) }}</td>
-                                    <td class="px-4 py-2">{{ ucfirst(str_replace('_', ' ', $solicitud->estado)) }}</td>
-                                    <td class="px-4 py-2">
-                                        @if (Route::has('solicitudes.show'))
-                                            <a href="{{ route('solicitudes.show', $solicitud->id) }}" class="text-blue-600 hover:underline">Ver</a>
-                                        @endif
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2">#</th>
+                            <th class="px-4 py-2">Solicitante</th>
+                            <th class="px-4 py-2">Acción</th>
+                            <th class="px-4 py-2">Estado</th>
+                            <th class="px-4 py-2">Comentarios</th> {{-- 🔹 NUEVA COLUMNA --}}
+                            <th class="px-4 py-2">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    @foreach ($solicitudes as $solicitud)
+        <tr class="border-t">
+            <td class="px-4 py-2">{{ $solicitud->id }}</td>
+            <td class="px-4 py-2">{{ optional($solicitud->usuario)->name ?? 'Sin usuario' }}</td>
+            <td class="px-4 py-2">{{ ucfirst($solicitud->accion) }}</td>
+            <td class="px-4 py-2">{{ ucfirst(str_replace('_', ' ', $solicitud->estado)) }}</td>
 
-                                        @if (auth()->user()->hasRole('jefe') && $solicitud->estado === 'pendiente' && Route::has('solicitudes.approval_form'))
-                                            <a href="{{ route('solicitudes.approval_form', $solicitud->id) }}" class="ml-2 text-green-600 hover:underline">Aprobar/Rechazar</a>
-                                        @endif
+            {{-- 🔹 NUEVA COLUMNA: COMENTARIOS --}}
+            <td class="px-4 py-2 text-sm text-gray-700">
+                @if($solicitud->comentarios)
+                    {{ Str::limit($solicitud->comentarios, 60) }}
+                @else
+                    <span class="text-gray-400">Sin comentarios</span>
+                @endif
+            </td>
 
-                                        @if (auth()->user()->hasRole('administrador_sgi') && $solicitud->estado === 'aprobado_jefe' && Route::has('solicitudes.finalize_form'))
-                                            <a href="{{ route('solicitudes.finalize_form', $solicitud->id) }}" class="ml-2 text-orange-600 hover:underline">Finalizar</a>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+            <td class="px-4 py-2">
+                @if (Route::has('solicitudes.show'))
+                    <a href="{{ route('solicitudes.show', $solicitud->id) }}" class="text-blue-600 hover:underline">Ver</a>
+                @endif
 
-                    <div class="mt-4">
-                        {{ $solicitudes->appends(request()->query())->links() }}
+                @if (auth()->user()->hasRole('jefe') && $solicitud->estado === 'pendiente' && Route::has('solicitudes.approval_form'))
+                    <a href="{{ route('solicitudes.approval_form', $solicitud->id) }}" class="ml-2 text-green-600 hover:underline">Aprobar/Rechazar</a>
+                @endif
 
-                    </div>
+                @if (auth()->user()->hasRole('administrador_sgi') && $solicitud->estado === 'aprobado_jefe' && Route::has('solicitudes.finalize_form'))
+                    <a href="{{ route('solicitudes.finalize_form', $solicitud->id) }}" class="ml-2 text-orange-600 hover:underline">Finalizar</a>
+                @endif
+            </td>
+        </tr>
+    @endforeach
+</tbody>
+
+                </table>
+
+                <div class="mt-4">
+                    {{ $solicitudes->appends(request()->query())->links() }}
+
+                </div>
                 @endif
 
             </div>
