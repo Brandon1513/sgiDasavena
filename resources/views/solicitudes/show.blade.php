@@ -26,6 +26,17 @@
                         </p>
                     @endif
                 </div>
+                    <div class="space-y-2">
+                    <h3 class="pb-2 text-lg font-semibold border-b">Modificaciones</h3>
+
+
+                    <p>
+                        <span class="inline-block px-2 py-1 text-sm bg-gray-100 rounded">
+                            Comentarios del solicitante
+                        </span>:
+                        {{ $solicitud->comentarios ?: 'Sin comentarios' }}
+                    </p>
+                </div>
 
                 <div class="space-y-2">
                     <h3 class="pb-2 text-lg font-semibold border-b">Evaluación del Jefe</h3>
@@ -58,6 +69,7 @@
                     </p>
                     <p><span class="inline-block px-2 py-1 text-sm bg-gray-100 rounded">Observaciones SGI</span>: {{ $solicitud->observaciones_sgi ?? 'Aún no procesado' }}</p>
                 </div>
+
                 @role('administrador_sgi')
                     @if ($solicitud->estado === 'aprobado_jefe')
                         <div class="mt-4">

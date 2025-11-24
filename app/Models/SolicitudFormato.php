@@ -23,6 +23,7 @@ class SolicitudFormato extends Model
         'liga_archivo',
         'observaciones_sgi', 
         'fecha_alta_sgi', // ← aquí
+        'comentarios',
     ];
 
     // Relación con el usuario que crea la solicitud

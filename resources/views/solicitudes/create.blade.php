@@ -41,14 +41,13 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="block text-gray-700">Archivo Adjunto (Opcional)</label>
+                        <label class="block text-gray-700">Archivo Adjunto </label>
                         <input type="file" name="archivo" class="w-full p-2 border border-gray-300 rounded">
                     </div>
 
                     <div class="mb-4">
-
                         <label class="block text-gray-700">cambios (modificaciones)</label>
-                        <textarea name="comentarios" rows="3"
+                        <textarea name="comentarios" rows="3" required
                             class="w-full p-2 border border-gray-300 rounded"
                             placeholder="Escribe algún comentario adicional..."></textarea>
                     </div>
