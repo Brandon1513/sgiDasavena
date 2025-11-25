@@ -22,13 +22,27 @@ class SgiDashboardController extends Controller
         elseif ($user->hasRole('jefe')) {
             $baseQuery->where(function ($q) use ($user) {
                 $q->where('jefe_id', $user->id)
-                  ->orWhere('user_id', $user->id);
+                    ->orWhere('user_id', $user->id);
             });
         }
         // Usuario normal ve solo las suyas
         else {
             $baseQuery->where('user_id', $user->id);
         }
+
+        // Solicitudes por estado
+        $porEstado = (clone $baseQuery)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        // Solicitudes por día (últimos 30 días)
+        $porDia = (clone $baseQuery)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->selectRaw('DATE(created_at) as fecha, COUNT(*) as total')
+            ->groupBy('fecha')
+            ->orderBy('fecha')
+            ->get();
 
         // Métricas principales
         $total        = (clone $baseQuery)->count();
@@ -50,7 +64,9 @@ class SgiDashboardController extends Controller
             'aprobadoJefe'      => $aprobadoJefe,
             'atendidas'         => $atendidas,
             'rechazadas'        => $rechazadas,
-            'ultimasSolicitudes'=> $ultimasSolicitudes,
+            'ultimasSolicitudes' => $ultimasSolicitudes,
+            'porEstado'         => $porEstado,
+            'porDia'            => $porDia,
         ]);
     }
 }

@@ -31,7 +31,7 @@
                     <div class="flex-1 space-y-3">
                         <p class="text-xs uppercase tracking-wide text-indigo-600 font-semibold">Sistema de Gestión Integral</p>
                         <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900">
-                            Hola, {{ $user->name }} 👋
+                            Hola, {{ $user->name }}  👋
                         </h1>
                         <p class="text-sm text-gray-700">
                             Bienvenido a <span class="font-semibold">DasavenaSGI</span>. Aquí puedes visualizar el estado de tus
@@ -128,9 +128,14 @@
 
                             {{-- Placeholder para gráfica real --}}
                             <div class="mt-6 w-full h-48 rounded-lg bg-gradient-to-r from-indigo-50 via-white to-emerald-50 flex items-center justify-center border border-dashed border-gray-200">
-                                <span class="text-xs md:text-sm text-gray-500">
-                                    Aquí puedes integrar una gráfica real (Chart.js / ApexCharts) con <strong>solicitudes por estado</strong> o por fecha.
-                                </span>
+                                <div class="mt-6 w-full rounded-lg bg-white/60 border p-4">
+    <canvas id="estadoChart"></canvas>
+</div>
+
+<div class="mt-6 w-full rounded-lg bg-white/60 border p-4">
+    <canvas id="diaChart"></canvas>
+</div>
+
                             </div>
                         </div>
 
@@ -286,4 +291,42 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // === Gráfica de Estados ===
+    const estadosLabels = {!! json_encode($porEstado->keys()) !!};
+    const estadosData = {!! json_encode($porEstado->values()) !!};
+
+    new Chart(document.getElementById('estadoChart'), {
+        type: 'bar',
+        data: {
+            labels: estadosLabels,
+            datasets: [{
+                label: 'Solicitudes por estado',
+                data: estadosData,
+                backgroundColor: ['#facc15', '#fbbf24', '#4ade80', '#f87171'],
+            }]
+        }
+    });
+
+    // === Gráfica últimos 30 días ===
+    const diasLabels = {!! json_encode($porDia->pluck('fecha')) !!};
+    const diasData = {!! json_encode($porDia->pluck('total')) !!};
+
+    new Chart(document.getElementById('diaChart'), {
+        type: 'line',
+        data: {
+            labels: diasLabels,
+            datasets: [{
+                label: 'Solicitudes últimos 30 días',
+                data: diasData,
+                tension: 0.3,
+                borderColor: '#6366f1',
+                fill: false
+            }]
+        }
+    });
+</script>
+
 </x-app-layout>
