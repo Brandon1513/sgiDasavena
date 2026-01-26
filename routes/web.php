@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SolicitudFormatoController;
 use App\Http\Controllers\SgiDashboardController;
+use App\Http\Controllers\SolicitudesCalendarController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -15,7 +17,16 @@ Route::get('/dashboard', SgiDashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::middleware(['auth', 'role:administrador_sgi'])->group(function () {
 
+    Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
+        ->name('solicitudes.calendar');
+
+    Route::get('/solicitudes/calendario/data', [SolicitudesCalendarController::class, 'data'])
+        ->name('solicitudes.calendar.data');
+
+});
+        
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -41,6 +52,8 @@ Route::middleware(['auth', 'role:usuario|administrador|administrador_sgi|jefe'])
 });
 
 
+
+
 //Usuarios
 use App\Http\Controllers\UserController;
 
@@ -53,6 +66,8 @@ Route::middleware(['auth', 'role:administrador'])->group(function () {
     Route::put('/usuarios/{user}/toggle-estado', [UserController::class, 'toggleEstado'])->name('usuarios.toggleEstado');
 
 });
+
+
 
 Route::get('/register', function () {
     return redirect()->route('login');
