@@ -25,9 +25,12 @@
             </div>
             @endif
 
-            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}" method="POST" class="space-y-8"
+            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}"
+                method="POST"
+                class="space-y-8"
                 x-data="{
                     accionFinal: 'atender',
+                    mismaFechaRevision: true,
                     isAtender() { return this.accionFinal === 'atender' },
                     isRechazar() { return this.accionFinal === 'rechazar' },
                   }">
@@ -82,7 +85,7 @@
                     </div>
                 </div>
 
-                {{-- SECCIÓN 2: DATOS DE SGI (oficiales para calendario) --}}
+                {{-- SECCIÓN 2: DATOS DE SGI --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-900">
@@ -101,18 +104,20 @@
                                 Alta en el sistema de gestión
                             </label>
                             <input type="date" name="fecha_alta_sgi"
-                                value="{{ old('fecha_alta_sgi', now()->format('Y-m-d')) }}"
+                                value="{{ old('fecha_alta_sgi', optional($solicitud->fecha_alta_sgi)->format('Y-m-d') ?? now()->format('Y-m-d')) }}"
+                                :disabled="isRechazar()"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                         </div>
 
-                        {{-- Revisión --}}
+                        {{-- Revisiones --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Número de Revisión Actual <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" name="revision_actual"
-                                    value="{{ old('revision_actual') }}"
+                                    value="{{ old('revision_actual', $solicitud->revision_actual) }}"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
 
@@ -121,22 +126,25 @@
                                     Número de Revisión Anterior (opcional)
                                 </label>
                                 <input type="text" name="revision_anterior"
-                                    value="{{ old('revision_anterior') }}"
+                                    value="{{ old('revision_anterior', $solicitud->revision_anterior) }}"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
                         </div>
+
+                        {{-- Tipo --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2"> 
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Tipo de documento
                             </label>
-                        <div>
                             <input type="text" name="tipo_documento"
                                 value="{{ old('tipo_documento', $solicitud->tipo_documento) }}"
+                                :disabled="isRechazar()"
                                 placeholder="Ej. Procedimiento, Instructivo, Formato"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                         </div>
 
-                        {{-- DATOS OFICIALES SOLO SGI --}}
+                        {{-- Nombre + Formato --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -145,8 +153,8 @@
                                 </label>
                                 <input type="text" name="nombre_documento"
                                     value="{{ old('nombre_documento', $solicitud->nombre_documento) }}"
+                                    :disabled="isRechazar()"
                                     placeholder="Ej. Instructivo de uso de Rayos X"
-                                    :required="isAtender() && '{{ $solicitud->accion }}' === 'nuevo_documento'"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                 <p class="mt-2 text-xs text-gray-500">
                                     Obligatorio para <strong>Nuevo Documento</strong>
@@ -158,6 +166,7 @@
                                     Formato (EL/PA)
                                 </label>
                                 <select name="formato_el_pa"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                     <option value="">-- Seleccione --</option>
                                     <option value="EL" @selected(old('formato_el_pa', $solicitud->formato_el_pa) === 'EL')>EL</option>
@@ -167,6 +176,7 @@
                             </div>
                         </div>
 
+                        {{-- Folio + Código --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -174,43 +184,62 @@
                                 </label>
                                 <input type="text" name="folio_version"
                                     value="{{ old('folio_version', $solicitud->folio_version) }}"
+                                    :disabled="isRechazar()"
                                     placeholder="Ej. 0272025, 3282025"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                 <p class="mt-2 text-xs text-gray-500">Opcional</p>
                             </div>
+
                             <div>
-  <label class="block text-sm font-bold text-gray-700">
-      Código de documento
-  </label>
-  <input type="text"
-         name="codigo_documento"
-         value="{{ old('codigo_documento', $solicitud->codigo_documento) }}"
-         placeholder="Ej. SGI-PR-001"
-         class="w-full rounded-xl border border-gray-300/50 px-4 py-3"
-         required>
-</div>
+                                <label class="block text-sm font-bold text-gray-700">
+                                    Código de documento
+                                </label>
+                                <input type="text" name="codigo_documento"
+                                    value="{{ old('codigo_documento', $solicitud->codigo_documento) }}"
+                                    :disabled="isRechazar()"
+                                    placeholder="Ej. SGI-PR-001"
+                                    class="w-full rounded-xl border border-gray-300/50 px-4 py-3"
+                                    required>
+                            </div>
+                        </div>
 
-
+                        {{-- Fechas versión / revisión (✅ FIX real) --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Fecha de versión
                                     <span class="text-red-500" x-show="isAtender()">*</span>
                                 </label>
-                                <input type="date" name="fecha_version"
+                                <input type="date" name="fecha_version" id="fecha_version"
                                     value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}"
                                     :required="isAtender()"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                                 <p class="mt-2 text-xs text-gray-500">Fecha oficial</p>
                             </div>
+
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Fecha de revisión</label>
-                                <input type="date"
-                                    name="fecha_revision"
-                                    value="{{ old('fecha_revision', $solicitud->fecha_revision) }}"
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="block text-sm font-bold text-gray-700">Fecha de revisión</label>
+
+                                    <label class="flex items-center gap-2 text-xs text-gray-600 select-none">
+                                        <input type="checkbox" x-model="mismaFechaRevision" class="rounded">
+                                        Usar misma fecha de versión
+                                    </label>
+                                </div>
+
+                                <input type="date" name="fecha_revision" id="fecha_revision"
+                                    value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}"
+                                    :disabled="isRechazar() || mismaFechaRevision"
                                     class="w-full rounded-xl border border-gray-300/50 px-4 py-3">
+
+                                <p class="mt-2 text-xs text-gray-500">
+                                    Si se deja vacío, se toma <strong>Fecha de versión</strong>.
+                                </p>
                             </div>
                         </div>
 
+                        {{-- Vigencias --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -220,6 +249,7 @@
                                 <input type="number" min="1" name="vigencia_version_dias"
                                     value="{{ old('vigencia_version_dias', $solicitud->vigencia_version_dias ?? 365) }}"
                                     :required="isAtender()"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
 
@@ -231,16 +261,19 @@
                                 <input type="number" min="1" name="vigencia_revision_dias"
                                     value="{{ old('vigencia_revision_dias', $solicitud->vigencia_revision_dias ?? 730) }}"
                                     :required="isAtender()"
+                                    :disabled="isRechazar()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
                         </div>
 
+                        {{-- Lugar almacenamiento --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Lugar de almacenamiento
                             </label>
                             <input type="text" name="lugar_almacenamiento"
                                 value="{{ old('lugar_almacenamiento', $solicitud->lugar_almacenamiento) }}"
+                                :disabled="isRechazar()"
                                 placeholder="Ej. SharePoint: /SGI/Calidad/Procedimientos"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             <p class="mt-2 text-xs text-gray-500">Opcional</p>
@@ -253,6 +286,7 @@
                             </label>
                             <input type="text" name="liga_archivo"
                                 value="{{ old('liga_archivo', $solicitud->liga_archivo) }}"
+                                :disabled="isRechazar()"
                                 placeholder="https://...sharepoint.com/..."
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                         </div>
@@ -263,6 +297,7 @@
                                 Observaciones SGI
                             </label>
                             <textarea name="observaciones_sgi" rows="3"
+                                :disabled="isRechazar()"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none">{{ old('observaciones_sgi', $solicitud->observaciones_sgi) }}</textarea>
                         </div>
                     </div>
@@ -287,7 +322,10 @@
 
                         <div id="lista-usuarios" class="h-64 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-slate-50">
                             @foreach($usuarios as $usuario)
-                            <div class="usuario-item py-1" data-name="{{ $usuario->name }}" data-clave="{{ $usuario->clave_empleado }}" data-departamento="{{ $usuario->departamento->name ?? 'Sin departamento' }}">
+                            <div class="usuario-item py-1"
+                                data-name="{{ $usuario->name }}"
+                                data-clave="{{ $usuario->clave_empleado }}"
+                                data-departamento="{{ $usuario->departamento->name ?? 'Sin departamento' }}">
                                 <input type="checkbox" name="usuarios_notificados[]" value="{{ $usuario->id }}" class="usuario-checkbox">
                                 <label class="text-sm text-gray-700">
                                     {{ $usuario->name }} - Clave: {{ $usuario->clave_empleado }} - Departamento: {{ $usuario->departamento->name ?? 'Sin departamento' }}
@@ -305,6 +343,10 @@
                         class="px-6 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 font-medium">
                         Rechazar
                     </button>
+                    <select name="sgi_tipo_actualizacion" required class="...">
+                        <option value="revision">Solo Revisión</option>
+                        <option value="version">Nueva Versión</option>
+                    </select>
 
                     <button type="submit" name="accion" value="atender"
                         @click="accionFinal='atender'"
@@ -316,10 +358,13 @@
             </form>
         </div>
     </div>
+
 </x-app-layout>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+
+        // ---- buscador usuarios ----
         const busqueda = document.getElementById('busqueda-usuario');
         const seleccionarTodos = document.getElementById('seleccionar-todos-usuarios');
         const checkboxes = document.querySelectorAll('.usuario-checkbox');
@@ -337,6 +382,18 @@
         seleccionarTodos?.addEventListener('change', function() {
             const activo = seleccionarTodos.checked;
             checkboxes.forEach(c => c.checked = activo);
+        });
+
+        // ---- ✅ FIX: si fecha_revision viene vacía, usar fecha_version ----
+        const form = document.querySelector('form[action*="/finalizar"]');
+        const fechaV = document.getElementById('fecha_version');
+        const fechaR = document.getElementById('fecha_revision');
+
+        form?.addEventListener('submit', function() {
+            // si fecha_revision está vacía, copia fecha_version
+            if (fechaR && fechaV && (!fechaR.value || fechaR.value.trim() === '') && fechaV.value) {
+                fechaR.value = fechaV.value;
+            }
         });
     });
 </script>

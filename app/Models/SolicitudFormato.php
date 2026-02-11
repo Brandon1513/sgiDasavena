@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,46 +11,55 @@ class SolicitudFormato extends Model
     use HasFactory;
 
     protected $table = 'solicitudes_formatos';
-protected $fillable = [
-    // EXISTENTES (NO SE TOCAN)
-    'user_id',
-    'accion',
-    'archivo_adjunto',
-    'estado',
-    'jefe_id',
-    'observaciones_jefe',
-    'administrador_sgi_id',
-    'revision_actual',
-    'revision_anterior',
-    'liga_archivo',
-    'observaciones_sgi',
-    'fecha_alta_sgi',
-    'comentarios',
 
-    // 🔥 NUEVOS PARA CALENDARIO / SHAREPOINT
-    'codigo_documento',
-    'tipo_documento',
-    'nombre_documento',
-    'formato_el_pa',
-    'folio_version',
-    'fecha_version',
-    'vigencia_version_dias',
-    'vigencia_revision_dias',
-    'fecha_vencimiento_version',
-    'fecha_vencimiento_revision',
-    'lugar_almacenamiento',
-    'motivo_baja',
-];
-  protected $casts = [
+    protected $fillable = [
+        // EXISTENTES
+        'user_id',
+        'accion',
+        'archivo_adjunto',
+        'estado',
+        'jefe_id',
+        'observaciones_jefe',
+        'administrador_sgi_id',
+        'revision_actual',
+        'revision_anterior',
+        'liga_archivo',
+        'observaciones_sgi',
+        'fecha_alta_sgi',
+        'comentarios',
+        'documento_id',
+
+        // NUEVOS PARA CALENDARIO / SHAREPOINT
+        'codigo_documento',
+        'tipo_documento',
+        'nombre_documento',
+        'formato_el_pa',
+        'folio_version',
+
+        'fecha_version',
+        'fecha_revision',                 
+
+        'vigencia_version_dias',
+        'vigencia_revision_dias',
+        'fecha_vencimiento_version',
+        'fecha_vencimiento_revision',
+        'lugar_almacenamiento',
+        'motivo_baja',
+    ];
+
+    protected $casts = [
         'fecha_alta_sgi' => 'date',
         'fecha_version' => 'date',
         'fecha_revision' => 'date',
         'fecha_vencimiento_version' => 'date',
         'fecha_vencimiento_revision' => 'date',
     ];
+
     public function recalcularVencimientos(): void
     {
+        // ======================
         // VERSION
+        // ======================
         if ($this->fecha_version && $this->vigencia_version_dias) {
             $this->fecha_vencimiento_version = Carbon::parse($this->fecha_version)
                 ->startOfDay()
@@ -59,9 +69,13 @@ protected $fillable = [
             $this->fecha_vencimiento_version = null;
         }
 
-        // REVISION
-        if ($this->fecha_revision && $this->vigencia_revision_dias) {
-            $this->fecha_vencimiento_revision = Carbon::parse($this->fecha_revision)
+        // ======================
+        // REVISION (fallback a fecha_version)
+        // ======================
+        $baseRevision = $this->fecha_revision ?: $this->fecha_version;
+
+        if ($baseRevision && $this->vigencia_revision_dias) {
+            $this->fecha_vencimiento_revision = Carbon::parse($baseRevision)
                 ->startOfDay()
                 ->addDays((int) $this->vigencia_revision_dias)
                 ->toDateString();
@@ -88,7 +102,6 @@ protected $fillable = [
         });
     }
 
-
     // Relación con el usuario que crea la solicitud
     public function usuario()
     {
@@ -106,4 +119,10 @@ protected $fillable = [
     {
         return $this->belongsTo(User::class, 'administrador_sgi_id');
     }
+    
+    public function documento()
+{
+    return $this->belongsTo(\App\Models\Documento::class, 'documento_id');
+}
+
 }
