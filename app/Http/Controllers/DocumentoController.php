@@ -29,20 +29,29 @@ class DocumentoController extends Controller
         return view('documentos.index', compact('docs'));
     }
 
-    public function show(Documento $documento)
-    {
-        $documento->load([
-            'versionVigente',
-            'versiones' => fn($q) => $q->orderByDesc('id'),
-            // si ya tienes revisiones:
-            // 'versiones.revisiones' => fn($q) => $q->orderByDesc('id'),
-        ]);
+   public function show(Documento $documento)
+{
+    $documento->load([
+        'versionVigente',
+        'versiones' => fn($q) => $q->orderByDesc('id'),
+    ]);
 
-        $versiones = $documento->versiones; // ✅ para evitar "Variable indefinida $versiones"
-        $vigente = $documento->versionVigente;
+    $versiones = $documento->versiones;
+    $vigente   = $documento->versionVigente;
+    $user      = auth()->user();
 
-        return view('documentos.show', compact('documento', 'versiones', 'vigente'));
-    }
+    $usuarios = User::query()
+        ->orderBy('name')
+        ->get(['id', 'name', 'email']);
+
+    return view('documentos.show', compact(
+        'documento',
+        'versiones',
+        'vigente',
+        'user',
+        'usuarios'
+    ));
+}
 
     /**
      * BOTÓN Usuario/Jefe: crea solicitud de actualización prellenada con el documento seleccionado.
@@ -83,6 +92,8 @@ class DocumentoController extends Controller
             ->route('solicitudes.show', $sol->id)
             ->with('success', 'Solicitud de actualización creada.');
     }
+
+    
 
     /**
      * BOTÓN Admin SGI: manda correo solicitando actualización.

@@ -156,19 +156,19 @@
                                             class="text-blue-600 hover:text-blue-700 transition-colors text-xs font-medium">
                                             Ver
                                         </a>
-                                        
+
                                         @endif
                                     </div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4 animate-fadeIn">
                                     @if($solicitud->accion === 'actualizacion')
-    @if($solicitud->documento_id)
-        <a href="{{ route('solicitudes.solicitar_actualizacion.form', ['documento' => $solicitud->documento_id]) }}"
-           class="text-blue-600 hover:text-blue-700 text-xs font-medium">
-            Solicitar actualización
-        </a>
-    @else
-        <span class="text-gray-400 text-xs">Sin documento ligado</span>
-    @endif
-@endif
+                                    @if($solicitud->documento_id)
+                                    <a href="{{ route('solicitudes.solicitar_actualizacion.form', ['documento' => $solicitud->documento_id]) }}"
+                                        class="text-blue-600 hover:text-blue-700 text-xs font-medium">
+                                        Solicitar actualización
+                                    </a>
+                                    @else
+                                    <span class="text-gray-400 text-xs">Sin documento ligado</span>
+                                    @endif
+                                    @endif
 
 
                 </div>

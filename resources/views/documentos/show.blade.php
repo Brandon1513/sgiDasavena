@@ -251,46 +251,99 @@
         </div>
         @php $user = auth()->user(); @endphp
 
-@if($user->hasRole('administrador_sgi'))
+@if($user->hasRole('administrador_sgi')) 
     <form method="POST" action="{{ route('documentos.notificar_actualizacion', $documento->id) }}" class="mb-6">
         @csrf
-        <div class="bg-white border rounded-2xl p-5 space-y-3">
+
+        <div class="bg-white border rounded-2xl p-5 space-y-4 shadow-sm">
+            
             <div class="flex items-center justify-between">
-                <h4 class="font-black text-gray-800">Notificar que requiere actualización</h4>
+                <h4 class="font-black text-gray-800">
+                    Notificar que requiere actualización
+                </h4>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                {{-- MENSAJE --}}
                 <div class="md:col-span-2">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Mensaje</label>
-                    <input name="mensaje" required
+                    <label class="text-xs font-bold text-gray-600 uppercase">
+                        Mensaje
+                    </label>
+
+                    <input 
+                        type="text"
+                        name="mensaje"
+                        required
                         value="{{ old('mensaje', 'Este documento requiere actualización. Favor de generar solicitud de actualización.') }}"
-                        class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3">
+                        class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3 focus:ring-2 focus:ring-amber-500"
+                    >
                 </div>
 
+                {{-- DESTINO --}}
                 <div>
-                    <label class="text-xs font-bold text-gray-600 uppercase">Enviar a</label>
-                    <select name="destino" class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3">
+                    <label class="text-xs font-bold text-gray-600 uppercase">
+                        Enviar a
+                    </label>
+
+                    <select 
+                        name="destino" 
+                        id="destino_select"
+                        class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3 focus:ring-2 focus:ring-amber-500"
+                        onchange="toggleUsuarioSelect()"
+                    >
                         <option value="area">Todo el departamento/área del documento</option>
                         <option value="jefe">Solo jefes del área</option>
                         <option value="usuario">Un usuario específico</option>
                     </select>
                 </div>
 
-                <div class="md:col-span-3">
-                    <label class="text-xs font-bold text-gray-600 uppercase">Usuario (solo si eliges “usuario”)</label>
-                    <input type="number" name="usuario_id" placeholder="ID usuario (opcional)"
-                        class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3">
-                    <p class="text-xs text-gray-500 mt-1">Si quieres, luego lo cambiamos por un select bonito.</p>
+                {{-- USUARIO --}}
+                <div id="usuario_container" class="md:col-span-3 hidden">
+                    <label class="text-xs font-bold text-gray-600 uppercase">
+                        Seleccionar Usuario
+                    </label>
+
+                    <select 
+                        name="usuario_id"
+                        class="w-full mt-2 rounded-xl border border-gray-300/50 px-4 py-3 focus:ring-2 focus:ring-amber-500"
+                    >
+                        <option value="">-- Selecciona un usuario --</option>
+
+                        @foreach($usuarios as $usuario)
+                            <option value="{{ $usuario->id }}">
+                                {{ $usuario->name }} - {{ $usuario->email }}
+                            </option>
+                        @endforeach
+
+                    </select>
                 </div>
+
             </div>
 
-            <button class="px-6 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700">
+            <button 
+                type="submit"
+                class="px-6 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition"
+            >
                 Enviar correo
             </button>
+
         </div>
     </form>
-@endif
 
+    <script>
+        function toggleUsuarioSelect() {
+            const destino = document.getElementById('destino_select').value;
+            const container = document.getElementById('usuario_container');
+
+            if(destino === 'usuario') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+    </script>
+@endif
 
     </div>
 </x-app-layout>
