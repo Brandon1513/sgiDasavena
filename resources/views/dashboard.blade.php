@@ -8,6 +8,32 @@
         : '';
 @endphp
 
+<div id="welcome-notification" class="fixed top-15 right-0 z-50 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white px-6 py-4 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-md transform translate-x-full transition-transform duration-500 ease-out">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+            <span class="text-xl">👋</span>
+        </div>
+        <div>
+            <p class="text-sm font-semibold">¡Bienvenido!</p>
+            <p class="text-xs opacity-90">{{ $user->name }}</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const notification = document.getElementById('welcome-notification');
+        // Mostrar la notificación
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+        }, 100);
+        // Ocultar después de 3 segundos
+        setTimeout(() => {
+            notification.classList.add('translate-x-full');
+        }, 3100);
+    });
+</script>
+
     <div class="min-h-screen relative bg-fixed bg-center bg-cover"
          style="background-image: url('https://dasavenasite.domcloud.dev/images/background-pattern.png');">
 

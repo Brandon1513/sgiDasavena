@@ -29,7 +29,7 @@
                   action="{{ route('solicitudes.store') }}"
                   enctype="multipart/form-data"
                   x-data="{
-                    accion: '{{ old('accion') }}',
+                    accion: '{{ old('accion', '') }}',
                     isActualizacion() { return this.accion === 'actualizacion' },
                     isBaja() { return this.accion === 'baja' },
                     isNuevo() { return this.accion === 'nuevo_documento' }
@@ -85,9 +85,9 @@
                                     x-model="accion"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Seleccione una opción --</option>
-                                <option value="actualizacion">📝 Actualización</option>
-                                <option value="nuevo_documento">✨ Nuevo documento</option>
-                                <option value="baja">❌ Baja</option>
+                                <option value="actualizacion" @selected(old('accion') === 'actualizacion')>📝 Actualización</option>
+                                <option value="nuevo_documento" @selected(old('accion') === 'nuevo_documento')>✨ Nuevo documento</option>
+                                <option value="baja" @selected(old('accion') === 'baja')>❌ Baja</option>
                             </select>
                         </div>
                     </div>
@@ -110,7 +110,8 @@
                             </label>
 
                             <select name="documento_id"
-                                    :required="isActualizacion()"
+                                    x-bind:disabled="!isActualizacion()"
+                                    x-bind:required="isActualizacion()"
                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Selecciona --</option>
                                 @foreach($documentos as $d)
@@ -135,7 +136,7 @@
                             <input type="text"
                                    name="nombre_documento"
                                    value="{{ old('nombre_documento') }}"
-                                   :required="isNuevo()"
+                                   x-bind:required="isNuevo()"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
 
@@ -147,7 +148,7 @@
 
                             <textarea name="motivo_baja"
                                       rows="4"
-                                      :required="isBaja()"
+                                      x-bind:required="isBaja()"
                                       class="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-red-50">{{ old('motivo_baja') }}</textarea>
                         </div>
 

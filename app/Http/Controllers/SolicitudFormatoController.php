@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use App\Models\Documento;
 use App\Models\DocumentoVersion;
 use Illuminate\Support\Facades\DB;
+use App\Models\DocumentoRevision;
 
 
 
@@ -115,83 +116,80 @@ class SolicitudFormatoController extends Controller
     }
 
 
- public function store(Request $request)
-{
-    $request->validate([
-        'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+    public function store(Request $request)
+    {
+        $request->validate([
+            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+            'documento_id' => 'required_if:accion,actualizacion|exists:documentos,id',
 
-        // ✅ actualización requiere documento_id (más limpio sin nullable)
-        'documento_id' => 'required_if:accion,actualizacion|exists:documentos,id',
+            // ✅ más robusto (y tamaño)
+            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
 
-        'archivo' => 'nullable|file|mimes:pdf,doc,docx,xlsx,xls',
-        'comentarios' => 'required|string|max:2000',
+            'comentarios' => 'required|string|max:2000',
+            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+        ]);
 
-        'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
-        'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
-    ]);
+        $user = auth()->user();
 
-    $user = auth()->user();
-
-    $archivoPath = $request->hasFile('archivo')
-        ? $request->file('archivo')->store('solicitudes', 'public')
-        : null;
-
-    // =========================
-    // ✅ Si es actualización: cargar doc + seguridad + snapshot
-    // =========================
-    $doc = null;
-    if ($request->accion === 'actualizacion') {
-        $doc = \App\Models\Documento::findOrFail($request->documento_id);
-
-        // Seguridad: por área (como acordamos)
-        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
-            abort(403, 'No puedes solicitar actualización de un documento fuera de tu área.');
+        $archivoPath = null;
+        if ($request->hasFile('archivo')) {
+            $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
         }
+
+        $doc = null;
+        if ($request->accion === 'actualizacion') {
+            $doc = \App\Models\Documento::findOrFail($request->documento_id);
+
+            if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
+                abort(403, 'No puedes solicitar actualización de un documento fuera de tu área.');
+            }
+        }
+
+        $solicitud = \App\Models\SolicitudFormato::create([
+            'user_id' => $user->id,
+            'accion' => $request->accion,
+            'archivo_adjunto' => $archivoPath,
+            'estado' => 'pendiente',
+            'jefe_id' => $user->jefe_id,
+            'comentarios' => $request->comentarios,
+
+            // ✅ documento ligado SOLO en actualización
+            'documento_id' => $request->accion === 'actualizacion' ? $request->documento_id : null,
+
+            // ✅ nombre_documento UNA sola vez (sin duplicar key)
+            'nombre_documento' => $request->accion === 'actualizacion'
+                ? ($doc?->nombre)
+                : $request->nombre_documento,
+
+            // baja
+            'motivo_baja' => $request->motivo_baja,
+
+            // ✅ snapshot (si es actualización)
+            'codigo_documento' => $doc?->codigo,
+            'tipo_documento' => $doc?->tipo_documento,
+            'formato_el_pa' => $doc?->formato_el_pa,
+
+            // ⚠️ IMPORTANT: solo guarda esto si tu columna existe en solicitudes
+            'lugar_almacenamiento' => $doc?->sharepoint_folder,
+            'estatus_documento' => $doc?->estatus,
+        ]);
+
+        $jefe = $user->jefe;
+        if ($jefe && $jefe->email) {
+            \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
+        }
+
+        return redirect()
+            ->route('solicitudes.show', $solicitud->id)
+            ->with('success', 'Solicitud enviada correctamente.');
     }
-
-    $solicitud = \App\Models\SolicitudFormato::create([
-        'user_id' => $user->id,
-        'accion' => $request->accion,
-        'archivo_adjunto' => $archivoPath,
-        'estado' => 'pendiente',
-        'jefe_id' => $user->jefe_id,
-        'comentarios' => $request->comentarios,
-
-        // para baja/nuevo_documento
-        'nombre_documento' => $request->nombre_documento,
-        'motivo_baja' => $request->motivo_baja,
-
-        // ✅ guarda SIEMPRE el id validado cuando sea actualización
-        'documento_id' => $request->accion === 'actualizacion' ? $request->documento_id : null,
-
-        // ✅ snapshot
-        'codigo_documento' => $doc?->codigo,
-        'nombre_documento' => $doc?->nombre ?? $request->nombre_documento,
-        'tipo_documento' => $doc?->tipo_documento,
-        'formato_el_pa' => $doc?->formato_el_pa,
-        'lugar_almacenamiento' => $doc?->sharepoint_folder, // ajusta si tu campo se llama diferente
-        'estatus_documento' => $doc?->estatus,
-    ]);
-
-    // correo al jefe si existe
-    $jefe = $user->jefe;
-    if ($jefe && $jefe->email) {
-        \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
-    }
-
-    return redirect()
-        ->route('solicitudes.show', $solicitud->id)
-        ->with('success', 'Solicitud enviada correctamente.');
-}
 
     public function show(SolicitudFormato $solicitud)
     {
         $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento']);
         return view('solicitudes.show', compact('solicitud'));
-        
     }
-    
-
 
     public function approvalForm(SolicitudFormato $solicitud)
     {
@@ -262,7 +260,6 @@ class SolicitudFormatoController extends Controller
             'lugar_almacenamiento' => 'nullable|string|max:255',
 
             'fecha_version' => 'required_if:accion,atender|nullable|date',
-            // ✅ NO la hagas required, porque tú haces fallback
             'fecha_revision' => 'nullable|date',
 
             'vigencia_version_dias' => 'required_if:accion,atender|nullable|integer|min:1',
@@ -293,7 +290,7 @@ class SolicitudFormatoController extends Controller
             'vigencia_revision_dias' => $request->vigencia_revision_dias,
         ];
 
-        // ✅ cálculo correcto + guarda fecha_revision con fallback
+        // ✅ cálculo correcto + fallback de fecha_revision
         if ($estado === 'atendido') {
             $fechaVersion = $request->fecha_version ? Carbon::parse($request->fecha_version)->startOfDay() : null;
             $fechaRevision = $request->fecha_revision
@@ -314,21 +311,21 @@ class SolicitudFormatoController extends Controller
 
         DB::transaction(function () use ($solicitud, $estado, $data) {
 
-            // 1) ✅ siempre guarda solicitud
+            // 1) 
             $solicitud->update($data);
 
-            // 2) si se rechaza, termina aquí
+            // 2) 
             if ($estado !== 'atendido') {
                 return;
             }
 
-            // 3) código obligatorio
+            // 3) 
             $codigo = $solicitud->codigo_documento;
             if (!$codigo) {
                 throw new \RuntimeException('Falta codigo_documento para publicar en Documentos.');
             }
 
-            // 4) Documento identidad
+            // 4) 
             $doc = Documento::firstOrCreate(
                 ['codigo' => $codigo],
                 [
@@ -347,7 +344,7 @@ class SolicitudFormatoController extends Controller
                 'area' => optional($solicitud->usuario)->area ?? $doc->area,
             ])->save();
 
-            // 5) baja
+            // 5) 
             if ($solicitud->accion === 'baja') {
                 $doc->estatus = 'baja';
                 $doc->save();
@@ -360,12 +357,13 @@ class SolicitudFormatoController extends Controller
                 return;
             }
 
-            // 6) actualización: cerrar vigente anterior
+
+            // 6) 
             if ($solicitud->accion === 'actualizacion' && $doc->versionVigente) {
                 $doc->versionVigente->update(['estatus' => 'obsoleto']);
             }
 
-            // 7) ✅ crear UNA sola versión vigente (con revisión ya calculada)
+            // 7)
             $ver = DocumentoVersion::create([
                 'documento_id' => $doc->id,
                 'version' => $solicitud->folio_version ?: ('AUTO-' . now()->format('Ymd-His')),
@@ -388,10 +386,37 @@ class SolicitudFormatoController extends Controller
                 'publicado_por' => auth()->id(),
                 'publicado_en' => now(),
 
-                // si ya agregaste la columna en documento_versiones
+                // 
                 'observaciones_sgi' => $solicitud->observaciones_sgi,
             ]);
 
+            // 8) 
+            DocumentoRevision::whereIn(
+                'documento_version_id',
+                DocumentoVersion::where('documento_id', $doc->id)->pluck('id')
+            )
+                ->where('estatus', 'vigente')
+                ->update(['estatus' => 'obsoleta']);
+                
+            DocumentoRevision::create([
+                'documento_version_id' => $ver->id,
+
+                'revision_actual' => $solicitud->revision_actual,
+                'revision_anterior' => $solicitud->revision_anterior,
+
+                'fecha_revision' => $solicitud->fecha_revision,
+                'vigencia_revision_dias' => (int) $solicitud->vigencia_revision_dias,
+                'fecha_vencimiento_revision' => $solicitud->fecha_vencimiento_revision,
+
+                'liga_archivo' => $solicitud->liga_archivo,
+                'lugar_almacenamiento' => $solicitud->lugar_almacenamiento,
+
+                'estatus' => 'vigente',
+                'registrado_por' => auth()->id(),
+                'registrado_en' => now(),
+            ]);
+
+            // 9) 
             $doc->version_vigente_id = $ver->id;
             $doc->estatus = 'vigente';
             $doc->save();
@@ -437,7 +462,7 @@ class SolicitudFormatoController extends Controller
         $user = auth()->user();
         $doc  = Documento::findOrFail($request->documento_id);
 
-        // Seguridad: solo documentos de su área (usuario/jefe)
+
         if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
             abort(403, 'No puedes solicitar actualización de un documento fuera de tu departamento.');
         }
@@ -445,7 +470,7 @@ class SolicitudFormatoController extends Controller
         $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
 
         $solicitud = SolicitudFormato::create([
-            'documento_id'    => $doc->id,   // ✅ lo importante
+            'documento_id'    => $doc->id,
             'user_id'         => $user->id,
             'accion'          => 'actualizacion',
             'archivo_adjunto' => $archivoPath,
@@ -453,7 +478,7 @@ class SolicitudFormatoController extends Controller
             'estado'          => 'pendiente',
             'jefe_id'         => $user->jefe_id,
 
-            // snapshot (opcional pero útil)
+
             'codigo_documento' => $doc->codigo,
             'nombre_documento' => $doc->nombre,
             'tipo_documento'   => $doc->tipo_documento,

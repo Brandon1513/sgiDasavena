@@ -8,6 +8,7 @@ use App\Models\SolicitudFormato;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use App\Models\DocumentoRevision;
 
 class DocumentoController extends Controller
 {
@@ -29,7 +30,7 @@ class DocumentoController extends Controller
         return view('documentos.index', compact('docs'));
     }
 
-   public function show(Documento $documento)
+public function show(Documento $documento)
 {
     $documento->load([
         'versionVigente',
@@ -44,18 +45,28 @@ class DocumentoController extends Controller
         ->orderBy('name')
         ->get(['id', 'name', 'email']);
 
+    $revisiones = DocumentoRevision::query()
+        ->whereIn('documento_version_id', $versiones->pluck('id'))
+        ->with(['version:id,documento_id,version'])
+        ->orderByRaw("CASE WHEN estatus='vigente' THEN 0 ELSE 1 END")
+        ->orderByDesc('id')
+        ->get();
+
+    $revisionesPorVersion = $revisiones->groupBy(function ($rev) {
+        return $rev->version?->version ?? ('Versión ID '.$rev->documento_version_id);
+    });
+
     return view('documentos.show', compact(
         'documento',
+        'user',
+        'usuarios',
         'versiones',
         'vigente',
-        'user',
-        'usuarios'
+        'revisiones',
+        'revisionesPorVersion',
     ));
 }
-
-    /**
-     * BOTÓN Usuario/Jefe: crea solicitud de actualización prellenada con el documento seleccionado.
-     */
+    // Historial completo (versiones + revisiones)
     public function createUpdateRequest(Request $request, Documento $documento)
     {
         $user = auth()->user();
@@ -95,9 +106,7 @@ class DocumentoController extends Controller
 
     
 
-    /**
-     * BOTÓN Admin SGI: manda correo solicitando actualización.
-     */
+  //Notificación de actualización (solo admin puede enviar)
     public function notifyNeedsUpdate(Request $request, Documento $documento)
     {
         $user = auth()->user();

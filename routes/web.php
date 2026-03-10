@@ -18,11 +18,7 @@ Route::get('/dashboard', SgiDashboardController::class)
 
 Route::middleware(['auth'])->group(function () {
 
-    // ===============================
-    // SOLICITUDES - RUTAS FIJAS PRIMERO
-    // ===============================
-
-    // ✅ CALENDARIO (solo admin_sgi) - DEBE IR ANTES DE /solicitudes/{solicitud}
+   
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
             ->name('solicitudes.calendar');
@@ -104,6 +100,13 @@ Route::middleware(['auth'])->group(function () {
         ->name('documentos.historico');
 
     // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
+
+      Route::post('/documento-versiones/{version}/marcar-obsoleto', [DocumentoVersionController::class, 'marcarObsoleto'])
+        ->name('documento_versiones.marcar_obsoleto');
+
+    Route::post('/documento-revisiones/{revision}/marcar-obsoleto', [DocumentoRevisionController::class, 'marcarObsoleto'])
+        ->name('documento_revisiones.marcar_obsoleto');
+        
     Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
         ->name('documentos.versiones.show');
 

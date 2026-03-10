@@ -401,3 +401,604 @@
         
     </script>
 </x-app-layout>
+
+
+
+
+@php
+        use Illuminate\Support\Str;
+
+        $user = auth()->user();
+        $roles = $user && method_exists($user, 'getRoleNames')
+            ? $user->getRoleNames()
+            : collect();
+
+        $rolesArray = $roles->toArray();
+
+        $estadoMap = [
+            'pendiente' => 'Pendientes',
+            'aprobado_jefe' => 'Aprobadas por jefe',
+            'atendido' => 'Atendidas',
+            'rechazado_jefe' => 'Rechazadas por jefe',
+            'rechazado' => 'Rechazadas',
+        ];
+
+        $estadoColors = [
+            'pendiente' => ['bg' => 'bg-indigo-500', 'soft' => 'bg-indigo-50', 'text' => 'text-indigo-700', 'border' => 'border-indigo-200'],
+            'aprobado_jefe' => ['bg' => 'bg-amber-500', 'soft' => 'bg-amber-50', 'text' => 'text-amber-700', 'border' => 'border-amber-200'],
+            'atendido' => ['bg' => 'bg-emerald-500', 'soft' => 'bg-emerald-50', 'text' => 'text-emerald-700', 'border' => 'border-emerald-200'],
+            'rechazado_jefe' => ['bg' => 'bg-rose-500', 'soft' => 'bg-rose-50', 'text' => 'text-rose-700', 'border' => 'border-rose-200'],
+            'rechazado' => ['bg' => 'bg-rose-500', 'soft' => 'bg-rose-50', 'text' => 'text-rose-700', 'border' => 'border-rose-200'],
+        ];
+
+        $approvalRate = ($total ?? 0) > 0
+            ? round(((($atendidas ?? 0) + ($aprobadoJefe ?? 0)) / max(($total ?? 1), 1)) * 100)
+            : 0;
+
+        $rechazadasTotal = $rechazadas ?? ($porEstado['rechazado_jefe'] ?? $porEstado['rechazado'] ?? 0);
+    @endphp
+<x-app-layout>
+
+
+    
+
+    <div class="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+
+            {{-- Welcome toast --}}
+            <div id="welcome-notification"
+                 class="fixed top-5 right-5 z-50 translate-x-[120%] rounded-2xl border border-white/30 bg-slate-900 text-white shadow-2xl transition-transform duration-500">
+                <div class="flex items-center gap-3 px-5 py-4">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-lg">
+                        👋
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold">Bienvenido de nuevo</p>
+                        <p class="text-xs text-slate-300">{{ $user->name }}</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Header principal --}}
+            <section class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-50 via-white to-violet-50"></div>
+                <div class="relative grid gap-6 p-6 lg:grid-cols-12 lg:p-8">
+
+                    <div class="lg:col-span-8">
+                        <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-700">
+                            <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+                            Sistema de Gestión Integral
+                        </div>
+
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+                            Hola, {{ $user->name }}
+                        </h1>
+
+                        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                            Visualiza el estado de las solicitudes, identifica pendientes, revisa la actividad reciente
+                            y accede rápidamente a los módulos clave del sistema SGI.
+                        </p>
+
+                        @if($roles->count())
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                @foreach($roles as $role)
+                                    <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                                        {{ Str::headline($role) }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div class="mt-6 flex flex-wrap gap-3">
+                            <a href="{{ route('solicitudes.create') }}"
+                               class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-800">
+                                <span class="text-base">＋</span>
+                                Nueva solicitud
+                            </a>
+
+                            <a href="{{ route('solicitudes.index') }}"
+                               class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50">
+                                Ver solicitudes
+                                <span>→</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-4">
+                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                            <div class="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Total solicitudes</p>
+                                        <p class="mt-3 text-3xl font-bold text-slate-900">{{ $total ?? 0 }}</p>
+                                    </div>
+                                    <div class="rounded-2xl bg-slate-100 p-3 text-lg">📄</div>
+                                </div>
+                                <p class="mt-3 text-xs text-slate-500">Resumen general del sistema</p>
+                            </div>
+
+                            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+                                <div class="flex items-start justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Avance global</p>
+                                        <p class="mt-3 text-3xl font-bold text-emerald-800">{{ $approvalRate }}%</p>
+                                    </div>
+                                    <div class="rounded-2xl bg-white/70 p-3 text-lg">📈</div>
+                                </div>
+                                <p class="mt-3 text-xs text-emerald-700/80">Aprobadas y atendidas respecto al total</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {{-- KPIs --}}
+            <section class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-3xl border border-indigo-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex items-center justify-between">
+                        <div class="rounded-2xl bg-indigo-50 p-3 text-xl">🕒</div>
+                        <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">Seguimiento</span>
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-slate-500">Pendientes</p>
+                    <p class="mt-1 text-3xl font-bold text-slate-900">{{ $pendientes ?? 0 }}</p>
+                    <p class="mt-2 text-xs text-slate-500">Solicitudes en espera de revisión</p>
+                </div>
+
+                <div class="rounded-3xl border border-amber-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex items-center justify-between">
+                        <div class="rounded-2xl bg-amber-50 p-3 text-xl">🟡</div>
+                        <span class="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Jefatura</span>
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-slate-500">Aprobadas por jefe</p>
+                    <p class="mt-1 text-3xl font-bold text-slate-900">{{ $aprobadoJefe ?? 0 }}</p>
+                    <p class="mt-2 text-xs text-slate-500">Listas para atención por SGI</p>
+                </div>
+
+                <div class="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex items-center justify-between">
+                        <div class="rounded-2xl bg-emerald-50 p-3 text-xl">✅</div>
+                        <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">Completadas</span>
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-slate-500">Atendidas</p>
+                    <p class="mt-1 text-3xl font-bold text-slate-900">{{ $atendidas ?? 0 }}</p>
+                    <p class="mt-2 text-xs text-slate-500">Solicitudes finalizadas en SGI</p>
+                </div>
+
+                <div class="rounded-3xl border border-rose-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <div class="flex items-center justify-between">
+                        <div class="rounded-2xl bg-rose-50 p-3 text-xl">⛔</div>
+                        <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">Control</span>
+                    </div>
+                    <p class="mt-4 text-sm font-medium text-slate-500">Rechazadas</p>
+                    <p class="mt-1 text-3xl font-bold text-slate-900">{{ $rechazadasTotal }}</p>
+                    <p class="mt-2 text-xs text-slate-500">Casos que requieren corrección o seguimiento</p>
+                </div>
+            </section>
+
+            {{-- Contenido principal --}}
+            <section class="mt-6 grid gap-6 xl:grid-cols-12">
+
+                {{-- Columna izquierda --}}
+                <div class="space-y-6 xl:col-span-8">
+
+                    {{-- Gráficas --}}
+                    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div class="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Resumen visual del sistema</h2>
+                                <p class="mt-1 text-sm text-slate-500">
+                                    Estado actual de solicitudes y comportamiento de los últimos 30 días.
+                                </p>
+                            </div>
+                            <span class="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                                Actualización diaria
+                            </span>
+                        </div>
+
+                        <div class="mt-6 grid gap-6 lg:grid-cols-5">
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50/60 p-4 lg:col-span-2">
+                                <div class="mb-4">
+                                    <h3 class="text-sm font-semibold text-slate-800">Distribución por estado</h3>
+                                    <p class="text-xs text-slate-500">Participación de cada etapa en el flujo</p>
+                                </div>
+                                <div class="mx-auto max-w-[280px]">
+                                    <canvas id="estadoChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="rounded-3xl border border-slate-200 bg-slate-50/60 p-4 lg:col-span-3">
+                                <div class="mb-4">
+                                    <h3 class="text-sm font-semibold text-slate-800">Solicitudes últimos 30 días</h3>
+                                    <p class="text-xs text-slate-500">Tendencia reciente del movimiento del sistema</p>
+                                </div>
+                                <div class="h-[290px]">
+                                    <canvas id="diaChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Insights / tarjetas informativas --}}
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-xl">
+                                📋
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900">Control del flujo</h3>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">
+                                Revisa rápidamente en qué etapa se encuentra cada solicitud y detecta cuellos de botella.
+                            </p>
+                        </div>
+
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-50 text-xl">
+                                📄
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900">Gestión documental</h3>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">
+                                Vincula solicitudes, documentos y control de versiones en un mismo tablero visual.
+                            </p>
+                        </div>
+
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-xl">
+                                🔐
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900">Trazabilidad</h3>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">
+                                Conserva evidencia útil para auditorías, seguimiento y mejora continua del sistema.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Columna derecha --}}
+                <div class="space-y-6 xl:col-span-4">
+
+                    {{-- Panel rápido --}}
+                    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Acciones rápidas</h2>
+                                <p class="mt-1 text-sm text-slate-500">Los accesos más usados del sistema</p>
+                            </div>
+                            <div class="rounded-2xl bg-slate-100 p-3 text-lg">⚡</div>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <a href="{{ route('solicitudes.create') }}"
+                               class="group flex items-center justify-between rounded-2xl border border-slate-900 bg-slate-900 px-4 py-4 text-white transition hover:-translate-y-0.5 hover:bg-slate-800">
+                                <div class="flex items-center gap-3">
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-lg">＋</span>
+                                    <div>
+                                        <p class="text-sm font-semibold">Crear nueva solicitud</p>
+                                        <p class="text-xs text-slate-300">Registrar un nuevo movimiento</p>
+                                    </div>
+                                </div>
+                                <span class="transition group-hover:translate-x-1">→</span>
+                            </a>
+
+                            <a href="{{ route('solicitudes.index') }}"
+                               class="group flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white">
+                                <div class="flex items-center gap-3">
+                                    <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-lg shadow-sm">📋</span>
+                                    <div>
+                                        <p class="text-sm font-semibold">Ver todas las solicitudes</p>
+                                        <p class="text-xs text-slate-500">Listado general del sistema</p>
+                                    </div>
+                                </div>
+                                <span class="transition group-hover:translate-x-1">→</span>
+                            </a>
+
+                            @if($user->hasRole('jefe'))
+                                <a href="{{ route('solicitudes.index', ['estado' => 'pendiente']) }}"
+                                   class="group flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-800 transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-100/70">
+                                    <div class="flex items-center gap-3">
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 text-lg">🟡</span>
+                                        <div>
+                                            <p class="text-sm font-semibold">Pendientes por aprobar</p>
+                                            <p class="text-xs text-amber-700/80">Solicitudes esperando validación</p>
+                                        </div>
+                                    </div>
+                                    <span class="transition group-hover:translate-x-1">→</span>
+                                </a>
+                            @endif
+
+                            @if($user->hasRole('administrador_sgi'))
+                                <a href="{{ route('solicitudes.index', ['estado' => 'aprobado_jefe']) }}"
+                                   class="group flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-800 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100/70">
+                                    <div class="flex items-center gap-3">
+                                        <span class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 text-lg">✅</span>
+                                        <div>
+                                            <p class="text-sm font-semibold">Listas para alta SGI</p>
+                                            <p class="text-xs text-emerald-700/80">Aprobadas y pendientes de atención</p>
+                                        </div>
+                                    </div>
+                                    <span class="transition group-hover:translate-x-1">→</span>
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- Resumen corto --}}
+                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Estado dominante</p>
+                            <p class="mt-3 text-lg font-bold text-slate-900">
+                                {{ ($atendidas ?? 0) >= ($pendientes ?? 0) ? 'Atendidas' : 'Pendientes' }}
+                            </p>
+                            <p class="mt-2 text-sm text-slate-500">
+                                {{ max(($atendidas ?? 0), ($pendientes ?? 0), ($aprobadoJefe ?? 0), ($rechazadasTotal ?? 0)) }} registros en la categoría principal.
+                            </p>
+                        </div>
+
+                        <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Atención requerida</p>
+                            <p class="mt-3 text-lg font-bold text-slate-900">
+                                {{ ($pendientes ?? 0) + ($rechazadasTotal ?? 0) }} casos
+                            </p>
+                            <p class="mt-2 text-sm text-slate-500">
+                                Pendientes y rechazadas merecen seguimiento prioritario.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Actividad reciente --}}
+                    <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Actividad reciente</h2>
+                                <p class="mt-1 text-sm text-slate-500">Movimientos más recientes registrados</p>
+                            </div>
+                            <div class="rounded-2xl bg-slate-100 p-3 text-lg">🕘</div>
+                        </div>
+
+                        @if(!empty($ultimasSolicitudes) && count($ultimasSolicitudes))
+                            <div class="mt-5 max-h-[520px] space-y-3 overflow-y-auto pr-1">
+                                @foreach($ultimasSolicitudes as $item)
+                                    @php
+                                        $estadoKey = $item->estado ?? 'pendiente';
+                                        $config = $estadoColors[$estadoKey] ?? $estadoColors['pendiente'];
+                                        $estadoLabel = $estadoMap[$estadoKey] ?? Str::headline(str_replace('_', ' ', $estadoKey));
+                                        $accionLabel = Str::headline(str_replace('_', ' ', $item->accion ?? 'actividad'));
+                                        $inicial = strtoupper(mb_substr($item->usuario->name ?? 'U', 0, 1));
+                                    @endphp
+
+                                    <div class="rounded-2xl border border-slate-200 p-4 transition hover:border-slate-300 hover:bg-slate-50">
+                                        <div class="flex gap-3">
+                                            <div class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-bold text-white">
+                                                {{ $inicial }}
+                                            </div>
+
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <p class="truncate text-sm font-semibold text-slate-900">
+                                                        {{ $item->usuario->name ?? 'Usuario' }}
+                                                    </p>
+                                                    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">
+                                                        {{ $accionLabel }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="mt-2 flex flex-wrap items-center gap-2">
+                                                    <span class="inline-flex items-center rounded-full {{ $config['soft'] }} {{ $config['text'] }} {{ $config['border'] }} border px-2.5 py-1 text-[11px] font-semibold">
+                                                        {{ $estadoLabel }}
+                                                    </span>
+                                                </div>
+
+                                                @if($item->comentarios)
+                                                    <p class="mt-3 line-clamp-2 border-l-2 border-slate-200 pl-3 text-xs italic leading-5 text-slate-500">
+                                                        “{{ Str::limit($item->comentarios, 110) }}”
+                                                    </p>
+                                                @endif
+
+                                                <p class="mt-3 text-[11px] text-slate-400">
+                                                    {{ $item->created_at?->format('d/m/Y H:i') }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                                <p class="text-sm font-medium text-slate-600">Aún no hay actividad reciente</p>
+                                <p class="mt-1 text-xs text-slate-500">Los movimientos nuevos aparecerán aquí.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </section>
+
+            {{-- Footer informativo --}}
+            <section class="mt-6 grid gap-4 md:grid-cols-3">
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-900">Trazabilidad documental</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Consolida evidencia para auditorías, revisiones y cumplimiento normativo.
+                    </p>
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-900">Estandarización del flujo</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Centraliza altas, bajas y actualizaciones con aprobaciones claras por etapa.
+                    </p>
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-slate-900">Mejora continua</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Usa el dashboard para detectar carga operativa, rechazos y áreas de mejora.
+                    </p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const notification = document.getElementById('welcome-notification');
+
+            setTimeout(() => {
+                notification.classList.remove('translate-x-[120%]');
+            }, 200);
+
+            setTimeout(() => {
+                notification.classList.add('translate-x-[120%]');
+            }, 3400);
+        });
+
+        const estadoRawLabels = {!! json_encode($porEstado->keys()) !!};
+        const estadoRawData = {!! json_encode($porEstado->values()) !!};
+
+        const estadoLabelMap = {
+            pendiente: 'Pendientes',
+            aprobado_jefe: 'Aprobadas por jefe',
+            atendido: 'Atendidas',
+            rechazado_jefe: 'Rechazadas por jefe',
+            rechazado: 'Rechazadas'
+        };
+
+        const estadosLabels = estadoRawLabels.map(label => estadoLabelMap[label] ?? label.replaceAll('_', ' '));
+        const estadosData = estadoRawData;
+
+        const doughnutColors = [
+            '#6366f1',
+            '#f59e0b',
+            '#10b981',
+            '#f43f5e',
+            '#8b5cf6'
+        ];
+
+        new Chart(document.getElementById('estadoChart'), {
+            type: 'doughnut',
+            data: {
+                labels: estadosLabels,
+                datasets: [{
+                    data: estadosData,
+                    backgroundColor: doughnutColors,
+                    borderColor: '#ffffff',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                cutout: '68%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 18,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                }
+            }
+        });
+
+        const diasLabels = {!! json_encode($porDia->pluck('fecha')) !!};
+        const diasData = {!! json_encode($porDia->pluck('total')) !!};
+
+        new Chart(document.getElementById('diaChart'), {
+            type: 'line',
+            data: {
+                labels: diasLabels,
+                datasets: [{
+                    label: 'Solicitudes',
+                    data: diasData,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.10)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#6366f1',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#fff',
+                        bodyColor: '#e2e8f0',
+                        padding: 12,
+                        cornerRadius: 12
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.15)'
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            precision: 0,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</x-app-layout>
