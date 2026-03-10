@@ -244,13 +244,15 @@ class SolicitudFormatoController extends Controller
             abort(403, 'No tienes permiso para finalizar.');
         }
 
+        $tipoCambio = $request->input('tipo_cambio', 'revision'); // version | revision
+
         $request->validate([
-            'revision_actual' => 'required|string|max:50',
-            'revision_anterior' => 'nullable|string|max:50',
+            'accion' => 'required|in:atender,rechazar',
+            'tipo_cambio' => 'nullable|in:version,revision',
+
             'liga_archivo' => 'required|url',
             'fecha_alta_sgi' => 'required|date',
             'observaciones_sgi' => 'nullable|string|max:1000',
-            'accion' => 'required|in:atender,rechazar',
 
             'codigo_documento' => 'nullable|string|max:100',
             'nombre_documento' => 'nullable|string|max:255',
@@ -260,18 +262,42 @@ class SolicitudFormatoController extends Controller
             'lugar_almacenamiento' => 'nullable|string|max:255',
 
             'fecha_version' => 'required_if:accion,atender|nullable|date',
-            'fecha_revision' => 'nullable|date',
-
             'vigencia_version_dias' => 'required_if:accion,atender|nullable|integer|min:1',
-            'vigencia_revision_dias' => 'required_if:accion,atender|nullable|integer|min:1',
+
+            'revision_actual' => 'nullable|string|max:50',
+            'revision_anterior' => 'nullable|string|max:50',
+            'fecha_revision' => 'nullable|date',
+            'vigencia_revision_dias' => 'nullable|integer|min:1',
         ]);
 
         $estado = $request->accion === 'atender' ? 'atendido' : 'rechazado_sgi';
 
+        if ($estado === 'atendido' && $tipoCambio === 'revision') {
+            if (!$request->filled('revision_actual')) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'revision_actual' => 'La revisión actual es obligatoria cuando el tipo de cambio es revisión.',
+                ]);
+            }
+
+            if (!$request->filled('vigencia_revision_dias')) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'vigencia_revision_dias' => 'La vigencia de revisión es obligatoria cuando el tipo de cambio es revisión.',
+                ]);
+            }
+        }
+
         $data = [
             'estado' => $estado,
-            'revision_actual' => $request->revision_actual,
-            'revision_anterior' => $request->revision_anterior,
+
+            // si solo cambia versión, conservar revisión previa de la solicitud
+            'revision_actual' => $tipoCambio === 'revision'
+                ? $request->revision_actual
+                : $solicitud->revision_actual,
+
+            'revision_anterior' => $tipoCambio === 'revision'
+                ? $request->revision_anterior
+                : $solicitud->revision_anterior,
+
             'liga_archivo' => $request->liga_archivo,
             'fecha_alta_sgi' => $request->fecha_alta_sgi,
             'observaciones_sgi' => $request->observaciones_sgi,
@@ -285,47 +311,61 @@ class SolicitudFormatoController extends Controller
             'lugar_almacenamiento' => $request->lugar_almacenamiento ?? $solicitud->lugar_almacenamiento,
 
             'fecha_version' => $request->fecha_version,
-            'fecha_revision' => $request->fecha_revision,
             'vigencia_version_dias' => $request->vigencia_version_dias,
-            'vigencia_revision_dias' => $request->vigencia_revision_dias,
+
+            // si solo cambia versión, conservar revisión previa
+            'fecha_revision' => $tipoCambio === 'revision'
+                ? $request->fecha_revision
+                : $solicitud->fecha_revision,
+
+            'vigencia_revision_dias' => $tipoCambio === 'revision'
+                ? $request->vigencia_revision_dias
+                : $solicitud->vigencia_revision_dias,
         ];
 
-        // ✅ cálculo correcto + fallback de fecha_revision
         if ($estado === 'atendido') {
-            $fechaVersion = $request->fecha_version ? Carbon::parse($request->fecha_version)->startOfDay() : null;
-            $fechaRevision = $request->fecha_revision
-                ? Carbon::parse($request->fecha_revision)->startOfDay()
-                : $fechaVersion;
+            $fechaVersion = $request->fecha_version
+                ? Carbon::parse($request->fecha_version)->startOfDay()
+                : null;
 
-            $data['fecha_version']  = $fechaVersion?->toDateString();
-            $data['fecha_revision'] = $fechaRevision?->toDateString();
-
+            $data['fecha_version'] = $fechaVersion?->toDateString();
             $data['fecha_vencimiento_version'] = $fechaVersion
                 ? $fechaVersion->copy()->addDays((int)$request->vigencia_version_dias)->toDateString()
                 : null;
 
-            $data['fecha_vencimiento_revision'] = $fechaRevision
-                ? $fechaRevision->copy()->addDays((int)$request->vigencia_revision_dias)->toDateString()
-                : null;
+            if ($tipoCambio === 'revision') {
+                $fechaRevision = $request->fecha_revision
+                    ? Carbon::parse($request->fecha_revision)->startOfDay()
+                    : $fechaVersion;
+
+                $data['fecha_revision'] = $fechaRevision?->toDateString();
+                $data['fecha_vencimiento_revision'] = $fechaRevision
+                    ? $fechaRevision->copy()->addDays((int)$request->vigencia_revision_dias)->toDateString()
+                    : null;
+            } else {
+                // solo versión: conservar vencimiento de revisión previo
+                $data['fecha_revision'] = $solicitud->fecha_revision;
+                $data['fecha_vencimiento_revision'] = $solicitud->fecha_vencimiento_revision;
+            }
         }
 
-        DB::transaction(function () use ($solicitud, $estado, $data) {
+        DB::transaction(function () use ($solicitud, $estado, $data, $tipoCambio) {
 
-            // 1) 
+            // 1) Guardar solicitud
             $solicitud->update($data);
 
-            // 2) 
+            // 2) Si se rechaza, terminar
             if ($estado !== 'atendido') {
                 return;
             }
 
-            // 3) 
+            // 3) Código obligatorio
             $codigo = $solicitud->codigo_documento;
             if (!$codigo) {
                 throw new \RuntimeException('Falta codigo_documento para publicar en Documentos.');
             }
 
-            // 4) 
+            // 4) Documento
             $doc = Documento::firstOrCreate(
                 ['codigo' => $codigo],
                 [
@@ -344,32 +384,66 @@ class SolicitudFormatoController extends Controller
                 'area' => optional($solicitud->usuario)->area ?? $doc->area,
             ])->save();
 
-            // 5) 
+            $vigenteAnterior = $doc->versionVigente;
+
+            // 5) Baja
             if ($solicitud->accion === 'baja') {
                 $doc->estatus = 'baja';
                 $doc->save();
 
-                if ($doc->versionVigente) {
-                    $doc->versionVigente->update(['estatus' => 'obsoleto']);
-                    $doc->version_vigente_id = null;
-                    $doc->save();
-                }
+                DocumentoVersion::where('documento_id', $doc->id)
+                    ->where('estatus', 'vigente')
+                    ->update(['estatus' => 'obsoleto']);
+
+                $doc->version_vigente_id = null;
+                $doc->save();
+
                 return;
             }
 
+            // 6) Obsoletar todas las versiones vigentes del documento
+            DocumentoVersion::where('documento_id', $doc->id)
+                ->where('estatus', 'vigente')
+                ->update(['estatus' => 'obsoleto']);
 
-            // 6) 
-            if ($solicitud->accion === 'actualizacion' && $doc->versionVigente) {
-                $doc->versionVigente->update(['estatus' => 'obsoleto']);
+            // 7) Solo si cambia revisión, obsoletar revisiones vigentes anteriores
+            if ($tipoCambio === 'revision') {
+                DocumentoRevision::whereIn(
+                    'documento_version_id',
+                    DocumentoVersion::where('documento_id', $doc->id)->pluck('id')
+                )
+                    ->where('estatus', 'vigente')
+                    ->update(['estatus' => 'obsoleta']);
             }
 
-            // 7)
+            // 8) Resolver datos de revisión para guardar en documento_versiones
+            $revisionActualFinal = $tipoCambio === 'revision'
+                ? $solicitud->revision_actual
+                : ($vigenteAnterior?->revision_actual);
+
+            $revisionAnteriorFinal = $tipoCambio === 'revision'
+                ? $solicitud->revision_anterior
+                : ($vigenteAnterior?->revision_anterior);
+
+            $fechaRevisionFinal = $tipoCambio === 'revision'
+                ? $solicitud->fecha_revision
+                : ($vigenteAnterior?->fecha_revision);
+
+            $vigenciaRevisionDiasFinal = $tipoCambio === 'revision'
+                ? $solicitud->vigencia_revision_dias
+                : ($vigenteAnterior?->vigencia_revision_dias);
+
+            $fechaVencimientoRevisionFinal = $tipoCambio === 'revision'
+                ? $solicitud->fecha_vencimiento_revision
+                : ($vigenteAnterior?->fecha_vencimiento_revision);
+
+            // 9) Crear nueva versión vigente
             $ver = DocumentoVersion::create([
                 'documento_id' => $doc->id,
                 'version' => $solicitud->folio_version ?: ('AUTO-' . now()->format('Ymd-His')),
 
-                'revision_actual' => $solicitud->revision_actual,
-                'revision_anterior' => $solicitud->revision_anterior,
+                'revision_actual' => $revisionActualFinal,
+                'revision_anterior' => $revisionAnteriorFinal,
 
                 'liga_archivo' => $solicitud->liga_archivo,
                 'lugar_almacenamiento' => $solicitud->lugar_almacenamiento,
@@ -378,51 +452,44 @@ class SolicitudFormatoController extends Controller
                 'vigencia_version_dias' => $solicitud->vigencia_version_dias,
                 'fecha_vencimiento_version' => $solicitud->fecha_vencimiento_version,
 
-                'fecha_revision' => $solicitud->fecha_revision,
-                'vigencia_revision_dias' => $solicitud->vigencia_revision_dias,
-                'fecha_vencimiento_revision' => $solicitud->fecha_vencimiento_revision,
+                'fecha_revision' => $fechaRevisionFinal,
+                'vigencia_revision_dias' => $vigenciaRevisionDiasFinal,
+                'fecha_vencimiento_revision' => $fechaVencimientoRevisionFinal,
 
                 'estatus' => 'vigente',
                 'publicado_por' => auth()->id(),
                 'publicado_en' => now(),
 
-                // 
                 'observaciones_sgi' => $solicitud->observaciones_sgi,
             ]);
 
-            // 8) 
-            DocumentoRevision::whereIn(
-                'documento_version_id',
-                DocumentoVersion::where('documento_id', $doc->id)->pluck('id')
-            )
-                ->where('estatus', 'vigente')
-                ->update(['estatus' => 'obsoleta']);
-                
-            DocumentoRevision::create([
-                'documento_version_id' => $ver->id,
+            // 10) Crear revisión REAL solo si el tipo de cambio fue revisión
+            if ($tipoCambio === 'revision' && $revisionActualFinal) {
+                DocumentoRevision::create([
+                    'documento_version_id' => $ver->id,
 
-                'revision_actual' => $solicitud->revision_actual,
-                'revision_anterior' => $solicitud->revision_anterior,
+                    'revision_actual' => $revisionActualFinal,
+                    'revision_anterior' => $revisionAnteriorFinal,
 
-                'fecha_revision' => $solicitud->fecha_revision,
-                'vigencia_revision_dias' => (int) $solicitud->vigencia_revision_dias,
-                'fecha_vencimiento_revision' => $solicitud->fecha_vencimiento_revision,
+                    'fecha_revision' => $fechaRevisionFinal,
+                    'vigencia_revision_dias' => $vigenciaRevisionDiasFinal ? (int)$vigenciaRevisionDiasFinal : null,
+                    'fecha_vencimiento_revision' => $fechaVencimientoRevisionFinal,
 
-                'liga_archivo' => $solicitud->liga_archivo,
-                'lugar_almacenamiento' => $solicitud->lugar_almacenamiento,
+                    'liga_archivo' => $solicitud->liga_archivo,
+                    'lugar_almacenamiento' => $solicitud->lugar_almacenamiento,
 
-                'estatus' => 'vigente',
-                'registrado_por' => auth()->id(),
-                'registrado_en' => now(),
-            ]);
+                    'estatus' => 'vigente',
+                    'registrado_por' => auth()->id(),
+                    'registrado_en' => now(),
+                ]);
+            }
 
-            // 9) 
+            // 11) Marcar documento con su nueva versión vigente
             $doc->version_vigente_id = $ver->id;
             $doc->estatus = 'vigente';
             $doc->save();
         });
 
-        // correos...
         if ($request->has('usuarios_notificados')) {
             $usuarios = User::whereIn('id', $request->usuarios_notificados)->get();
             foreach ($usuarios as $usuario) {
@@ -430,7 +497,10 @@ class SolicitudFormatoController extends Controller
             }
         }
 
-        Log::info('Solicitud finalizada', ['solicitud_id' => $solicitud->id]);
+        Log::info('Solicitud finalizada', [
+            'solicitud_id' => $solicitud->id,
+            'tipo_cambio' => $tipoCambio,
+        ]);
 
         return redirect()->route('solicitudes.index')->with('success', 'Solicitud finalizada correctamente.');
     }

@@ -31,9 +31,12 @@
                 x-data="{
                     accionFinal: 'atender',
                     mismaFechaRevision: true,
+                    tipoCambio: '{{ old('tipo_cambio', 'revision') }}',
                     isAtender() { return this.accionFinal === 'atender' },
                     isRechazar() { return this.accionFinal === 'rechazar' },
-                  }">
+                    isSoloVersion() { return this.tipoCambio === 'version' },
+                    isCambioRevision() { return this.tipoCambio === 'revision' },
+                }">
                 @csrf
 
                 {{-- SECCIÓN 1: RESUMEN --}}
@@ -98,6 +101,27 @@
 
                     <div class="px-6 py-5 space-y-6">
 
+                        {{-- NUEVO: TIPO DE CAMBIO --}}
+                        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Tipo de cambio realizado por SGI
+                                <span class="text-red-500" x-show="isAtender()">*</span>
+                            </label>
+
+                            <select name="tipo_cambio"
+                                x-model="tipoCambio"
+                                :disabled="isRechazar()"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                                <option value="revision">Cambió revisión (y también la versión)</option>
+                                <option value="version">Solo cambió la versión</option>
+                            </select>
+
+                            <p class="mt-2 text-xs text-gray-600">
+                                Si eliges <strong>Solo cambió la versión</strong>, la revisión vigente anterior se conserva.
+                                Si eliges <strong>Cambió revisión</strong>, se actualizan ambos.
+                            </p>
+                        </div>
+
                         {{-- Alta SGI --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -110,14 +134,16 @@
                         </div>
 
                         {{-- Revisiones --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="isCambioRevision()" x-transition>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
-                                    Número de Revisión Actual <span class="text-red-500">*</span>
+                                    Número de Revisión Actual
+                                    <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span>
                                 </label>
                                 <input type="text" name="revision_actual"
                                     value="{{ old('revision_actual', $solicitud->revision_actual) }}"
-                                    :disabled="isRechazar()"
+                                    :disabled="isRechazar() || isSoloVersion()"
+                                    :required="isAtender() && isCambioRevision()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
 
@@ -127,7 +153,7 @@
                                 </label>
                                 <input type="text" name="revision_anterior"
                                     value="{{ old('revision_anterior', $solicitud->revision_anterior) }}"
-                                    :disabled="isRechazar()"
+                                    :disabled="isRechazar() || isSoloVersion()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
                         </div>
@@ -203,7 +229,7 @@
                             </div>
                         </div>
 
-                        {{-- Fechas versión / revisión (✅ FIX real) --}}
+                        {{-- Fechas versión / revisión --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -218,7 +244,7 @@
                                 <p class="mt-2 text-xs text-gray-500">Fecha oficial</p>
                             </div>
 
-                            <div>
+                            <div x-show="isCambioRevision()" x-transition>
                                 <div class="flex items-center justify-between mb-2">
                                     <label class="block text-sm font-bold text-gray-700">Fecha de revisión</label>
 
@@ -230,7 +256,7 @@
 
                                 <input type="date" name="fecha_revision" id="fecha_revision"
                                     value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}"
-                                    :disabled="isRechazar() || mismaFechaRevision"
+                                    :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()"
                                     class="w-full rounded-xl border border-gray-300/50 px-4 py-3">
 
                                 <p class="mt-2 text-xs text-gray-500">
@@ -253,15 +279,15 @@
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
 
-                            <div>
+                            <div x-show="isCambioRevision()" x-transition>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Vigencia revisión (días)
-                                    <span class="text-red-500" x-show="isAtender()">*</span>
+                                    <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span>
                                 </label>
                                 <input type="number" min="1" name="vigencia_revision_dias"
                                     value="{{ old('vigencia_revision_dias', $solicitud->vigencia_revision_dias ?? 730) }}"
-                                    :required="isAtender()"
-                                    :disabled="isRechazar()"
+                                    :required="isAtender() && isCambioRevision()"
+                                    :disabled="isRechazar() || isSoloVersion()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
                             </div>
                         </div>
@@ -343,10 +369,6 @@
                         class="px-6 py-3 text-white bg-red-600 rounded-lg hover:bg-red-700 font-medium">
                         Rechazar
                     </button>
-                    <select name="sgi_tipo_actualizacion" required class="...">
-                        <option value="revision">Solo Revisión</option>
-                        <option value="version">Nueva Versión</option>
-                    </select>
 
                     <button type="submit" name="accion" value="atender"
                         @click="accionFinal='atender'"
@@ -384,13 +406,12 @@
             checkboxes.forEach(c => c.checked = activo);
         });
 
-        // ---- ✅ FIX: si fecha_revision viene vacía, usar fecha_version ----
+        // ---- fecha_revision ----
         const form = document.querySelector('form[action*="/finalizar"]');
         const fechaV = document.getElementById('fecha_version');
         const fechaR = document.getElementById('fecha_revision');
 
         form?.addEventListener('submit', function() {
-            // si fecha_revision está vacía, copia fecha_version
             if (fechaR && fechaV && (!fechaR.value || fechaR.value.trim() === '') && fechaV.value) {
                 fechaR.value = fechaV.value;
             }
