@@ -10,7 +10,7 @@
         $roles = $user && method_exists($user, 'getRoleNames')
             ? $user->getRoleNames()->implode(', ')
             : '';
-    @endphp
+    @endphp IQF
 
     <!-- Animated background -->
     <div class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 relative overflow-hidden">

@@ -53,7 +53,7 @@
                         </x-slot>
                         <x-slot name="content">
                             <x-dropdown-link :href="route('solicitudes.index')" class="hover:bg-blue-50 transition-colors">
-                                {{ __('Formatos') }}
+                                {{ __('Solicitudes') }}
                             </x-dropdown-link>
 
                             @role('administrador_sgi')
