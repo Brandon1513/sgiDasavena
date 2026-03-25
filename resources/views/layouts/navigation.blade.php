@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 shadow-sm">
+<nav x-data="{ open: false }" class="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 shadow-sm z-10">
     <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <!-- IZQUIERDA: Logo y Menús -->
@@ -61,6 +61,9 @@
                                 {{ __('Calendario') }}
                             </x-dropdown-link>
                             @endrole
+                            <x-dropdown-link :href="route('dashboard.user')" class="hover:bg-blue-50 transition-colors">
+                                {{ __('Documentación por área') }}
+                            </x-dropdown-link>
                         </x-slot>
                     </x-dropdown>
                 </div>

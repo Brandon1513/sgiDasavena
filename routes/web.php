@@ -9,6 +9,8 @@ use App\Http\Controllers\DocumentoController;
 use App\Http\Controllers\DocumentoVersionController;
 use App\Http\Controllers\DocumentoRevisionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\DocumentoUsuarioController;
+
 
 Route::get('/', fn () => view('welcome'))->name('home');
 
@@ -42,6 +44,7 @@ Route::middleware(['auth'])->group(function () {
             ->whereNumber('solicitud')
             ->name('solicitudes.sgi.reactivar');
     });
+    
 
     // ✅ Alias opcional si tú quieres /solicitudes/crear (para tu botón)
     // OJO: el resource default es /solicitudes/create
@@ -98,6 +101,10 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/documentos/{documento}/historico', [DocumentoController::class, 'historico'])
         ->name('documentos.historico');
+Route::get('/dashboard-user', [DocumentoUsuarioController::class, 'index'])
+    ->name('dashboard.user')
+    ->middleware('auth');
+        //usuarios 
 
     // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
 
