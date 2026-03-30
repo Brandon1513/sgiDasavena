@@ -125,7 +125,7 @@ class ImportDocumentosSeeder extends Seeder
 
         fclose($file);
 
-        echo "🔥 IMPORTACIÓN COMPLETA (TODO VIGENTE) 🔥";
+        echo " IMPORTACIÓN COMPLETA (TODO VIGENTE todo como debe de sin buscar las 5 saquen las horas extras) 🔥";
     }
 
     /**
