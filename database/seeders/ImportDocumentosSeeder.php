@@ -40,14 +40,14 @@ class ImportDocumentosSeeder extends Seeder
                 $almacenamiento
             ] = $row;
 
-            // 🔥 FECHAS (excel o texto)
+            //  FECHAS (excel o texto)
             $fecha_version = $this->parseExcelDate($fecha_version);
             $fecha_vencimiento = $this->parseExcelDate($fecha_vencimiento);
 
-            // 🔥 REGLA DE NEGOCIO: TODO ENTRA COMO VIGENTE
+            //  REGLA DE NEGOCIO: TODO ENTRA COMO VIGENTE
             $estatus = 'vigente';
 
-            // 🔒 DOCUMENTO
+            //  DOCUMENTO
             $documento = DB::table('documentos')
                 ->where('codigo', $codigo)
                 ->first();
@@ -66,8 +66,8 @@ class ImportDocumentosSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
             }
-
-            // 🔒 VERSION
+    
+            //  VERSION
             $versionExistente = DB::table('documento_versiones')
                 ->where('documento_id', $documentoId)
                 ->where('version', $version)
@@ -84,7 +84,7 @@ class ImportDocumentosSeeder extends Seeder
                     'revision_actual' => $revision,
                     'fecha_version' => $fecha_version,
                     'fecha_vencimiento_version' => $fecha_vencimiento,
-                    'vigencia_version_dias' => max(0, (int)$vigencia), // 🔥 evita error negativos
+                    'vigencia_version_dias' => max(0, (int)$vigencia), //  evita error negativos
                     'estatus' => $estatus,
                     'liga_archivo' => $liga,
                     'lugar_almacenamiento' => $almacenamiento,
@@ -93,14 +93,14 @@ class ImportDocumentosSeeder extends Seeder
                 ]);
             }
 
-            // 🔥 ACTUALIZAR VERSION VIGENTE
+            //  ACTUALIZAR VERSION VIGENTE
             DB::table('documentos')
                 ->where('id', $documentoId)
                 ->update([
                     'version_vigente_id' => $versionId
                 ]);
 
-            // 🔒 REVISION
+            //  REVISION
             $existeRevision = DB::table('documento_revisiones')
                 ->where('documento_version_id', $versionId)
                 ->where('revision_actual', $revision)
