@@ -2,203 +2,282 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nueva solicitud de actualización</title>
+    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background-color: #f3eef6;
+            font-family: 'Century Gothic', 'Questrial', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        table { border-collapse: collapse; }
+        a { text-decoration: none !important; }
+
+        @media only screen and (max-width: 620px) {
+            .container  { width: 100% !important; border-radius: 0 !important; }
+            .pad        { padding: 30px 20px !important; }
+            .pad-sm     { padding: 15px !important; }
+            .hero-pad   { padding: 40px 24px 50px !important; }
+        }
+    </style>
 </head>
-<body style="margin:0; padding:0; background-color:#eef2f7; font-family:Arial, Helvetica, sans-serif;">
+<body style="margin:0;padding:0;background-color:#f3eef6;font-family:'Century Gothic','Questrial',Helvetica,Arial,sans-serif;">
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef2f7; margin:0; padding:40px 0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="background-color:#f3eef6;padding:40px 0;">
+<tr><td align="center">
+
+    <!-- WRAPPER -->
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="container"
+           style="width:600px;max-width:600px;background:#faf7fb;border-radius:16px;
+                  overflow:hidden;box-shadow:0 20px 60px rgba(106,44,117,0.12);
+                  border:1px solid rgba(106,44,117,0.12);">
+
+        <!-- ══ LÍNEA DORADA SUPERIOR ══ -->
         <tr>
-            <td align="center">
+            <td style="height:3px;background:linear-gradient(90deg,#6A2C75,#D4A018,#6A2C75);
+                       font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
 
-                <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="width:680px; max-width:680px; background:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #dde4ee; box-shadow:0 18px 45px rgba(31,41,55,0.10);">
+        <!-- ══ HERO con orbes ══ -->
+        <tr>
+            <td class="hero-pad"
+                style="padding:56px 50px 60px;
+                       background:linear-gradient(160deg,#2d1033 0%,#4a1d60 45%,#6A2C75 100%);
+                       position:relative;overflow:hidden;text-align:center;">
 
-                    {{-- Top Accent --}}
+                <!-- Orbe púrpura grande (esquina sup-izq) -->
+                <div style="position:absolute;top:-80px;left:-80px;width:280px;height:280px;
+                            border-radius:50%;
+                            background:radial-gradient(circle,rgba(155,61,170,0.55) 0%,transparent 70%);
+                            filter:blur(40px);pointer-events:none;"></div>
+
+                <!-- Orbe dorado (esquina inf-der) -->
+                <div style="position:absolute;bottom:-60px;right:-60px;width:220px;height:220px;
+                            border-radius:50%;
+                            background:radial-gradient(circle,rgba(212,160,24,0.45) 0%,transparent 70%);
+                            filter:blur(35px);pointer-events:none;"></div>
+
+                <!-- Orbe centro-claro -->
+                <div style="position:absolute;top:30%;left:55%;width:160px;height:160px;
+                            border-radius:50%;
+                            background:radial-gradient(circle,rgba(212,160,24,0.18) 0%,transparent 70%);
+                            filter:blur(30px);pointer-events:none;"></div>
+
+                <!-- Círculo decorativo grande (línea) -->
+                <div style="position:absolute;top:50%;left:50%;
+                            width:420px;height:420px;
+                            margin-top:-210px;margin-left:-210px;
+                            border-radius:50%;
+                            border:1px solid rgba(255,255,255,0.06);
+                            pointer-events:none;"></div>
+
+                <!-- Círculo decorativo pequeño -->
+                <div style="position:absolute;top:50%;left:50%;
+                            width:280px;height:280px;
+                            margin-top:-140px;margin-left:-140px;
+                            border-radius:50%;
+                            border:1px solid rgba(212,160,24,0.12);
+                            pointer-events:none;"></div>
+
+                <!-- Contenido Hero -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                       style="position:relative;z-index:2;">
                     <tr>
-                        <td style="height:6px; background:linear-gradient(90deg, #6A2C75 0%, #9F6FB0 45%, #D9C2E0 100%); font-size:0; line-height:0;">
-                            &nbsp;
-                        </td>
-                    </tr>
+                        <td align="center">
 
-                    {{-- Header --}}
-                    <tr>
-                        <td style="padding:0; background:linear-gradient(135deg, #24112b 0%, #4b1f58 55%, #7b3f89 100%);">
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                <tr>
-                                    <td style="padding:38px 42px 34px 42px;">
+                            <!-- Badge -->
+                            <div style="display:inline-block;padding:5px 16px;
+                                        border-radius:100px;
+                                        background:rgba(212,160,24,0.15);
+                                        border:1px solid rgba(212,160,24,0.4);
+                                        color:#D4A018;font-size:10px;
+                                        letter-spacing:2px;text-transform:uppercase;
+                                        font-weight:bold;margin-bottom:24px;">
+                                ● &nbsp;Notificación de Sistema
+                            </div>
 
-                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                                            <tr>
-                                                <td align="left" style="padding-bottom:18px;">
-                                                    <span style="display:inline-block; padding:8px 14px; border-radius:999px; background:rgba(255,255,255,0.12); color:#f3e8f8; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700;">
-                                                        Sistema de Gestión
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </table>
+                            <!-- Ícono -->
+                            <div style="display:inline-flex;align-items:center;justify-content:center;
+                                        width:64px;height:64px;border-radius:50%;
+                                        background:rgba(212,160,24,0.15);
+                                        border:1px solid rgba(212,160,24,0.3);
+                                        margin-bottom:22px;">
+                                <img src="https://img.icons8.com/ios/50/D4A018/document--v1.png"
+                                     width="30" height="30" alt="doc"
+                                     style="display:block;filter:brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(3deg);">
+                            </div>
 
-                                        <h1 style="margin:0; font-size:31px; line-height:1.2; color:#ffffff; font-weight:700; letter-spacing:-0.5px;">
-                                            Nueva solicitud de formato
-                                        </h1>
-
-                                        <p style="margin:14px 0 0; font-size:15px; line-height:1.7; color:#eadff0; max-width:520px;">
-                                            Se ha generado una nueva solicitud dentro del sistema y ya se encuentra disponible para revisión y seguimiento.
-                                        </p>
-
-                                        <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:24px;">
-                                            <tr>
-                                                <td style="padding:10px 14px; border-radius:14px; background:rgba(255,255,255,0.10); border:1px solid rgba(255,255,255,0.12);">
-                                                    <span style="font-size:12px; color:#f5eefa; font-weight:700; letter-spacing:0.3px;">
-                                                        Estado del flujo:
-                                                    </span>
-                                                    <span style="font-size:12px; color:#ffffff; font-weight:700;">
-                                                        Registro generado
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        </table>
-
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    {{-- Body --}}
-                    <tr>
-                        <td style="padding:40px 42px 20px 42px;">
-
-                            <p style="margin:0 0 16px; font-size:16px; line-height:1.7; color:#344054;">
-                                Hola equipo,
-                            </p>
-
-                            <p style="margin:0 0 30px; font-size:15px; line-height:1.8; color:#5b6472;">
-                                Se registró una nueva solicitud de actualización. A continuación se presenta un resumen ejecutivo con la información principal.
-                            </p>
-
-                            {{-- Data Card --}}
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg, #fcfbfd 0%, #f7f4f9 100%); border:1px solid #e8deed; border-radius:20px; overflow:hidden;">
-                                <tr>
-                                    <td style="padding:22px 24px 12px 24px;">
-                                        <p style="margin:0; font-size:12px; line-height:1.4; color:#8b6b96; text-transform:uppercase; letter-spacing:1.1px; font-weight:700;">
-                                            Resumen de la solicitud
-                                        </p>
-                                        <h2 style="margin:8px 0 0; font-size:20px; line-height:1.3; color:#3a1844; font-weight:700;">
-                                            Detalles principales
-                                        </h2>
-                                    </td>
-                                </tr>
-
-                                <tr>
-                                    <td style="padding:0 24px 24px 24px;">
-                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff; border:1px solid #ebe5f0; border-radius:16px; overflow:hidden;">
-
-                                            <tr>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:13px; color:#7a8699; width:38%; font-weight:700;">
-                                                    Solicitante
-                                                </td>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:14px; color:#1f2937; font-weight:700;">
-                                                    {{ $solicitud->usuario->name }}
-                                                </td>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:13px; color:#7a8699; font-weight:700;">
-                                                    Área
-                                                </td>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:14px; color:#1f2937; font-weight:600;">
-                                                    {{ $solicitud->usuario->area ?? 'No especificado' }}
-                                                </td>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:13px; color:#7a8699; font-weight:700;">
-                                                    Puesto
-                                                </td>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:14px; color:#1f2937; font-weight:600;">
-                                                    {{ $solicitud->usuario->puesto ?? 'No especificado' }}
-                                                </td>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:13px; color:#7a8699; font-weight:700;">
-                                                    Acción solicitada
-                                                </td>
-                                                <td style="padding:15px 18px; border-bottom:1px solid #f0eaf4; font-size:14px; color:#1f2937; font-weight:600;">
-                                                    {{ ucfirst($solicitud->accion) }}
-                                                </td>
-                                            </tr>
-
-                                            <tr>
-                                                <td style="padding:15px 18px; font-size:13px; color:#7a8699; font-weight:700;">
-                                                    Estado actual
-                                                </td>
-                                                <td style="padding:15px 18px;">
-                                                    <span style="display:inline-block; padding:9px 16px; border-radius:999px; background:linear-gradient(135deg, #efe3f4 0%, #dcc6e4 100%); color:#5c246b; font-size:12px; font-weight:700; letter-spacing:0.2px; border:1px solid #d8bfdc;">
-                                                        {{ ucfirst($solicitud->estado) }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            {{-- Message block --}}
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px; background:#faf8fc; border:1px dashed #ddcfe3; border-radius:16px;">
-                                <tr>
-                                    <td style="padding:18px 20px;">
-                                        <p style="margin:0; font-size:14px; line-height:1.8; color:#5b6472;">
-                                            Para revisar la información completa, validar el avance del proceso y dar continuidad a la atención de esta solicitud, accede directamente desde el botón inferior.
-                                        </p>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            {{-- Button --}}
-                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:34px 0 8px 0;">
-                                <tr>
-                                    <td align="center" style="border-radius:14px; background:linear-gradient(135deg, #3b1645 0%, #6A2C75 60%, #8f56a0 100%); box-shadow:0 10px 24px rgba(106,44,117,0.28);">
-                                        <a href="{{ route('solicitudes.show', $solicitud->id) }}"
-                                           style="display:inline-block; padding:16px 28px; font-size:15px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:14px; letter-spacing:0.2px;">
-                                            Ver solicitud
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <p style="margin:22px 0 0; font-size:14px; line-height:1.8; color:#667085;">
-                                Gracias por tu atención,<br>
-                                <strong style="color:#4b1f58;">{{ config('app.name') }}</strong>
+                            <h1 style="margin:0;font-size:26px;line-height:1.25;
+                                       color:#ffffff;font-weight:bold;
+                                       letter-spacing:-0.5px;">
+                                Nueva Solicitud<br>de Formato
+                            </h1>
+                            <p style="margin:14px 0 0;font-size:14px;line-height:1.65;
+                                      color:rgba(255,255,255,0.6);max-width:380px;
+                                      display:inline-block;">
+                                Se ha registrado una solicitud que requiere su revisión y seguimiento en la plataforma.
                             </p>
 
                         </td>
                     </tr>
+                </table>
+            </td>
+        </tr>
 
-                    {{-- Divider --}}
+        <!-- ══ CUERPO ══ -->
+        <tr>
+            <td class="pad" style="padding:44px 50px 36px;">
+
+                <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:#2d1033;font-weight:bold;">
+                    Estimado Revisor,
+                </p>
+                <p style="margin:0 0 36px;font-size:14px;line-height:1.75;color:#5a4a65;">
+                    Una nueva solicitud ha sido asignada para su gestión. A continuación encontrará un resumen ejecutivo con la información relevante:
+                </p>
+
+                <!-- ── Tarjeta de datos ── -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                       style="background:#ffffff;border:1px solid rgba(106,44,117,0.12);
+                              border-radius:12px;overflow:hidden;">
+
+                    <!-- Header tarjeta -->
                     <tr>
-                        <td style="padding:0 42px;">
-                            <div style="height:1px; background:#ebe5f0; line-height:1px; font-size:1px;">&nbsp;</div>
+                        <td colspan="2"
+                            style="padding:14px 24px;
+                                   background:linear-gradient(135deg,rgba(106,44,117,0.06),rgba(212,160,24,0.04));
+                                   border-bottom:1px solid rgba(106,44,117,0.08);">
+                            <span style="font-size:10px;font-weight:bold;
+                                         color:#6A2C75;letter-spacing:1.5px;
+                                         text-transform:uppercase;">
+                                Detalle de la solicitud
+                            </span>
                         </td>
                     </tr>
 
-                    {{-- Footer --}}
+                    <!-- Solicitante -->
                     <tr>
-                        <td style="padding:22px 42px 28px 42px; background:#ffffff; text-align:center;">
-                            <p style="margin:0 0 8px; font-size:12px; line-height:1.6; color:#98a2b3;">
-                                Este correo fue generado automáticamente por el sistema.
-                            </p>
-                            <p style="margin:0; font-size:12px; line-height:1.6; color:#98a2b3;">
-                                © {{ date('Y') }} {{ config('app.name') }} · Gestión documental y seguimiento
-                            </p>
+                        <td style="padding:16px 24px;border-bottom:1px solid #f5f0f8;
+                                   font-size:11px;color:#9b6baa;font-weight:bold;
+                                   text-transform:uppercase;letter-spacing:1px;width:42%;">
+                            Solicitante
+                        </td>
+                        <td style="padding:16px 24px;border-bottom:1px solid #f5f0f8;
+                                   font-size:14px;color:#2d1033;text-align:right;font-weight:bold;">
+                            {{ $solicitud->usuario->name }}
                         </td>
                     </tr>
 
+                    <!-- Área -->
+                    <tr>
+                        <td style="padding:16px 24px;border-bottom:1px solid #f5f0f8;
+                                   font-size:11px;color:#9b6baa;font-weight:bold;
+                                   text-transform:uppercase;letter-spacing:1px;">
+                            Área
+                        </td>
+                        <td style="padding:16px 24px;border-bottom:1px solid #f5f0f8;
+                                   font-size:14px;color:#4a2a55;text-align:right;">
+                            {{ $solicitud->usuario->area ?? 'No especificado' }}
+                        </td>
+                    </tr>
+
+                    <!-- Acción -->
+                    <tr>
+                        <td style="padding:16px 24px;
+                                   font-size:11px;color:#9b6baa;font-weight:bold;
+                                   text-transform:uppercase;letter-spacing:1px;">
+                            Acción
+                        </td>
+                        <td style="padding:16px 24px;text-align:right;">
+                            <span style="display:inline-block;padding:5px 14px;
+                                         border-radius:100px;
+                                         background:rgba(106,44,117,0.08);
+                                         border:1px solid rgba(106,44,117,0.2);
+                                         color:#6A2C75;font-size:12px;font-weight:bold;">
+                                {{ ucfirst($solicitud->accion) }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- ── Botón CTA ── -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                       style="margin-top:40px;">
+                    <tr>
+                        <td align="center">
+                            <a href="{{ route('solicitudes.show', $solicitud->id) }}"
+                               style="display:inline-block;padding:16px 40px;
+                                      font-size:12px;font-weight:bold;
+                                      color:#2d1033;text-decoration:none;
+                                      border-radius:8px;
+                                      background:linear-gradient(135deg,#D4A018,#f0c84a);
+                                      box-shadow:0 4px 20px rgba(212,160,24,0.35);
+                                      text-transform:uppercase;letter-spacing:2px;">
+                                Gestionar Solicitud &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- ── Nota informativa ── -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                       style="margin-top:32px;">
+                    <tr>
+                        <td style="padding:16px 20px;
+                                   background:rgba(212,160,24,0.06);
+                                   border-left:3px solid #D4A018;
+                                   border-radius:0 8px 8px 0;">
+                            <p style="margin:0;font-size:12px;color:#7a6040;line-height:1.6;">
+                                <strong style="color:#b38600;">Nota:</strong> Esta notificación fue generada automáticamente. Si tiene dudas sobre esta solicitud, acceda a la plataforma para obtener más detalles.
+                            </p>
+                        </td>
+                    </tr>
                 </table>
 
             </td>
         </tr>
+
+        <!-- ══ FOOTER ══ -->
+        <tr>
+            <td style="padding:28px 50px 32px;
+                       background:linear-gradient(135deg,#2d1033,#4a1d60);
+                       text-align:center;position:relative;overflow:hidden;">
+
+                <!-- Orbe footer -->
+                <div style="position:absolute;top:-40px;right:-40px;width:150px;height:150px;
+                            border-radius:50%;
+                            background:radial-gradient(circle,rgba(212,160,24,0.2) 0%,transparent 70%);
+                            filter:blur(25px);pointer-events:none;"></div>
+
+                <!-- Divisor dorado -->
+                <div style="width:50px;height:2px;
+                            background:linear-gradient(90deg,transparent,#D4A018,transparent);
+                            margin:0 auto 20px;"></div>
+
+                <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.5);
+                           font-weight:bold;text-transform:uppercase;letter-spacing:1.5px;">
+                    {{ config('app.name') }} &nbsp;·&nbsp; Unidad de TI
+                </p>
+                <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.7;">
+                    Notificación automática del sistema de gestión documental.<br>
+                    Por favor, no responda directamente a este mensaje.<br>
+                    &copy; {{ date('Y') }} Todos los derechos reservados.
+                </p>
+            </td>
+        </tr>
+
+        <!-- Línea dorada inferior -->
+        <tr>
+            <td style="height:3px;background:linear-gradient(90deg,#D4A018,#6A2C75,#D4A018);
+                       font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
     </table>
+
+</td></tr>
+</table>
 
 </body>
 </html>

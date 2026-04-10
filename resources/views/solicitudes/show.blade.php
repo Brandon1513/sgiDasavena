@@ -125,7 +125,7 @@
             @endif
         </div>
 
-        {{-- B) Documento --}}
+        {{-- Documento --}}
         <div class="bg-white rounded-2xl shadow border p-6 space-y-3">
             <h3 class="text-lg font-bold border-b pb-2">Datos del Documento</h3>
 

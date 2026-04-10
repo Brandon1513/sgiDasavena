@@ -13,130 +13,158 @@ class ImportDocumentosSeeder extends Seeder
         $path = storage_path('app/documentos.csv');
 
         if (!file_exists($path)) {
-            dd('Archivo no encontrado en storage/app/documentos.csv');
+            dd('Archivo no encontrado');
         }
 
         $file = fopen($path, 'r');
+        fgetcsv($file, 1000, ',');
 
-        // Saltar encabezado
-        fgetcsv($file);
+        while (($row = fgetcsv($file, 1000, ',')) !== false) {
 
-        while (($row = fgetcsv($file)) !== false) {
+            if (count($row) < 18) continue;
 
             [
                 $codigo,
                 $nombre,
                 $revision,
+                $fecha_revision,
+                $dias_rev_1,
+                $fecha_venc_revision,
+                $dias_rev_2,
                 $version,
-                $fecha_version,
-                $dias_vencer,
-                $fecha_vencimiento,
-                $vigencia,
+                $fecha_revision_version,
+                $dias_version,
+                $fecha_venc_version,
+                $vigencia_version,
                 $tipo,
-                $formato,
+                $formato_el_pa,
                 $area,
-                $coordinador,
+                $nombre_cordinador,
                 $liga,
                 $almacenamiento
             ] = $row;
 
-            //  FECHAS (excel o texto)
-            $fecha_version = $this->parseExcelDate($fecha_version);
-            $fecha_vencimiento = $this->parseExcelDate($fecha_vencimiento);
+            // ============================
+            // 🔧 HELPERS
+            // ============================
 
-            //  REGLA DE NEGOCIO: TODO ENTRA COMO VIGENTE
-            $estatus = 'vigente';
+            $parseFecha = function ($fecha) {
 
-            //  DOCUMENTO
-            $documento = DB::table('documentos')
-                ->where('codigo', $codigo)
-                ->first();
+                if (!$fecha || $fecha === '#¡VALOR!') return null;
 
-            if ($documento) {
-                $documentoId = $documento->id;
-            } else {
-                $documentoId = DB::table('documentos')->insertGetId([
-                    'codigo' => $codigo,
+                $meses = [
+                    'ene'=>'Jan','feb'=>'Feb','mar'=>'Mar','abr'=>'Apr','may'=>'May',
+                    'jun'=>'Jun','jul'=>'Jul','ago'=>'Aug','sep'=>'Sep','oct'=>'Oct',
+                    'nov'=>'Nov','dic'=>'Dec',
+                ];
+
+                $fecha = strtolower($fecha);
+
+                foreach ($meses as $es => $en) {
+                    $fecha = str_replace($es, strtolower($en), $fecha);
+                }
+
+                $fecha = ucfirst($fecha);
+
+                try {
+                    return Carbon::parse($fecha);
+                } catch (\Exception $e) {
+                    try {
+                        return Carbon::createFromFormat('d-M-y', $fecha);
+                    } catch (\Exception $e) {
+                        try {
+                            return Carbon::createFromFormat('m/d/Y', $fecha);
+                        } catch (\Exception $e) {
+                            return null;
+                        }
+                    }
+                }
+            };
+
+            $int = fn($v) => is_numeric($v) ? (int)$v : 0;
+
+            // ============================
+            // 🛡️ VALIDACIÓN DE USUARIO (CORRECCIÓN)
+            // ============================
+            // Verificamos si es un número y si el ID existe en la tabla users
+            $usuarioValido = is_numeric($nombre_cordinador) 
+                ? DB::table('users')->where('id', $nombre_cordinador)->exists() 
+                : false;
+
+            // ============================
+            // 📄 DOCUMENTO
+            // ============================
+
+            $documentoId = DB::table('documentos')->updateOrInsert(
+                ['codigo' => $codigo],
+                [
                     'nombre' => $nombre,
                     'tipo_documento' => $tipo,
-                    'formato_el_pa' => $formato,
+                    'formato_el_pa' => $formato_el_pa,
                     'area' => $area,
-                    'estatus' => 'vigente',
-                    'created_at' => now(),
                     'updated_at' => now(),
-                ]);
-            }
-    
-            //  VERSION
-            $versionExistente = DB::table('documento_versiones')
-                ->where('documento_id', $documentoId)
+                    'created_at' => now(),
+                ]
+            );
+
+            // 🔥 obtener ID real
+            $documento = DB::table('documentos')->where('codigo', $codigo)->first();
+
+            // ============================
+            // 📦 VERSION
+            // ============================
+
+            DB::table('documento_versiones')->updateOrInsert(
+                [
+                    'documento_id' => $documento->id,
+                    'version' => $version,
+                ],
+                [
+                    'revision_actual' => $int($revision),
+                    'fecha_version' => $parseFecha($fecha_revision_version),
+                    'fecha_vencimiento_version' => $parseFecha($fecha_venc_version),
+                    'fecha_vencimiento_revision' => $parseFecha($fecha_venc_revision),
+                    'vigencia_version_dias' => max(0, $int($dias_version)),
+                    'estatus' => 'vigente',
+                    'liga_archivo' => $liga ?: null,
+                    'lugar_almacenamiento' => $almacenamiento ?: null,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+
+            $versionRow = DB::table('documento_versiones')
+                ->where('documento_id', $documento->id)
                 ->where('version', $version)
-                ->where('revision_actual', $revision)
                 ->first();
 
-            if ($versionExistente) {
-                $versionId = $versionExistente->id;
-            } else {
+            // ============================
+            // 🔁 REVISION
+            // ============================
 
-                $versionId = DB::table('documento_versiones')->insertGetId([
-                    'documento_id' => $documentoId,
-                    'version' => $version,
-                    'revision_actual' => $revision,
-                    'fecha_version' => $fecha_version,
-                    'fecha_vencimiento_version' => $fecha_vencimiento,
-                    'vigencia_version_dias' => max(0, (int)$vigencia), //  evita error negativos
-                    'estatus' => $estatus,
-                    'liga_archivo' => $liga,
-                    'lugar_almacenamiento' => $almacenamiento,
-                    'created_at' => now(),
+            DB::table('documento_revisiones')->updateOrInsert(
+                [
+                    'documento_version_id' => $versionRow->id,
+                ],
+                [
+                    'revision_actual' => $int($revision),
+                    'revision_anterior' => null,
+                    'fecha_revision' => $parseFecha($fecha_revision),
+                    // Agregamos max(0, ...) para evitar el error de rango numérico negativo
+                    'vigencia_revision_dias' => max(0, $int($dias_rev_2) ?: 730),
+                    'fecha_vencimiento_revision' => $parseFecha($fecha_venc_revision),
+                    'liga_archivo' => $liga ?: null,
+                    'lugar_almacenamiento' => $almacenamiento ?: null,
+                    // Si el usuario no existe, mandamos NULL de verdad
+                    'registrado_por' => $usuarioValido ? $nombre_cordinador : null,
                     'updated_at' => now(),
-                ]);
-            }
-
-            //  ACTUALIZAR VERSION VIGENTE
-            DB::table('documentos')
-                ->where('id', $documentoId)
-                ->update([
-                    'version_vigente_id' => $versionId
-                ]);
-
-            //  REVISION
-            $existeRevision = DB::table('documento_revisiones')
-                ->where('documento_version_id', $versionId)
-                ->where('revision_actual', $revision)
-                ->exists();
-
-            if (!$existeRevision) {
-
-                DB::table('documento_revisiones')->insert([
-                    'documento_version_id' => $versionId,
-                    'revision_actual' => $revision,
-                    'fecha_revision' => $fecha_version,
-                    'vigencia_revision_dias' => max(0, (int)$vigencia),
-                    'fecha_vencimiento_revision' => $fecha_vencimiento,
-                    'liga_archivo' => $liga,
-                    'lugar_almacenamiento' => $almacenamiento,
-                    'estatus' => 'vigente',
                     'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
+                ]
+            );
         }
 
         fclose($file);
 
-        echo " IMPORTACIÓN COMPLETA (TODO VIGENTE todo como debe de sin buscar las 5 saquen las horas extras) 🔥";
-    }
-
-    /**
-     * Convertir fechas Excel o texto
-     */
-    private function parseExcelDate($value)
-    {
-        if (is_numeric($value)) {
-            return Carbon::createFromDate(1900, 1, 1)->addDays($value - 2);
-        }
-
-        return $value ? Carbon::parse($value) : null;
+        echo "✅ Datos actualizados correctamente (sin duplicados)";
     }
 }

@@ -37,7 +37,7 @@
 @endphp
 
 {{-- ══════════════════════════════════════════
-     FONDO ORIGINAL (sin cambios)
+     FONDO ORIGINAL Dasavena Gourmet: https://dasavenasite.domcloud.dev/images/background-pattern.png
 ══════════════════════════════════════════ --}}
 
 <div class="dc-root min-h-screen bg-fixed bg-center bg-cover"
@@ -55,7 +55,7 @@
         <div class="max-w-screen-xl mx-auto space-y-5">
 
             {{-- ══════════════════════════════════
-                 HEADER
+                 HEADER 
             ══════════════════════════════════ --}}
             <header class="dc-header dc-reveal" style="--i:0">
                 <div class="dc-header-face">

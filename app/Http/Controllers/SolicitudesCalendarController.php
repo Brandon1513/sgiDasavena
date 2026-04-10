@@ -12,141 +12,132 @@ class SolicitudesCalendarController extends Controller
     {
         return view('solicitudes.calendar');
     }
+public function data(Request $request)
+{
+    $month = $request->get('month', now()->format('Y-m'));
+    $q = trim((string) $request->get('q', ''));
+    $tipo = $request->get('tipo', 'both'); 
+    $estado = $request->get('estado', 'all'); 
+    $historicos = $request->boolean('historicos', false);
 
-    public function data(Request $request)
-    {
-        $month = $request->get('month', now()->format('Y-m'));
+    $gridStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->startOfWeek(Carbon::MONDAY);
+    $gridEnd   = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->endOfWeek(Carbon::SUNDAY);
 
-        $q = trim((string) $request->get('q', ''));
-        $tipo = $request->get('tipo', 'both'); // both | version | revision
-        $estado = $request->get('estado', 'all'); // all | vencidos | por_vencer | alerta | en_regla
-        $historicos = $request->boolean('historicos', false);
+    $today = now()->startOfDay();
 
-        $gridStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->startOfWeek(Carbon::MONDAY);
-        $gridEnd   = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+    $rows = DocumentoVersion::query()
+        ->with(['documento'])
+        ->when(!$historicos, function ($qq) {
+            $qq->where('estatus', 'vigente');
+        })
+        ->when($q !== '', function ($qq) use ($q) {
+            $qq->whereHas('documento', function ($w) use ($q) {
+                $w->where('codigo', 'like', "%{$q}%")
+                  ->orWhere('nombre', 'like', "%{$q}%");
+            });
+        })
+        ->get();
 
-        $today = now()->startOfDay();
+    $list = collect();
 
-        // 1) Query base: DocumentoVersion (+ Documento)
-        $rows = DocumentoVersion::query()
-            ->with(['documento'])
-            ->when(!$historicos, function ($qq) {
-                $qq->where('estatus', 'vigente');
-            })
-            ->when($q !== '', function ($qq) use ($q) {
-                $qq->whereHas('documento', function ($w) use ($q) {
-                    $w->where('codigo', 'like', "%{$q}%")
-                      ->orWhere('nombre', 'like', "%{$q}%");
-                });
-            })
-            ->get();
+    foreach ($rows as $ver) {
+        $doc = $ver->documento;
+        if (!$doc) continue;
 
-        // 2) Flatten list
-        $list = collect();
-
-        foreach ($rows as $ver) {
-            $doc = $ver->documento;
-
-            // si por alguna razón no hay doc, salta
-            if (!$doc) continue;
-
-            $base = [
-                // IDs reales
-                'documento_id' => $doc->id,
-                'version_id'   => $ver->id,
-
-                // Datos para UI
-                'codigo_documento' => $doc->codigo,
-                'nombre_documento' => $doc->nombre,
-                'tipo_documento'   => $doc->tipo_documento,
-                'formato_el_pa'    => $doc->formato_el_pa,
-                'folio_version'    => $ver->version,
-                'lugar_almacenamiento' => $ver->lugar_almacenamiento,
-                'estatus_version'  => $ver->estatus,
-
-                // ✅ URLs (esto arregla el "Ver")
-                'url_documento' => route('documentos.show', $doc->id),
-
-                // opcional: si tienes ruta para ver una versión específica
-                'url_version'   => route('documentos.versiones.show', $ver->id),
-            ];
-
-            // VERSION
-            if (($tipo === 'both' || $tipo === 'version') && $ver->fecha_vencimiento_version) {
-                $d = Carbon::parse($ver->fecha_vencimiento_version)->startOfDay();
-                $days = $today->diffInDays($d, false);
-                $severity = $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success');
-
-                $list->push(array_merge($base, [
-                    'vencimiento_tipo' => 'version',
-                    'fecha_vencimiento' => $d->toDateString(),
-                    'days_left' => $days,
-                    'severity' => $severity,
-                ]));
-            }
-
-            // REVISION
-            if (($tipo === 'both' || $tipo === 'revision') && $ver->fecha_vencimiento_revision) {
-                $d = Carbon::parse($ver->fecha_vencimiento_revision)->startOfDay();
-                $days = $today->diffInDays($d, false);
-                $severity = $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success');
-
-                $list->push(array_merge($base, [
-                    'vencimiento_tipo' => 'revision',
-                    'fecha_vencimiento' => $d->toDateString(),
-                    'days_left' => $days,
-                    'severity' => $severity,
-                ]));
-            }
-        }
-
-        // 3) Stats
-        $stats = [
-            'critico' => $list->filter(fn($e) => (int)$e['days_left'] <= 30)->count(),
-            'alerta'  => $list->filter(fn($e) => (int)$e['days_left'] >= 31 && (int)$e['days_left'] <= 60)->count(),
-            'regla'   => $list->filter(fn($e) => (int)$e['days_left'] > 60)->count(),
+        $base = [
+            'documento_id' => $doc->id,
+            'version_id'   => $ver->id,
+            'codigo_documento' => $doc->codigo,
+            'nombre_documento' => $doc->nombre,
+            'tipo_documento'   => $doc->tipo_documento,
+            'formato_el_pa'    => $doc->formato_el_pa,
+            'folio_version'    => $ver->version,
+            'url_documento' => route('documentos.show', $doc->id),
         ];
 
-        // 4) filtro por estado
-        if ($estado && $estado !== 'all') {
-            $list = $list->filter(function ($e) use ($estado) {
-                $d = (int) $e['days_left'];
-                return match ($estado) {
-                    'vencidos'   => $d < 0,
-                    'por_vencer' => $d >= 0 && $d <= 30,
-                    'alerta'     => $d >= 31 && $d <= 60,
-                    'en_regla'   => $d > 60,
-                    default      => true,
-                };
-            })->values();
+        // VERSION
+        if (($tipo === 'both' || $tipo === 'version') && $ver->fecha_vencimiento_version) {
+            $d = Carbon::parse($ver->fecha_vencimiento_version)->startOfDay();
+            $days = $today->diffInDays($d, false);
+            
+            $list->push(array_merge($base, [
+                'vencimiento_tipo' => 'version',
+                'fecha_vencimiento' => $d->toDateString(),
+                'days_left' => (int)$days,
+                'severity' => $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'),
+            ]));
         }
 
-        $list = $list->sortBy('days_left')->values();
+        // REVISION
+        if (($tipo === 'both' || $tipo === 'revision') && $ver->fecha_vencimiento_revision) {
+            $d = Carbon::parse($ver->fecha_vencimiento_revision)->startOfDay();
+            $days = $today->diffInDays($d, false);
 
-        // 5) Calendar events (grid visible)
-        $eventsByDate = [];
-
-        foreach ($list as $e) {
-            $d = Carbon::parse($e['fecha_vencimiento'])->startOfDay();
-            if ($d->betweenIncluded($gridStart, $gridEnd)) {
-                $eventsByDate[$d->toDateString()][] = [
-                    'codigo' => $e['codigo_documento'] ?? 'DOC',
-                    'nombre' => $e['nombre_documento'] ?? '',
-                    'tipo' => $e['vencimiento_tipo'],
-                    'days_left' => $e['days_left'],
-                    'severity' => $e['severity'],
-
-                    // ✅ para click en el card
-                    'url' => $e['url_documento'] ?? null,
-                ];
-            }
+            $list->push(array_merge($base, [
+                'vencimiento_tipo' => 'revision',
+                'fecha_vencimiento' => $d->toDateString(),
+                'days_left' => (int)$days,
+                'severity' => $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'),
+            ]));
         }
-
-        return response()->json([
-            'month' => $month,
-            'stats' => $stats,
-            'eventsByDate' => $eventsByDate,
-            'list' => $list,
-        ]);
     }
+
+    // --- ESTADÍSTICAS (Comparado con tu lógica anterior y corregido) ---
+    // Aseguramos que 'regla' cuente a todos los que tienen más de 60 días
+    $stats = [
+        'critico' => $list->filter(fn($e) => $e['days_left'] <= 30)->count(),
+        'alerta'  => $list->filter(fn($e) => $e['days_left'] >= 31 && $e['days_left'] <= 60)->count(),
+        'regla'   => $list->filter(fn($e) => $e['days_left'] > 60)->count(),
+        // Agregamos 'vencidos' explícitamente por si tu vista lo usa
+        'vencidos' => $list->filter(fn($e) => $e['days_left'] < 0)->count(),
+    ];
+
+    // --- FILTRADO POR ESTADO ---
+    if ($estado && $estado !== 'all') {
+        $list = $list->filter(function ($e) use ($estado) {
+            $d = (int)$e['days_left'];
+            return match ($estado) {
+                'vencidos'   => $d < 0,
+                'por_vencer' => $d >= 0 && $d <= 30, // Estos son los 'criticos' pero no vencidos
+                'alerta'     => $d >= 31 && $d <= 60,
+                'en_regla'   => $d > 60, // Aquí es donde entran los que "están bien"
+                default      => true,
+            };
+        })->values();
+    }
+
+    $list = $list->sortBy('days_left')->values();
+
+    // --- EVENTOS PARA EL CALENDARIO ---
+    $eventsByDate = [];
+    foreach ($list as $e) {
+        $d = Carbon::parse($e['fecha_vencimiento'])->startOfDay();
+        if ($d->betweenIncluded($gridStart, $gridEnd)) {
+            $eventsByDate[$d->toDateString()][] = [
+                'codigo' => $e['codigo_documento'],
+                'nombre' => $e['nombre_documento'],
+                'tipo' => $e['vencimiento_tipo'],
+                'days_left' => $e['days_left'],
+                'severity' => $e['severity'],
+                'url' => $e['url_documento'],
+            ];
+        }
+    }
+
+    return response()->json([
+        'month' => $month,
+        'stats' => $stats,
+        'eventsByDate' => $eventsByDate,
+        'list' => $list,
+    ]);
+}
+
+
+// Función auxiliar para mantener limpio el código
+private function getSeverity($days) {
+    if ($days < 0) return 'danger'; // Ya venció
+    if ($days <= 30) return 'danger'; // Crítico
+    if ($days <= 60) return 'warning'; // Alerta
+    return 'success'; // En regla
+}
 }
