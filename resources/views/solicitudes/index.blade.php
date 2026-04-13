@@ -254,6 +254,22 @@
                                             @endif
                                         @endif
 
+                                              @if (Route::has('solicitudes.destroy'))
+                                        <form action="{{ route('solicitudes.destroy', $solicitud->id) }}" method="POST" class="inline-flex"
+                                            onsubmit="return confirm('¿Está seguro de que desea eliminar esta solicitud?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit"
+                                              class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-bold transition-colors border border-red-200">
+                                              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8"/>
+                                              </svg>
+                                              Eliminar
+                                            </button>
+                                        </form>
+                                        @endif
+
                                         @if (auth()->user()->hasRole('jefe') && $solicitud->estado === 'pendiente' && Route::has('solicitudes.approval_form'))
                                         <a href="{{ route('solicitudes.approval_form', $solicitud->id) }}"
                                             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-[10px] font-bold transition-colors border border-emerald-200">
@@ -263,7 +279,8 @@
                                             Revisar
                                         </a>
                                         @endif
-
+                                        
+                                  
                                         @if (auth()->user()->hasRole('administrador_sgi') && $solicitud->estado === 'aprobado_jefe' && Route::has('solicitudes.finalize_form'))
                                         <a href="{{ route('solicitudes.finalize_form', $solicitud->id) }}"
                                             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#6A2C75]/08 text-[#6A2C75] hover:bg-[#6A2C75]/15 text-[10px] font-bold transition-colors border border-[#6A2C75]/15">

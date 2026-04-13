@@ -19,6 +19,7 @@ public function data(Request $request)
     $tipo = $request->get('tipo', 'both'); 
     $estado = $request->get('estado', 'all'); 
     $historicos = $request->boolean('historicos', false);
+    $area = $request->get('area','all');
 
     $gridStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth()->startOfWeek(Carbon::MONDAY);
     $gridEnd   = Carbon::createFromFormat('Y-m', $month)->endOfMonth()->endOfWeek(Carbon::SUNDAY);
@@ -52,9 +53,10 @@ public function data(Request $request)
             'tipo_documento'   => $doc->tipo_documento,
             'formato_el_pa'    => $doc->formato_el_pa,
             'folio_version'    => $ver->version,
+            'area' => $doc->area,
             'url_documento' => route('documentos.show', $doc->id),
-        ];
-
+            ];
+            
         // VERSION
         if (($tipo === 'both' || $tipo === 'version') && $ver->fecha_vencimiento_version) {
             $d = Carbon::parse($ver->fecha_vencimiento_version)->startOfDay();
@@ -105,6 +107,16 @@ public function data(Request $request)
             };
         })->values();
     }
+    // --- AGREGA ESTO: FILTRADO POR ÁREA ---
+if ($area && $area !== 'all') {
+    $list = $list->filter(function ($e) use ($area) {
+        // Importante: El valor del select (ej: 'ti') debe coincidir 
+        // con lo que hay en $e['area'] (ej: 'ti')
+        return strtolower($e['area']) == strtolower($area);
+    })->values();
+}
+    //  ############################################filtro por área#####################
+   
 
     $list = $list->sortBy('days_left')->values();
 
@@ -120,6 +132,7 @@ public function data(Request $request)
                 'days_left' => $e['days_left'],
                 'severity' => $e['severity'],
                 'url' => $e['url_documento'],
+                'area' => $e['area'] ?? 'N/A',
             ];
         }
     }

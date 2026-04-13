@@ -61,7 +61,7 @@
 
     <div class="py-10 bg-[#faf7fb] min-h-screen">
         <div class="max-w-[1650px] mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-    /* estados -vencidos o por vencer o en regla */ 
+   {{--Filtro por estaodos --}} 
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 anim-fade">
                 <div class="card-gold-top relative bg-white border border-[#6A2C75]/10 rounded-2xl p-6 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                     <div class="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-[#6A2C75]/05 pointer-events-none"></div>
@@ -150,13 +150,23 @@
                                 <label class="block text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Área</label>
                                 <select id="area" class="sel-custom px-3.5 py-2 border border-[#6A2C75]/20 rounded-lg text-sm text-[#2d1033] bg-white focus:outline-none focus:ring-2 focus:ring-[#6A2C75]/25 transition-all cursor-pointer">
                                     <option value="all">Todas las áreas</option>
-                                    <option value="administracion">Administración</option>
-                                    <option value="produccion">Producción</option>
-                                    <option value="calidad">Calidad</option>
-                                    <option value="logistica">Logística</option>
-                                    <option value="ventas">Ventas</option>
-                                    <option value="rrhh">Recursos Humanos</option>
-                                    <option value="ti">TI</option>
+                                    <option value="Administración">Administración</option>
+                                    <option value="Dirección ">Dirección</option>
+                                    <option value="Almacén">Almacén</option>
+                                    <option value="Innovación">Innovación</option>
+                                    <option value="Higiene y seguridad industrial">Higiene y seg</option>
+                                    <option value="Seguridad">Seguridad</option>
+                                    <option value="">Mejora continua</option>
+                                    <option value="Producción">Producción</option>
+                                    <option value="Mantenimiento">Mantenimiento</option>
+                                    <option value="Recursos Humanos">RH</option>
+                                    <option value="Sistema de gestión">Sgi</option>
+                                    <option value="sistemas">Sistemas</option>
+                                    <option value="Compras">Compras</option>
+                                    <option value="Ventas">Ventas</option>
+                                    <option value="Calidad">Calidad</option>
+                                    <option value="Sensorial">Sensorial</option>
+                                    <option value="Marketing">Marketing</option>
                                 </select>
                             </div>
                             <div class="space-y-1">
@@ -207,7 +217,7 @@
                                     <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Tipo</th>
                                     <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Código</th>
                                     <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Nombre</th>
-                                    <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Área / Ubicación</th>
+                                    <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Área / Ubicación </th>
                                     <th class="px-6 py-4 text-center text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Acciones</th>
                                 </tr>
                             </thead>
@@ -342,7 +352,7 @@
                             <p class="text-xs font-semibold text-[#2d1033]">${row.nombre_documento || ''}</p>
                             <p class="text-[10px] text-[#6A2C75]/40 uppercase mt-0.5">${row.tipo_documento || ''}</p>
                         </td>
-                        <td class="px-6 py-4 text-xs text-[#5a4a65]">${row.lugar_almacenamiento || 'N/A'}</td>
+                        <td class="px-6 py-4 text-xs text-[#5a4a65]">${row.area || 'N/A'}</td>
                         <td class="px-6 py-4 text-center">
                             <a href="${row.url_documento || '#'}" target="_blank"
                                 class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#6A2C75]/08 text-[#6A2C75] hover:bg-[#6A2C75]/15 text-[10px] font-bold transition-colors border border-[#6A2C75]/15">
