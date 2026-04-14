@@ -116,79 +116,75 @@ class SolicitudFormatoController extends Controller
     }
 
 
-   public function store(Request $request)
-{
-    // 1. Validación estricta
-    $request->validate([
-        'accion' => 'required|in:actualizacion,nuevo_documento,baja',
-        
-        // Requerido si es actualización o baja
-        'documento_id' => 'required_if:accion,actualizacion|required_if:accion,baja|exists:documentos,id',
-        
-        // Requerido solo si es nuevo
-        'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
-        
-        // Requerido solo si es baja
-        'motivo_baja' => 'required_if:accion,baja|nullable|string',
-        
-        // Comentarios generales y archivo
-        'comentarios' => 'required|string',
-        'archivo' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx|max:10240', // Máx 10MB
-    ], [
-        'documento_id.required_if' => 'Debe seleccionar un documento del catálogo.',
-        'nombre_documento.required_if' => 'El nombre del documento es obligatorio para nuevas solicitudes.',
-        'motivo_baja.required_if' => 'Debe explicar el motivo de la baja.',
-    ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+            'documento_id' => 'required_if:accion,actualizacion|exists:documentos,id',
 
-    try {
-        // 2. Procesar el archivo si existe
-        $rutaArchivo = null;
+            // ✅ más robusto (y tamaño)
+            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
+
+            'comentarios' => 'required|string|max:2000',
+            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+        ]);
+
+        $user = auth()->user();
+
+        $archivoPath = null;
         if ($request->hasFile('archivo')) {
-            // Se guarda en storage/app/public/solicitudes
-            $rutaArchivo = $request->file('archivo')->store('solicitudes', 'public');
+            $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
         }
 
-        // 3. Obtener datos del documento si no es "Nuevo"
-        $documentoExistente = null;
-        if ($request->accion !== 'nuevo_documento') {
-            $documentoExistente = Documento::findOrFail($request->documento_id);
+        $doc = null;
+        if ($request->accion === 'actualizacion') {
+            $doc = \App\Models\Documento::findOrFail($request->documento_id);
+
+            if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
+                abort(403, 'No puedes solicitar actualización de un documento fuera de tu área.');
+            }
         }
 
-        // 4. Crear la solicitud
-        $solicitud = new Solicitud();
-        $solicitud->user_id = Auth::id();
-        $solicitud->accion = $request->accion;
-        
-        // Si no es nuevo, vinculamos el ID del documento
-        $solicitud->documento_id = $documentoExistente ? $documentoExistente->id : null;
-        
-        // Guardamos el nombre (el del documento actual o el nuevo nombre escrito)
-        $solicitud->nombre_documento = $documentoExistente 
-            ? $documentoExistente->nombre 
-            : $request->nombre_documento;
+        $solicitud = \App\Models\SolicitudFormato::create([
+            'user_id' => $user->id,
+            'accion' => $request->accion,
+            'archivo_adjunto' => $archivoPath,
+            'estado' => 'pendiente',
+            'jefe_id' => $user->jefe_id,
+            'comentarios' => $request->comentarios,
 
-        $solicitud->motivo_baja = $request->motivo_baja;
-        $solicitud->comentarios = $request->comentarios;
-        $solicitud->archivo_path = $rutaArchivo;
-        
-        // Campos de control de flujo
-        $solicitud->estado = 'pendiente'; 
-        $solicitud->area_solicitante = Auth::user()->area;
-        
-        $solicitud->save();
+            // ✅ documento ligado SOLO en actualización
+            'documento_id' => $request->accion === 'actualizacion' ? $request->documento_id : null,
 
-        return redirect()->route('solicitudes.index')
-            ->with('success', 'La solicitud ha sido enviada correctamente para su revisión.');
+            // ✅ nombre_documento UNA sola vez (sin duplicar key)
+            'nombre_documento' => $request->accion === 'actualizacion'
+                ? ($doc?->nombre)
+                : $request->nombre_documento,
 
-    } catch (\Exception $e) {
-        // En caso de error, borrar el archivo subido para no dejar basura
-        if ($rutaArchivo) {
-            Storage::disk('public')->delete($rutaArchivo);
+            // baja
+            'motivo_baja' => $request->motivo_baja,
+
+            // ✅ snapshot (si es actualización)
+            'codigo_documento' => $doc?->codigo,
+            'tipo_documento' => $doc?->tipo_documento,
+            'formato_el_pa' => $doc?->formato_el_pa,
+
+            // ⚠️ IMPORTANT: solo guarda esto si tu columna existe en solicitudes
+            'lugar_almacenamiento' => $doc?->sharepoint_folder,
+            'estatus_documento' => $doc?->estatus,
+        ]);
+
+        $jefe = $user->jefe;
+        if ($jefe && $jefe->email) {
+            \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
         }
 
-        return back()->withInput()->withErrors(['error' => 'Ocurrió un error al procesar la solicitud: ' . $e->getMessage()]);
+        return redirect()
+            ->route('solicitudes.show', $solicitud->id)
+            ->with('success', 'Solicitud enviada correctamente.');
     }
-}
+
     public function show(SolicitudFormato $solicitud)
     {
         $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento']);

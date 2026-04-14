@@ -103,4 +103,5 @@ class DocumentoRevisionController extends Controller
             ->route('documentos.show', $version->documento_id)
             ->with('success', 'Revisión agregada y calendario actualizado correctamente.');
     }
+ 
 }

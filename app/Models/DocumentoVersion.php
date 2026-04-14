@@ -11,6 +11,7 @@ class DocumentoVersion extends Model
     protected $fillable = [
          'documento_id',
     'version',
+    'status',
     'revision_actual',
     'revision_anterior',
     'fecha_version',

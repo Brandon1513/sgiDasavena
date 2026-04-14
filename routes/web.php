@@ -12,7 +12,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentoUsuarioController;
 
 
-Route::get('/', fn () => view('welcome'))->name('home');
+Route::get('/', fn() => view('welcome'))->name('home');
 
 Route::get('/dashboard', SgiDashboardController::class)
     ->middleware(['auth', 'verified'])
@@ -20,7 +20,7 @@ Route::get('/dashboard', SgiDashboardController::class)
 
 Route::middleware(['auth'])->group(function () {
 
-   
+
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
             ->name('solicitudes.calendar');
@@ -43,12 +43,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/solicitudes/{solicitud}/sgi/reactivar', [SolicitudFormatoController::class, 'sgiReactivar'])
             ->whereNumber('solicitud')
             ->name('solicitudes.sgi.reactivar');
+            //marcar obsoleto 
+
+        Route::post('/documento-versiones/{version}/marcar-obsoleto', [DocumentoVersionController::class, 'marcarObsoleto'])
+            ->name('documento_versiones.marcar_obsoleto');
+
+        Route::post('/documento-revisiones/{revision}/marcar-obsoleto', [DocumentoRevisionController::class, 'marcarObsoleto'])
+            ->name('documento_revisiones.marcar_obsoleto');
     });
-    
+
 
     // ✅ Alias opcional si tú quieres /solicitudes/crear (para tu botón)
     // OJO: el resource default es /solicitudes/create
-    Route::get('/solicitudes/crear', fn () => redirect()->route('solicitudes.create'))
+    Route::get('/solicitudes/crear', fn() => redirect()->route('solicitudes.create'))
         ->name('solicitudes.crear_alias');
 
     // Formulario usuario/jefe para subir solicitud de actualización
@@ -101,19 +108,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/documentos/{documento}/historico', [DocumentoController::class, 'historico'])
         ->name('documentos.historico');
-Route::get('/dashboard-user', [DocumentoUsuarioController::class, 'index'])
-    ->name('dashboard.user')
-    ->middleware('auth');
-        //usuarios 
+    Route::get('/dashboard-user', [DocumentoUsuarioController::class, 'index'])
+        ->name('dashboard.user')
+        ->middleware('auth');
+    //usuarios 
 
     // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
 
-      Route::post('/documento-versiones/{version}/marcar-obsoleto', [DocumentoVersionController::class, 'marcarObsoleto'])
-        ->name('documento_versiones.marcar_obsoleto');
 
-    Route::post('/documento-revisiones/{revision}/marcar-obsoleto', [DocumentoRevisionController::class, 'marcarObsoleto'])
-        ->name('documento_revisiones.marcar_obsoleto');
-        
+
     Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
         ->name('documentos.versiones.show');
 
@@ -150,6 +153,6 @@ Route::get('/dashboard-user', [DocumentoUsuarioController::class, 'index'])
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::get('/register', fn () => redirect()->route('login'));
+Route::get('/register', fn() => redirect()->route('login'));
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
