@@ -93,68 +93,72 @@
                     </div>
                 </div>
 
+
                 {{-- SECCIÓN 3 --}}
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b">
-                        <h3 class="text-lg font-semibold text-gray-900">
-                            Información del Documento
-                        </h3>
-                    </div>
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b">
+        <h3 class="text-lg font-semibold text-gray-900">
+            Información del Documento
+        </h3>
+    </div>
 
-                    <div class="px-6 py-5 space-y-6">
+    <div class="px-6 py-5 space-y-6">
 
-                        {{-- DOCUMENTO (solo actualización) --}}
-                        <div x-show="isActualizacion()" x-transition>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Selecciona tu documento <span class="text-red-500">*</span>
-                            </label>
+        {{-- SELECT DE DOCUMENTO (Se muestra en Actualización y en Baja) --}}
+        <div x-show="isActualizacion() || isBaja()" x-transition>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Selecciona el documento <span class="text-red-500">*</span>
+            </label>
 
-                            <select name="documento_id"
-                                    x-bind:disabled="!isActualizacion()"
-                                    x-bind:required="isActualizacion()"
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                                <option value="">-- Selecciona --</option>
-                                @foreach($documentos as $d)
-                                    <option value="{{ $d->id }}" @selected(old('documento_id') == $d->id)>
-                                        {{ $d->codigo }} — {{ $d->nombre }}
-                                        ({{ $d->tipo_documento }} / {{ $d->formato_el_pa }})
-                                    </option>
-                                @endforeach
-                            </select>
+            <select name="documento_id"
+                    x-bind:disabled="!isActualizacion() && !isBaja()"
+                    x-bind:required="isActualizacion() || isBaja()"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-sm">
+                <option value="">-- Selecciona un documento del catálogo --</option>
+                @foreach($documentos as $d)
+                    <option value="{{ $d->id }}" @selected(old('documento_id') == $d->id)>
+                        {{ $d->codigo }} — {{ $d->nombre }} 
+                        ({{ $d->area }})
+                    </option>
+                @endforeach
+            </select>
 
-                            <p class="text-xs text-gray-500 mt-1">
-                                Solo aparecen documentos vigentes de tu área.
-                            </p>
-                        </div>
+            <p class="text-xs text-gray-500 mt-2">
+                <span x-show="isActualizacion()">Selecciona el documento que deseas modificar.</span>
+                <span x-show="isBaja()" class="text-red-600 font-medium">Selecciona el documento que será retirado del sistema.</span>
+            </p>
+        </div>
 
-                        {{-- NUEVO DOCUMENTO --}}
-                        <div x-show="isNuevo()" x-transition>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Nombre del documento <span class="text-red-500">*</span>
-                            </label>
+        {{-- NUEVO DOCUMENTO (Solo si es nuevo) --}}
+        <div x-show="isNuevo()" x-transition>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Nombre del nuevo documento <span class="text-red-500">*</span>
+            </label>
 
-                            <input type="text"
-                                   name="nombre_documento"
-                                   value="{{ old('nombre_documento') }}"
-                                   x-bind:required="isNuevo()"
-                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                        </div>
+            <input type="text"
+                   name="nombre_documento"
+                   placeholder="Ej. Procedimiento de compras"
+                   value="{{ old('nombre_documento') }}"
+                   x-bind:required="isNuevo()"
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+        </div>
 
-                        {{-- BAJA --}}
-                        <div x-show="isBaja()" x-transition>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Motivo de baja <span class="text-red-500">*</span>
-                            </label>
+        {{-- MOTIVO DE BAJA (Solo si es baja) --}}
+        <div x-show="isBaja()" x-transition class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Justificación de la baja <span class="text-red-500">*</span>
+            </label>
 
-                            <textarea name="motivo_baja"
-                                      rows="4"
-                                      x-bind:required="isBaja()"
-                                      class="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 bg-red-50">{{ old('motivo_baja') }}</textarea>
-                        </div>
+            <textarea name="motivo_baja"
+                      rows="3"
+                      placeholder="Explica por qué este documento ya no es necesario..."
+                      x-bind:required="isBaja()"
+                      class="w-full px-4 py-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500 bg-red-50/50">{{ old('motivo_baja') }}</textarea>
+        </div>
 
-                    </div>
-                </div>
-
+    </div>
+</div>
+                
                 {{-- SECCIÓN 4 --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="px-6 py-4 bg-gradient-to-r from-amber-50 to-amber-100 border-b">

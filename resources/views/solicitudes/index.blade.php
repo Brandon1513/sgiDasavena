@@ -26,7 +26,7 @@
         appearance: none;
     }
 
-    /* Scroll tabla */
+    /* Scroll tabla */ 
     .table-scroll::-webkit-scrollbar { height:5px; }
     .table-scroll::-webkit-scrollbar-track { background:#faf7fb; }
     .table-scroll::-webkit-scrollbar-thumb { background:#c9a0d6; border-radius:4px; }
