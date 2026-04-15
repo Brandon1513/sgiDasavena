@@ -16,40 +16,21 @@ class DocumentoRevisionController extends Controller
         return view('documentos.revisiones.create', compact('version'));
     }
 
-    public function marcarObsoleto(DocumentoRevision $revision)
-    {
-        $user = auth()->user();
-        abort_unless($user->hasRole('administrador_sgi') || $user->hasRole('administrador'), 403);
+  
+public function marcarObsoleto(DocumentoRevision $revision)
+{
+    $user = auth()->user();
 
-        DB::transaction(function () use ($revision) {
-            // Marcar la revisión actual como obsoleta
-            $revision->update(['estatus' => 'obsoleta']);
-
-            // Si no quedan revisiones vigentes, buscar la última para reactivarla
-            if (!DocumentoRevision::where('documento_version_id', $revision->documento_version_id)
-                ->where('estatus', 'vigente')
-                ->exists()) {
-
-                $ultima = DocumentoRevision::where('documento_version_id', $revision->documento_version_id)
-                    ->orderByDesc('id')
-                    ->first();
-
-                if ($ultima) {
-                    $ultima->update(['estatus' => 'vigente']);
-                    
-                    // Sincronizar la fecha de la versión con esta revisión reactivada
-                    $version = DocumentoVersion::find($revision->documento_version_id);
-                    if ($version) {
-                        $version->update([
-                            'fecha_vencimiento_revision' => $ultima->fecha_vencimiento_revision
-                        ]);
-                    }
-                }
-            }
-        });
-
-        return back()->with('success', 'Revisión marcada como obsoleta.');
+    if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+        abort(403);
     }
+
+    $revision->update([
+        'estatus' => 'obsoleta'
+    ]);
+
+    return back()->with('success', 'Revisión marcada como obsoleta');
+}
 
     public function store(Request $request, DocumentoVersion $version)
     {

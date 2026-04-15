@@ -43,13 +43,24 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/solicitudes/{solicitud}/sgi/reactivar', [SolicitudFormatoController::class, 'sgiReactivar'])
             ->whereNumber('solicitud')
             ->name('solicitudes.sgi.reactivar');
-            //marcar obsoleto 
+        //marcar obsoleto 
 
-        Route::post('/documento-versiones/{version}/marcar-obsoleto', [DocumentoVersionController::class, 'marcarObsoleto'])
-            ->name('documento_versiones.marcar_obsoleto');
+        //botn de como dar de baja  
+        Route::post('documentos/{id}/baja', [DocumentoController::class, 'darDeBaja'])->name('documentos.baja');
 
-        Route::post('/documento-revisiones/{revision}/marcar-obsoleto', [DocumentoRevisionController::class, 'marcarObsoleto'])
-            ->name('documento_revisiones.marcar_obsoleto');
+
+        
+            // marcar obsoleto para revisiones 
+
+        Route::post(
+            '/documento-revisiones/{revision}/marcar-obsoleto',
+            [DocumentoRevisionController::class, 'marcarObsoleto']
+        )->name('documento_revisiones.marcar_obsoleto');
+
+        Route::post(
+            '/documento-versiones/{version}/marcar-obsoleto',
+            [DocumentoVersionController::class, 'marcarObsoleto']
+        )->name('documento_versiones.marcar_obsoleto');
     });
 
 

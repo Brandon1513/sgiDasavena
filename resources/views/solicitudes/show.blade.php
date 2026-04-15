@@ -10,6 +10,7 @@
             </p>
         </div>
     </x-slot>
+    
 
     @php
         $today = now()->startOfDay();

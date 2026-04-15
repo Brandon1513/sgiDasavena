@@ -116,75 +116,82 @@ class SolicitudFormatoController extends Controller
     }
 
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
-            'documento_id' => 'required_if:accion,actualizacion|exists:documentos,id',
+   public function store(Request $request)
+{
+    $request->validate([
+        'accion' => 'required|in:actualizacion,baja,nuevo_documento',
 
-            // ✅ más robusto (y tamaño)
-            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
+        // 🔥 ahora también obligatorio en BAJA
+        'documento_id' => 'required_if:accion,actualizacion,baja|exists:documentos,id',
 
-            'comentarios' => 'required|string|max:2000',
-            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
-            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
-        ]);
+        'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
 
-        $user = auth()->user();
+        'comentarios' => 'required|string|max:2000',
+        'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+        'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+    ]);
 
-        $archivoPath = null;
-        if ($request->hasFile('archivo')) {
-            $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
-        }
+    $user = auth()->user();
 
-        $doc = null;
-        if ($request->accion === 'actualizacion') {
-            $doc = \App\Models\Documento::findOrFail($request->documento_id);
-
-            if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
-                abort(403, 'No puedes solicitar actualización de un documento fuera de tu área.');
-            }
-        }
-
-        $solicitud = \App\Models\SolicitudFormato::create([
-            'user_id' => $user->id,
-            'accion' => $request->accion,
-            'archivo_adjunto' => $archivoPath,
-            'estado' => 'pendiente',
-            'jefe_id' => $user->jefe_id,
-            'comentarios' => $request->comentarios,
-
-            // ✅ documento ligado SOLO en actualización
-            'documento_id' => $request->accion === 'actualizacion' ? $request->documento_id : null,
-
-            // ✅ nombre_documento UNA sola vez (sin duplicar key)
-            'nombre_documento' => $request->accion === 'actualizacion'
-                ? ($doc?->nombre)
-                : $request->nombre_documento,
-
-            // baja
-            'motivo_baja' => $request->motivo_baja,
-
-            // ✅ snapshot (si es actualización)
-            'codigo_documento' => $doc?->codigo,
-            'tipo_documento' => $doc?->tipo_documento,
-            'formato_el_pa' => $doc?->formato_el_pa,
-
-            // ⚠️ IMPORTANT: solo guarda esto si tu columna existe en solicitudes
-            'lugar_almacenamiento' => $doc?->sharepoint_folder,
-            'estatus_documento' => $doc?->estatus,
-        ]);
-
-        $jefe = $user->jefe;
-        if ($jefe && $jefe->email) {
-            \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
-        }
-
-        return redirect()
-            ->route('solicitudes.show', $solicitud->id)
-            ->with('success', 'Solicitud enviada correctamente.');
+    // 📁 archivo
+    $archivoPath = null;
+    if ($request->hasFile('archivo')) {
+        $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
     }
 
+    // 🔥 cargar documento para actualización Y baja
+    $doc = null;
+    if (in_array($request->accion, ['actualizacion', 'baja'])) {
+
+        $doc = \App\Models\Documento::findOrFail($request->documento_id);
+
+        // 🔒 validación por área
+        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
+            abort(403, 'No puedes solicitar acción sobre un documento fuera de tu área.');
+        }
+    }
+
+    // 🧾 crear solicitud
+    $solicitud = \App\Models\SolicitudFormato::create([
+        'user_id' => $user->id,
+        'accion' => $request->accion,
+        'archivo_adjunto' => $archivoPath,
+        'estado' => 'pendiente',
+        'jefe_id' => $user->jefe_id,
+        'comentarios' => $request->comentarios,
+
+        // 🔥 ahora sí se guarda también en BAJA
+        'documento_id' => in_array($request->accion, ['actualizacion', 'baja'])
+            ? $request->documento_id
+            : null,
+
+        // 🔥 también corregido para BAJA
+        'nombre_documento' => in_array($request->accion, ['actualizacion', 'baja'])
+            ? ($doc?->nombre)
+            : $request->nombre_documento,
+
+        // baja
+        'motivo_baja' => $request->motivo_baja,
+
+        // 📌 snapshot del documento (muy importante)
+        'codigo_documento' => $doc?->codigo,
+        'tipo_documento' => $doc?->tipo_documento,
+        'formato_el_pa' => $doc?->formato_el_pa,
+        'lugar_almacenamiento' => $doc?->sharepoint_folder,
+        'estatus_documento' => $doc?->estatus,
+    ]);
+
+    // 📧 notificar jefe
+    $jefe = $user->jefe;
+    if ($jefe && $jefe->email) {
+        \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
+    }
+
+    return redirect()
+        ->route('solicitudes.show', $solicitud->id)
+        ->with('success', 'Solicitud enviada correctamente.');
+}
+ 
     public function show(SolicitudFormato $solicitud)
     {
         $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento']);
@@ -272,14 +279,33 @@ class SolicitudFormatoController extends Controller
         $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
 
         // 2. Buscar o crear el documento principal
-        $doc = Documento::firstOrCreate(
-            ['codigo' => $request->codigo_documento ?? $solicitud->codigo_documento],
-            [
-                'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
-                'area' => optional($solicitud->usuario)->area,
-                'estatus' => 'vigente'
-            ]
-        );
+       // 🔥 CASO BAJA (NO crear documento)
+if ($solicitud->accion === 'baja') {
+
+    if (!$solicitud->documento_id) {
+        throw new \Exception('La solicitud de baja no tiene documento asociado');
+    }
+
+    $doc = Documento::findOrFail($solicitud->documento_id);
+
+} else {
+
+    // ✅ SOLO crear documento en alta/actualización
+    $codigo = $request->codigo_documento ?? $solicitud->codigo_documento;
+
+    if (!$codigo) {
+        throw new \Exception('El código del documento es obligatorio');
+    }
+
+    $doc = Documento::firstOrCreate(
+        ['codigo' => $codigo],
+        [
+            'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
+            'area' => optional($solicitud->usuario)->area,
+            'estatus' => 'vigente'
+        ]
+    );
+}
 
         $vigenteAnterior = $doc->versionVigente;
 

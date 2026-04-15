@@ -171,4 +171,41 @@ public function show(Documento $documento)
 
         return back()->with('success', 'Notificación enviada correctamente.');
     }
+    
+  public function darDeBaja($id)
+{
+    $user = auth()->user();
+
+    if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+        abort(403, 'No tienes permiso para dar de baja documentos.');
+    }
+
+    DB::transaction(function () use ($id, $user) {
+
+        $doc = Documento::with('versiones')->findOrFail($id);
+
+        // 🔴 Documento
+        $doc->update([
+            'estatus' => 'obsoleto',
+            'fecha_baja' => now(),
+            'baja_por' => $user->id,
+        ]);
+
+        // 🔴 Versiones
+        $doc->versiones()->update([
+            'estatus' => 'obsoleto'
+        ]);
+
+        // 🔴 Revisiones
+        DocumentoRevision::whereIn(
+            'documento_version_id',
+            $doc->versiones->pluck('id')
+        )->update([
+            'estatus' => 'obsoleta'
+        ]);
+    });
+
+    return back()->with('success', 'Documento dado de baja correctamente.');
+}
+
 }
