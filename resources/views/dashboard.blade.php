@@ -21,7 +21,32 @@
         </div>
     </div>
 
-    <img src="https://dasavenasite.domcloud.dev/images/dasa vena-logo.png"
+    @if(auth()->user()->id == 33)
+    <div id="catherine-note" class="fixed inset-x-0 top-4 z-50 flex justify-center px-4">
+        <div class="flex w-full max-w-xl items-center gap-4 rounded-[28px] border border-white/20 bg-slate-950/85 px-5 py-3 shadow-2xl shadow-slate-950/30 backdrop-blur-xl">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-400 text-white shadow-lg">
+                <span class="text-xl">✨</span>
+            </div>
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-white">Catherine</p>
+                <p class="text-xs text-slate-300">Revisa tu botoooon :) </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        setTimeout(() => {
+            const banner = document.getElementById('catherine-note');
+            if (!banner) return;
+            banner.style.transition = 'opacity .4s ease';
+            banner.style.opacity = '0';
+            setTimeout(() => banner.remove(), 400);
+        }, 10000);
+    </script>
+    @endif
+
+
+    <img src="https://dasavenasite.domcloud.dev/images/dasavena-logo.png"
         alt="dsda"
         class="pointer-events-none fixed bottom-6 right-6 object-contain z-10 select-none"
         style="mix-blend-mode: multiply; width: 130px; height: auto;">

@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Documento;
 use App\Models\DocumentoVersion;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\DocumentoBajaMailable;
+use App\Models\User;
 
 class DocumentoVersionController extends Controller
 {
@@ -37,5 +40,13 @@ public function marcarObsoleto(DocumentoVersion $version)
     ]);
 
     return back()->with('success', 'Version marcada como obsoleta');
+     // 📧 enviar correo a admins SGI
+    $admins = User::role('administrador_sgi')->get();
+
+    foreach ($admins as $admin) {
+        Mail::to($admin->email)->send(new DocumentoBajaMailable($documento));
+    }
+
+    return back()->with('success', 'Versión marcada como obsoleta y notificada');
 }
 }

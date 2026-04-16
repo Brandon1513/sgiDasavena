@@ -25,6 +25,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
             ->name('solicitudes.calendar');
 
+            //solicitud destory
+            Route::delete('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'destroy'])->name('solicitudes.destroy');
+
         Route::get('/solicitudes/calendario/data', [SolicitudesCalendarController::class, 'data'])
             ->name('solicitudes.calendar.data');
 

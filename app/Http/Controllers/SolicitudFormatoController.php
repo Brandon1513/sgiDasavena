@@ -130,6 +130,7 @@ class SolicitudFormatoController extends Controller
         'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
         'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
     ]);
+    
 
     $user = auth()->user();
 
@@ -238,6 +239,7 @@ class SolicitudFormatoController extends Controller
 
         return redirect()->route('solicitudes.index')->with('success', 'Decisión registrada correctamente.');
     }
+    
 
     public function finalizeForm(SolicitudFormato $solicitud)
     {
@@ -438,4 +440,21 @@ if ($solicitud->accion === 'baja') {
             ->route('solicitudes.show', $solicitud->id)
             ->with('success', 'Solicitud de actualización enviada correctamente.');
     }
+
+    public function destroy(SolicitudFormato $solicitud)
+{
+    // Seguridad: Solo el dueño puede borrarla y solo si está pendiente o rechazada por el jefe
+    if (auth()->id() !== $solicitud->user_id) {
+        abort(403, 'No tienes permiso para eliminar esta solicitud.');
+    }
+
+    // No permitir borrar si ya fue procesada por SGI
+    if (in_array($solicitud->estado, ['atendido', 'rechazado_sgi'])) {
+        return back()->withErrors('No puedes eliminar una solicitud que ya ha sido procesada por SGI.');
+    }
+
+    $solicitud->delete();
+
+    return redirect()->route('solicitudes.index')->with('success', 'Solicitud eliminada correctamente.');
+}
 }

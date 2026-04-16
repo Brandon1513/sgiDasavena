@@ -34,7 +34,6 @@
 
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 anim-fade">
-            <!-- Título -->
             <div class="space-y-1">
                 <div class="flex items-center gap-3">
                     <div class="w-1 h-8 rounded-full bg-gradient-to-b from-[#6A2C75] to-[#D4A018]"></div>
@@ -45,7 +44,6 @@
                 <p class="text-sm text-[#6A2C75]/60 pl-4">Gestiona el estado de todas tus solicitudes</p>
             </div>
 
-            <!-- Badge total -->
             <div class="flex items-center gap-4 px-5 py-3.5 bg-white border border-[#6A2C75]/15 rounded-2xl shadow-sm">
                 <span class="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-[#6A2C75] to-[#8e3d9e] text-white text-sm font-bold shadow-md">
                     {{ $solicitudes->total() ?? 0 }}
@@ -61,7 +59,6 @@
     <div class="py-10 bg-[#faf7fb] min-h-screen">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
 
-            <!-- ── SUBHEADER ── -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 anim-fade">
                 <p class="text-sm text-[#5a4a65]">Administra tus solicitudes desde un solo lugar</p>
                 <a href="{{ route('solicitudes.create') }}"
@@ -73,7 +70,6 @@
                 </a>
             </div>
 
-            <!-- ── ALERTA ── -->
             @if (session('success'))
             <div class="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800 shadow-sm anim-slide">
                 <span class="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-200 text-emerald-700 font-bold text-xs flex-shrink-0">✓</span>
@@ -81,16 +77,12 @@
             </div>
             @endif
 
-            <!-- ── CARD PRINCIPAL ── -->
             <div class="relative bg-white rounded-2xl shadow-sm border border-[#6A2C75]/10 overflow-hidden card-gold anim-fade" style="animation-delay:80ms">
 
-                <!-- ── FILTROS ── -->
                 <div class="border-b border-[#6A2C75]/08 p-6 bg-[#faf7fb]/60">
                     <p class="text-[10px] font-bold text-[#6A2C75]/50 uppercase tracking-widest mb-4">Filtros de búsqueda</p>
                     <form method="GET">
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-
-                            <!-- Nombre -->
                             <div class="space-y-1.5">
                                 <label class="block text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Nombre</label>
                                 <input type="text" name="nombre" value="{{ request('nombre') }}"
@@ -98,7 +90,6 @@
                                     class="w-full px-3.5 py-2 border border-[#6A2C75]/20 rounded-lg text-sm text-[#2d1033] placeholder-[#6A2C75]/30 bg-white focus:outline-none focus:ring-2 focus:ring-[#6A2C75]/30 focus:border-[#6A2C75]/50 transition-all">
                             </div>
 
-                            <!-- Estado -->
                             <div class="space-y-1.5">
                                 <label class="block text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Estado</label>
                                 <select name="estado"
@@ -112,21 +103,18 @@
                                 </select>
                             </div>
 
-                            <!-- Desde -->
                             <div class="space-y-1.5">
                                 <label class="block text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Desde</label>
                                 <input type="date" name="desde" value="{{ request('desde') }}"
                                     class="w-full px-3.5 py-2 border border-[#6A2C75]/20 rounded-lg text-sm text-[#2d1033] bg-white focus:outline-none focus:ring-2 focus:ring-[#6A2C75]/30 focus:border-[#6A2C75]/50 transition-all">
                             </div>
 
-                            <!-- Hasta -->
                             <div class="space-y-1.5">
                                 <label class="block text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Hasta</label>
                                 <input type="date" name="hasta" value="{{ request('hasta') }}"
                                     class="w-full px-3.5 py-2 border border-[#6A2C75]/20 rounded-lg text-sm text-[#2d1033] bg-white focus:outline-none focus:ring-2 focus:ring-[#6A2C75]/30 focus:border-[#6A2C75]/50 transition-all">
                             </div>
 
-                            <!-- Botón filtrar -->
                             <div class="flex items-end">
                                 <button type="submit"
                                     class="w-full px-4 py-2 bg-gradient-to-r from-[#D4A018] to-[#f0c84a] text-[#2d1033] rounded-lg font-bold text-sm shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all duration-200">
@@ -137,7 +125,6 @@
                     </form>
                 </div>
 
-                <!-- ── TABLA / EMPTY ── -->
                 @if ($solicitudes->isEmpty())
                 <div class="flex flex-col items-center justify-center py-20 text-center">
                     <div class="w-16 h-16 rounded-full bg-[#6A2C75]/08 flex items-center justify-center mb-4">
@@ -166,12 +153,10 @@
                             @foreach ($solicitudes as $i => $solicitud)
                             <tr class="hover:bg-[#6A2C75]/03 transition-colors duration-150 anim-fade" style="animation-delay: {{ $i * 40 }}ms">
 
-                                <!-- ID -->
                                 <td class="px-6 py-4">
                                     <span class="text-xs font-bold text-[#6A2C75]/40">#{{ $solicitud->id }}</span>
                                 </td>
 
-                                <!-- Solicitante -->
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-2.5">
                                         <div class="w-7 h-7 rounded-full bg-gradient-to-br from-[#6A2C75] to-[#D4A018] flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
@@ -183,12 +168,10 @@
                                     </div>
                                 </td>
 
-                                <!-- Acción -->
                                 <td class="px-6 py-4 text-xs text-[#5a4a65] font-medium">
                                     {{ ucfirst($solicitud->accion) }}
                                 </td>
 
-                                <!-- Estado -->
                                 <td class="px-6 py-4">
                                     @php
                                         $estadoMap = [
@@ -214,7 +197,6 @@
                                     </span>
                                 </td>
 
-                                <!-- Comentarios -->
                                 <td class="px-6 py-4 max-w-xs">
                                     @if($solicitud->comentarios)
                                     <span class="block truncate text-xs text-[#5a4a65]" title="{{ $solicitud->comentarios }}">
@@ -225,7 +207,6 @@
                                     @endif
                                 </td>
 
-                                <!-- Acciones -->
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-2 flex-wrap">
 
@@ -254,7 +235,8 @@
                                             @endif
                                         @endif
 
-                                              @if (Route::has('solicitudes.destroy'))
+                                        {{-- LÓGICA DE ELIMINACIÓN: Solo si no ha sido aprobada/rechazada por SGI --}}
+                                        @if (Route::has('solicitudes.destroy') && !in_array($solicitud->estado, ['atendido', 'rechazado_sgi']))
                                         <form action="{{ route('solicitudes.destroy', $solicitud->id) }}" method="POST" class="inline-flex"
                                             onsubmit="return confirm('¿Está seguro de que desea eliminar esta solicitud?');">
                                             @csrf
@@ -280,7 +262,6 @@
                                         </a>
                                         @endif
                                         
-                                  
                                         @if (auth()->user()->hasRole('administrador_sgi') && $solicitud->estado === 'aprobado_jefe' && Route::has('solicitudes.finalize_form'))
                                         <a href="{{ route('solicitudes.finalize_form', $solicitud->id) }}"
                                             class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#6A2C75]/08 text-[#6A2C75] hover:bg-[#6A2C75]/15 text-[10px] font-bold transition-colors border border-[#6A2C75]/15">
@@ -299,7 +280,6 @@
                     </table>
                 </div>
 
-                <!-- ── PAGINACIÓN ── -->
                 <div class="px-6 py-5 border-t border-[#6A2C75]/08 bg-[#faf7fb]/60 flex items-center justify-between gap-4">
                     <p class="text-xs text-[#6A2C75]/50">
                         Mostrando {{ $solicitudes->firstItem() }}–{{ $solicitudes->lastItem() }} de {{ $solicitudes->total() }} resultados
@@ -315,7 +295,6 @@
     </div>
 
     <style>
-        /* Paginación con colores de marca */
         .pagination-purple nav span[aria-current="page"] > span,
         .pagination-purple nav a:hover {
             background-color: #6A2C75 !important;
@@ -324,8 +303,7 @@
         }
         .pagination-purple nav a {
             color: #6A2C75 !important;
-            border-color: #6A2C75]/20 !important;
+            border-color: #6A2C75/20 !important;
         }
     </style>
-
 </x-app-layout>

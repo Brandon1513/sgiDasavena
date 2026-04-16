@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Mail;
 
 use App\Models\SolicitudFormato;
 use App\Models\Documento;
-
 use App\Mail\NuevaSolicitudMailable;
 use App\Mail\SolicitudAprobadaSgiMailable;
 use App\Mail\DocumentoNecesitaActualizacionMailable;
 use App\Mail\DivulgacionFormatoMailable;
+use App\Mail\DocumentoObsoletoMailable; // 🔥 CAMBIO
 
 class TestMails extends Command
 {
@@ -26,21 +26,65 @@ class TestMails extends Command
         $documento = Documento::first();
 
         if (!$solicitud) {
-            $this->error('No se encontró ningún registro en SolicitudFormato.');
-            return 1;
+            $this->error('No hay registros en SolicitudFormato');
+            return;
         }
 
         if (!$documento) {
-            $this->error('No se encontró ningún registro en Documento.');
-            return 1;
+            $this->error('No hay registros en Documento');
+            return;
         }
 
-        Mail::to('test@test.com')->send(new NuevaSolicitudMailable($solicitud));
-        Mail::to('test@test.com')->send(new SolicitudAprobadaSgiMailable($solicitud));
-        Mail::to('test@test.com')->send(new DocumentoNecesitaActualizacionMailable($documento));
-        Mail::to('test@test.com')->send(new DivulgacionFormatoMailable($solicitud));
+        $correo = 'TU_CORREO@gmail.com';
 
-        $this->info('Correos enviados correctamente.');
-        return 0;
+        try {
+            Mail::to($correo)->send(new NuevaSolicitudMailable($solicitud));
+            $this->info('✔ NuevaSolicitud enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error NuevaSolicitud: ' . $e->getMessage());
+        }
+
+        try {
+            Mail::to($correo)->send(new SolicitudAprobadaSgiMailable($solicitud));
+            $this->info('✔ Aprobado SGI enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error Aprobado SGI: ' . $e->getMessage());
+        }
+
+        // 🔥 AQUÍ ESTABA TU ERROR ANTES
+        try {
+            Mail::to($correo)->send(
+                new DocumentoNecesitaActualizacionMailable(
+                    $documento,
+                    'Este documento está próximo a vencer',
+                    'Sistema SGI'
+                )
+            );
+            $this->info('✔ Necesita actualización enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error actualización: ' . $e->getMessage());
+        }
+
+        try {
+            Mail::to($correo)->send(new DivulgacionFormatoMailable($solicitud));
+            $this->info('✔ Divulgación enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error divulgación: ' . $e->getMessage());
+        }
+
+        // 🔥 CAMBIO IMPORTANTE (OBSOLETO)
+        try {
+            Mail::to($correo)->send(
+                new DocumentoObsoletoMailable($documento, auth()->user() ?? (object)[
+                    'name' => 'Sistema',
+                    'email' => 'sgi@system.com'
+                ])
+            );
+            $this->info('✔ Obsoleto enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error obsoleto: ' . $e->getMessage());
+        }
+
+        $this->info('Proceso terminado 🚀');
     }
 }

@@ -7,6 +7,9 @@ use App\Models\DocumentoRevision;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Models\User;
+use App\Mail\DocumentoObsoletoMailable;
 
 class DocumentoRevisionController extends Controller
 {
@@ -25,9 +28,34 @@ public function marcarObsoleto(DocumentoRevision $revision)
         abort(403);
     }
 
+    // 1. marcar como obsoleta
     $revision->update([
         'estatus' => 'obsoleta'
     ]);
+
+    // 2. obtener documento
+    $documento = $revision->version?->documento;
+
+    // 🔥 DEBUG (si quieres probar)
+    // dd($documento);
+
+    // 3. enviar correo a admins SGI
+    if ($documento) {
+        try {
+            $admins = User::role('administrador_sgi')->get();
+
+            foreach ($admins as $admin) {
+                if ($admin->email) {
+                    Mail::to($admin->email)->send(
+                        new DocumentoObsoletoMailable($documento, $admin)
+                    );
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error correo obsoleto: ' . $e->getMessage());
+        }
+    }
 
     return back()->with('success', 'Revisión marcada como obsoleta');
 }
@@ -83,6 +111,12 @@ public function marcarObsoleto(DocumentoRevision $revision)
         return redirect()
             ->route('documentos.show', $version->documento_id)
             ->with('success', 'Revisión agregada y calendario actualizado correctamente.');
+            
     }
+
+    public function version()
+{
+    return $this->belongsTo(DocumentoVersion::class, 'documento_version_id');
+}
  
 }

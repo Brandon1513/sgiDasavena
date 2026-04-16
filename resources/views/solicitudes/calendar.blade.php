@@ -102,7 +102,7 @@
                 </div>
 
                 <div class="relative bg-white border border-emerald-200/70 rounded-2xl p-6 shadow-sm overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all duration-300">
-                    <div class="fixed pr-10"><img class="relative w-20 h-20" src="/images/Creatividad.png" alt="Creatividad"></div>
+                    
                     <div class="absolute -right-5 -top-5 w-24 h-24 rounded-full bg-emerald-50 pointer-events-none"></div>
                     <div class="absolute top-0 left-0 right-0 h-[3px] rounded-t-2xl bg-gradient-to-r from-emerald-400 to-emerald-600">
                         </div>
