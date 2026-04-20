@@ -36,9 +36,7 @@ public function marcarObsoleto(DocumentoRevision $revision)
     // 2. obtener documento
     $documento = $revision->version?->documento;
 
-    // 🔥 DEBUG (si quieres probar)
-    // dd($documento);
-
+  
     // 3. enviar correo a admins SGI
     if ($documento) {
         try {

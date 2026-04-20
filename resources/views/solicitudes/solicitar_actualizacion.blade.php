@@ -50,7 +50,7 @@
             </div>
 
             <div class="flex items-center justify-between">
-                <a href="{{ route('documentos.index') }}"
+                <a href="{{ route('solicitudes.index') }}"
                    class="px-5 py-3 rounded-xl border bg-white hover:bg-gray-50 text-sm font-bold">
                     ← Volver
                 </a>
