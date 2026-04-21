@@ -116,83 +116,83 @@ class SolicitudFormatoController extends Controller
     }
 
 
-   public function store(Request $request)
-{
-    $request->validate([
-        'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+    public function store(Request $request)
+    {
+        $request->validate([
+            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
 
-        // 🔥 ahora también obligatorio en BAJA
-        'documento_id' => 'required_if:accion,actualizacion,baja|exists:documentos,id',
+            // 🔥 ahora también obligatorio en BAJA
+            'documento_id' => 'required_if:accion,actualizacion,baja|exists:documentos,id',
 
-        'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
+            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
 
-        'comentarios' => 'required|string|max:2000',
-        'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
-        'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
-    ]);
-    
+            'comentarios' => 'required|string|max:2000',
+            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+        ]);
 
-    $user = auth()->user();
 
-    // 📁 archivo
-    $archivoPath = null;
-    if ($request->hasFile('archivo')) {
-        $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
-    }
+        $user = auth()->user();
 
-    // 🔥 cargar documento para actualización Y baja
-    $doc = null;
-    if (in_array($request->accion, ['actualizacion', 'baja'])) {
-
-        $doc = \App\Models\Documento::findOrFail($request->documento_id);
-
-        // 🔒 validación por área
-        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
-            abort(403, 'No puedes solicitar acción sobre un documento fuera de tu área.');
+        // 📁 archivo
+        $archivoPath = null;
+        if ($request->hasFile('archivo')) {
+            $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
         }
-    }
 
-    // 🧾 crear solicitud
-    $solicitud = \App\Models\SolicitudFormato::create([
-        'user_id' => $user->id,
-        'accion' => $request->accion,
-        'archivo_adjunto' => $archivoPath,
-        'estado' => 'pendiente',
-        'jefe_id' => $user->jefe_id,
-        'comentarios' => $request->comentarios,
+        // 🔥 cargar documento para actualización Y baja
+        $doc = null;
+        if (in_array($request->accion, ['actualizacion', 'baja'])) {
 
-        // 🔥 ahora sí se guarda también en BAJA
-        'documento_id' => in_array($request->accion, ['actualizacion', 'baja'])
-            ? $request->documento_id
-            : null,
+            $doc = \App\Models\Documento::findOrFail($request->documento_id);
 
-        // 🔥 también corregido para BAJA
-        'nombre_documento' => in_array($request->accion, ['actualizacion', 'baja'])
-            ? ($doc?->nombre)
-            : $request->nombre_documento,
-
-        // baja
-        'motivo_baja' => $request->motivo_baja,
-
-        // 📌 snapshot del documento (muy importante)
-        'codigo_documento' => $doc?->codigo,
-        'tipo_documento' => $doc?->tipo_documento,
-        'formato_el_pa' => $doc?->formato_el_pa,
-        'lugar_almacenamiento' => $doc?->sharepoint_folder,
-        'estatus_documento' => $doc?->estatus,
-    ]);
-
-    // 📧 notificar jefe
-    $jefe = $user->jefe;
-    if ($jefe && $jefe->email) {
-        \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
-    }
-
-    return redirect()
-        ->route('solicitudes.show', $solicitud->id)
-        ->with('success', 'Solicitud enviada correctamente.');
+            // 🔒 validación por área
+          if (!$user->hasRole('administrador_sgi') && $doc->area !== $user->area) {
+    abort(403, 'No puedes solicitar acción sobre un documento fuera de tu área.');
 }
- 
+        }
+
+        // 🧾 crear solicitud
+        $solicitud = \App\Models\SolicitudFormato::create([
+            'user_id' => $user->id,
+            'accion' => $request->accion,
+            'archivo_adjunto' => $archivoPath,
+            'estado' => 'pendiente',
+            'jefe_id' => $user->jefe_id,
+            'comentarios' => $request->comentarios,
+
+            // 🔥 ahora sí se guarda también en BAJA
+            'documento_id' => in_array($request->accion, ['actualizacion', 'baja'])
+                ? $request->documento_id
+                : null,
+
+            // 🔥 también corregido para BAJA
+            'nombre_documento' => in_array($request->accion, ['actualizacion', 'baja'])
+                ? ($doc?->nombre)
+                : $request->nombre_documento,
+
+            // baja
+            'motivo_baja' => $request->motivo_baja,
+
+            // 📌 snapshot del documento (muy importante)
+            'codigo_documento' => $doc?->codigo,
+            'tipo_documento' => $doc?->tipo_documento,
+            'formato_el_pa' => $doc?->formato_el_pa,
+            'lugar_almacenamiento' => $doc?->sharepoint_folder,
+            'estatus_documento' => $doc?->estatus,
+        ]);
+
+        // 📧 notificar jefe
+        $jefe = $user->jefe;
+        if ($jefe && $jefe->email) {
+            \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
+        }
+
+        return redirect()
+            ->route('solicitudes.show', $solicitud->id)
+            ->with('success', 'Solicitud enviada correctamente.');
+    }
+
     public function show(SolicitudFormato $solicitud)
     {
         $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento']);
@@ -212,11 +212,13 @@ class SolicitudFormatoController extends Controller
             abort(403, 'No tienes permiso para aprobar o rechazar esta solicitud.');
         }
 
-        if ($solicitud->user_id === $user->id) {
-            return redirect()->route('solicitudes.index')->withErrors('No puedes aprobar o rechazar tus propias solicitudes.');
+        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi')) {
+            return redirect()->route('solicitudes.index')
+                ->withErrors('No puedes aprobar o rechazar tus propias solicitudes.');
         }
-
-        if ($solicitud->jefe_id !== $user->id) {
+        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi')) {
+            return redirect()->route('solicitudes.index')
+                ->withErrors('No estás asignado como jefe de esta solicitud.');
             abort(403, 'No estás asignado como jefe de esta solicitud.');
         }
 
@@ -239,7 +241,7 @@ class SolicitudFormatoController extends Controller
 
         return redirect()->route('solicitudes.index')->with('success', 'Decisión registrada correctamente.');
     }
-    
+
 
     public function finalizeForm(SolicitudFormato $solicitud)
     {
@@ -247,142 +249,141 @@ class SolicitudFormatoController extends Controller
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
     }
 
-   public function finalize(Request $request, SolicitudFormato $solicitud)
-{
-    if (!auth()->user()->hasRole('administrador_sgi')) {
-        abort(403);
-    }
-
-    $tipoCambio = $request->input('tipo_cambio', 'revision');
-
-    // Validación condicional (Solo si es Atender)
-    if ($request->accion === 'atender') {
-        $rules = [
-            'liga_archivo' => 'required|url',
-            'fecha_alta_sgi' => 'required|date',
-            'codigo_documento' => 'required|string',
-            'fecha_version' => 'required|date',
-            'vigencia_version_dias' => 'required|integer|min:1',
-        ];
-
-        if ($tipoCambio === 'revision') {
-            $rules['revision_actual'] = 'required|string';
-            $rules['vigencia_revision_dias'] = 'required|integer|min:1';
+    public function finalize(Request $request, SolicitudFormato $solicitud)
+    {
+        if (!auth()->user()->hasRole('administrador_sgi')) {
+            abort(403);
         }
 
-        $request->validate($rules);
-    }
+        $tipoCambio = $request->input('tipo_cambio', 'revision');
 
-    DB::transaction(function () use ($solicitud, $request, $tipoCambio) {
-        $estado = $request->accion === 'atender' ? 'atendido' : 'rechazado_sgi';
-        
-        // 1. Preparar fechas
-        $fechaV = Carbon::parse($request->fecha_version);
-        $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
+        // Validación condicional (Solo si es Atender)
+        if ($request->accion === 'atender') {
+            $rules = [
+                'liga_archivo' => 'required|url',
+                'fecha_alta_sgi' => 'required|date',
+                'codigo_documento' => 'required|string',
+                'fecha_version' => 'required|date',
+                'vigencia_version_dias' => 'required|integer|min:1',
+            ];
 
-        // 2. Buscar o crear el documento principal
-       // 🔥 CASO BAJA (NO crear documento)
-if ($solicitud->accion === 'baja') {
+            if ($tipoCambio === 'revision') {
+                $rules['revision_actual'] = 'required|string';
+                $rules['vigencia_revision_dias'] = 'required|integer|min:1';
+            }
 
-    if (!$solicitud->documento_id) {
-        throw new \Exception('La solicitud de baja no tiene documento asociado');
-    }
-
-    $doc = Documento::findOrFail($solicitud->documento_id);
-
-} else {
-
-    // ✅ SOLO crear documento en alta/actualización
-    $codigo = $request->codigo_documento ?? $solicitud->codigo_documento;
-
-    if (!$codigo) {
-        throw new \Exception('El código del documento es obligatorio');
-    }
-
-    $doc = Documento::firstOrCreate(
-        ['codigo' => $codigo],
-        [
-            'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
-            'area' => optional($solicitud->usuario)->area,
-            'estatus' => 'vigente'
-        ]
-    );
-}
-
-        $vigenteAnterior = $doc->versionVigente;
-
-        // 3. Lógica de Revisiones (Herencia o Nueva)
-        if ($tipoCambio === 'revision') {
-            $fRev = $request->fecha_revision ? Carbon::parse($request->fecha_revision) : $fechaV;
-            $revActual = $request->revision_actual;
-            $revAnterior = $request->revision_anterior;
-            $vigenciaR = $request->vigencia_revision_dias;
-            $vencimientoR = $fRev->copy()->addDays((int)$vigenciaR);
-        } else {
-            // Heredar del documento real si ya existe, si no, usar los de la solicitud
-            $revActual = $vigenteAnterior ? $vigenteAnterior->revision_actual : $solicitud->revision_actual;
-            $revAnterior = $vigenteAnterior ? $vigenteAnterior->revision_anterior : $solicitud->revision_anterior;
-            $fRev = $vigenteAnterior ? $vigenteAnterior->fecha_revision : $solicitud->fecha_revision;
-            $vencimientoR = $vigenteAnterior ? $vigenteAnterior->fecha_vencimiento_revision : $solicitud->fecha_vencimiento_revision;
-            $vigenciaR = $vigenteAnterior ? $vigenteAnterior->vigencia_revision_dias : $solicitud->vigencia_revision_dias;
+            $request->validate($rules);
         }
 
-        // 4. Actualizar Solicitud
-        $solicitud->update([
-            'estado' => $estado,
-            'revision_actual' => $revActual,
-            'revision_anterior' => $revAnterior,
-            'fecha_version' => $fechaV,
-            'fecha_vencimiento_version' => $vencimientoV,
-            'fecha_revision' => $fRev,
-            'fecha_vencimiento_revision' => $vencimientoR,
-            'administrador_sgi_id' => auth()->id(),
-            'liga_archivo' => $request->liga_archivo,
-        ]);
+        DB::transaction(function () use ($solicitud, $request, $tipoCambio) {
+            $estado = $request->accion === 'atender' ? 'atendido' : 'rechazado_sgi';
 
-        if ($estado !== 'atendido') return;
+            // 1. Preparar fechas
+            $fechaV = Carbon::parse($request->fecha_version);
+            $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
 
-        // 5. Crear Versión
-        $nuevaVersion = DocumentoVersion::create([
-            'documento_id' => $doc->id,
-            'version' => $request->folio_version ?? ('VER-' . now()->format('Ymd')),
-            'revision_actual' => $revActual,
-            'revision_anterior' => $revAnterior,
-            'fecha_version' => $fechaV,
-            'fecha_vencimiento_version' => $vencimientoV,
-            'fecha_revision' => $fRev,
-            'fecha_vencimiento_revision' => $vencimientoR,
-            'estatus' => 'vigente',
-            'liga_archivo' => $request->liga_archivo,
-            'publicado_por' => auth()->id(),
-        ]);
+            // 2. Buscar o crear el documento principal
+            // 🔥 CASO BAJA (NO crear documento)
+            if ($solicitud->accion === 'baja') {
 
-        // 6. Si es cambio de revisión, crear el registro en el historial de revisiones
-        if ($tipoCambio === 'revision') {
-            DocumentoRevision::create([
-                'documento_version_id' => $nuevaVersion->id,
+                if (!$solicitud->documento_id) {
+                    throw new \Exception('La solicitud de baja no tiene documento asociado');
+                }
+
+                $doc = Documento::findOrFail($solicitud->documento_id);
+            } else {
+
+                // ✅ SOLO crear documento en alta/actualización
+                $codigo = $request->codigo_documento ?? $solicitud->codigo_documento;
+
+                if (!$codigo) {
+                    throw new \Exception('El código del documento es obligatorio');
+                }
+
+                $doc = Documento::firstOrCreate(
+                    ['codigo' => $codigo],
+                    [
+                        'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
+                        'area' => optional($solicitud->usuario)->area,
+                        'estatus' => 'vigente'
+                    ]
+                );
+            }
+
+            $vigenteAnterior = $doc->versionVigente;
+
+            // 3. Lógica de Revisiones (Herencia o Nueva)
+            if ($tipoCambio === 'revision') {
+                $fRev = $request->fecha_revision ? Carbon::parse($request->fecha_revision) : $fechaV;
+                $revActual = $request->revision_actual;
+                $revAnterior = $request->revision_anterior;
+                $vigenciaR = $request->vigencia_revision_dias;
+                $vencimientoR = $fRev->copy()->addDays((int)$vigenciaR);
+            } else {
+                // Heredar del documento real si ya existe, si no, usar los de la solicitud
+                $revActual = $vigenteAnterior ? $vigenteAnterior->revision_actual : $solicitud->revision_actual;
+                $revAnterior = $vigenteAnterior ? $vigenteAnterior->revision_anterior : $solicitud->revision_anterior;
+                $fRev = $vigenteAnterior ? $vigenteAnterior->fecha_revision : $solicitud->fecha_revision;
+                $vencimientoR = $vigenteAnterior ? $vigenteAnterior->fecha_vencimiento_revision : $solicitud->fecha_vencimiento_revision;
+                $vigenciaR = $vigenteAnterior ? $vigenteAnterior->vigencia_revision_dias : $solicitud->vigencia_revision_dias;
+            }
+
+            // 4. Actualizar Solicitud
+            $solicitud->update([
+                'estado' => $estado,
                 'revision_actual' => $revActual,
+                'revision_anterior' => $revAnterior,
+                'fecha_version' => $fechaV,
+                'fecha_vencimiento_version' => $vencimientoV,
                 'fecha_revision' => $fRev,
-                'estatus' => 'vigente',
-                'registrado_por' => auth()->id(),
+                'fecha_vencimiento_revision' => $vencimientoR,
+                'administrador_sgi_id' => auth()->id(),
+                'liga_archivo' => $request->liga_archivo,
             ]);
-            
-            // Obsoletar revisiones pasadas
-            DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
-                ->where('id', '!=', $nuevaVersion->id)
-                ->update(['estatus' => 'obsoleta']);
-        }
 
-        // 7. Actualizar Documento
-        $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
-        $doc->update([
-            'version_vigente_id' => $nuevaVersion->id,
-            'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
-        ]);
-    });
+            if ($estado !== 'atendido') return;
 
-    return redirect()->route('solicitudes.index')->with('success', 'Proceso completado.');
-}
+            // 5. Crear Versión
+            $nuevaVersion = DocumentoVersion::create([
+                'documento_id' => $doc->id,
+                'version' => $request->folio_version ?? ('VER-' . now()->format('Ymd')),
+                'revision_actual' => $revActual,
+                'revision_anterior' => $revAnterior,
+                'fecha_version' => $fechaV,
+                'fecha_vencimiento_version' => $vencimientoV,
+                'fecha_revision' => $fRev,
+                'fecha_vencimiento_revision' => $vencimientoR,
+                'estatus' => 'vigente',
+                'liga_archivo' => $request->liga_archivo,
+                'publicado_por' => auth()->id(),
+            ]);
+
+            // 6. Si es cambio de revisión, crear el registro en el historial de revisiones
+            if ($tipoCambio === 'revision') {
+                DocumentoRevision::create([
+                    'documento_version_id' => $nuevaVersion->id,
+                    'revision_actual' => $revActual,
+                    'fecha_revision' => $fRev,
+                    'estatus' => 'vigente',
+                    'registrado_por' => auth()->id(),
+                ]);
+
+                // Obsoletar revisiones pasadas
+                DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
+                    ->where('id', '!=', $nuevaVersion->id)
+                    ->update(['estatus' => 'obsoleta']);
+            }
+
+            // 7. Actualizar Documento
+            $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
+            $doc->update([
+                'version_vigente_id' => $nuevaVersion->id,
+                'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
+            ]);
+        });
+
+        return redirect()->route('solicitudes.index')->with('success', 'Proceso completado.');
+    }
 
     public function solicitarActualizacionForm(Request $request)
     {
@@ -412,9 +413,12 @@ if ($solicitud->accion === 'baja') {
         $doc  = Documento::findOrFail($request->documento_id);
 
 
-        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $doc->area !== $user->area) {
-            abort(403, 'No puedes solicitar actualización de un documento fuera de tu departamento.');
-        }
+     if (!$user->hasRole('administrador_sgi') &&
+    ($user->hasRole('usuario') || $user->hasRole('jefe')) &&
+    $doc->area !== $user->area) {
+
+    abort(403, 'No puedes solicitar actualización de un documento fuera de tu departamento.');
+}
 
         $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
 
@@ -442,19 +446,19 @@ if ($solicitud->accion === 'baja') {
     }
 
     public function destroy(SolicitudFormato $solicitud)
-{
-    // Seguridad: Solo el dueño puede borrarla y solo si está pendiente o rechazada por el jefe
-    if (auth()->id() !== $solicitud->user_id) {
-        abort(403, 'No tienes permiso para eliminar esta solicitud.');
+    {
+        // Seguridad: Solo el dueño puede borrarla y solo si está pendiente o rechazada por el jefe
+        if (auth()->id() !== $solicitud->user_id) {
+            abort(403, 'No tienes permiso para eliminar esta solicitud.');
+        }
+
+        // No permitir borrar si ya fue procesada por SGI
+        if (in_array($solicitud->estado, ['atendido', 'rechazado_sgi'])) {
+            return back()->withErrors('No puedes eliminar una solicitud que ya ha sido procesada por SGI.');
+        }
+
+        $solicitud->delete();
+
+        return redirect()->route('solicitudes.index')->with('success', 'Solicitud eliminada correctamente.');
     }
-
-    // No permitir borrar si ya fue procesada por SGI
-    if (in_array($solicitud->estado, ['atendido', 'rechazado_sgi'])) {
-        return back()->withErrors('No puedes eliminar una solicitud que ya ha sido procesada por SGI.');
-    }
-
-    $solicitud->delete();
-
-    return redirect()->route('solicitudes.index')->with('success', 'Solicitud eliminada correctamente.');
-}
 }
