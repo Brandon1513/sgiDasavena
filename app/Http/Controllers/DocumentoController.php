@@ -30,42 +30,42 @@ class DocumentoController extends Controller
         return view('documentos.index', compact('docs'));
     }
 
-public function show(Documento $documento)
-{
-    $documento->load([
-        'versionVigente',
-        'versiones' => fn($q) => $q->orderByDesc('id'),
-    ]);
+    public function show(Documento $documento)
+    {
+        $documento->load([
+            'versionVigente',
+            'versiones' => fn($q) => $q->orderByDesc('id'),
+        ]);
 
-    $versiones = $documento->versiones;
-    $vigente   = $documento->versionVigente;
-    $user      = auth()->user();
+        $versiones = $documento->versiones;
+        $vigente   = $documento->versionVigente;
+        $user      = auth()->user();
 
-    $usuarios = User::query()
-        ->orderBy('name')
-        ->get(['id', 'name', 'email']);
+        $usuarios = User::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
 
-    $revisiones = DocumentoRevision::query()
-        ->whereIn('documento_version_id', $versiones->pluck('id'))
-        ->with(['version:id,documento_id,version'])
-        ->orderByRaw("CASE WHEN estatus='vigente' THEN 0 ELSE 1 END")
-        ->orderByDesc('id')
-        ->get();
+        $revisiones = DocumentoRevision::query()
+            ->whereIn('documento_version_id', $versiones->pluck('id'))
+            ->with(['version:id,documento_id,version'])
+            ->orderByRaw("CASE WHEN estatus='vigente' THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->get();
 
-    $revisionesPorVersion = $revisiones->groupBy(function ($rev) {
-        return $rev->version?->version ?? ('Versión ID '.$rev->documento_version_id);
-    });
+        $revisionesPorVersion = $revisiones->groupBy(function ($rev) {
+            return $rev->version?->version ?? ('Versión ID ' . $rev->documento_version_id);
+        });
 
-    return view('documentos.show', compact(
-        'documento',
-        'user',
-        'usuarios',
-        'versiones',
-        'vigente',
-        'revisiones',
-        'revisionesPorVersion',
-    ));
-}
+        return view('documentos.show', compact(
+            'documento',
+            'user',
+            'usuarios',
+            'versiones',
+            'vigente',
+            'revisiones',
+            'revisionesPorVersion',
+        ));
+    }
     // Historial completo (versiones + revisiones)
     public function createUpdateRequest(Request $request, Documento $documento)
     {
@@ -104,9 +104,9 @@ public function show(Documento $documento)
             ->with('success', 'Solicitud de actualización creada.');
     }
 
-    
 
-  //Notificación de actualización (solo admin puede enviar)
+
+    //Notificación de actualización (solo admin puede enviar)
     public function notifyNeedsUpdate(Request $request, Documento $documento)
     {
         $user = auth()->user();
@@ -171,41 +171,75 @@ public function show(Documento $documento)
 
         return back()->with('success', 'Notificación enviada correctamente.');
     }
-    
-  public function darDeBaja($id)
-{
-    $user = auth()->user();
 
-    if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
-        abort(403, 'No tienes permiso para dar de baja documentos.');
+    public function darDeBaja($id)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+            abort(403, 'No tienes permiso para dar de baja documentos.');
+        }
+
+        DB::transaction(function () use ($id, $user) {
+
+            $doc = Documento::with('versiones')->findOrFail($id);
+
+            // 🔴 Documento
+            $doc->update([
+                'estatus' => 'obsoleto',
+                'fecha_baja' => now(),
+                'baja_por' => $user->id,
+            ]);
+
+            // 🔴 Versiones
+            $doc->versiones()->update([
+                'estatus' => 'obsoleto'
+            ]);
+
+            // 🔴 Revisiones
+            DocumentoRevision::whereIn(
+                'documento_version_id',
+                $doc->versiones->pluck('id')
+            )->update([
+                'estatus' => 'obsoleta'
+            ]);
+        });
+
+        return back()->with('success', 'Documento dado de baja correctamente.');
     }
 
-    DB::transaction(function () use ($id, $user) {
+    public function edit(Documento $documento){
+        
+          $user = auth()->User();
+          //solo permitir a admin sgi o admin
+          if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+              abort(403, 'No tienes permiso para editar documentos.');
+          }
+            return view ('documentos.edit', compact('documento'));
 
-        $doc = Documento::with('versiones')->findOrFail($id);
+    }
+    // Método para procesar los cambios
+public function update(Request $request, Documento $documento)
+{
+    $user = auth()->user();
+    if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+        abort(403);
+    }
 
-        // 🔴 Documento
-        $doc->update([
-            'estatus' => 'obsoleto',
-            'fecha_baja' => now(),
-            'baja_por' => $user->id,
-        ]);
+    $request->validate([
+        'codigo'            => 'required|string|max:255|unique:documentos,codigo,' . $documento->id,
+        'nombre'            => 'required|string|max:255',
+        'tipo_documento'    => 'nullable|string',
+        'formato_el_pa'     => 'nullable|string',
+        'area'              => 'nullable|string',
+        'estatus'           => 'required|in:baja,vigente', // Ajustado a tus ENUM
+        'sharepoint_folder' => 'nullable|string|max:500',
+    ]);
 
-        // 🔴 Versiones
-        $doc->versiones()->update([
-            'estatus' => 'obsoleto'
-        ]);
+    // Actualizamos los datos maestros
+    $documento->update($request->all());
 
-        // 🔴 Revisiones
-        DocumentoRevision::whereIn(
-            'documento_version_id',
-            $doc->versiones->pluck('id')
-        )->update([
-            'estatus' => 'obsoleta'
-        ]);
-    });
-
-    return back()->with('success', 'Documento dado de baja correctamente.');
+    return redirect()->route('documentos.show', $documento->id)
+        ->with('success', 'Información del documento actualizada correctamente.');
 }
-
 }

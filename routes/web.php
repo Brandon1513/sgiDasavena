@@ -25,8 +25,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
             ->name('solicitudes.calendar');
 
-            //solicitud destory
-            Route::delete('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'destroy'])->name('solicitudes.destroy');
+        //solicitud destory
+        Route::delete('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'destroy'])->name('solicitudes.destroy');
 
         Route::get('/solicitudes/calendario/data', [SolicitudesCalendarController::class, 'data'])
             ->name('solicitudes.calendar.data');
@@ -51,9 +51,12 @@ Route::middleware(['auth'])->group(function () {
         //botn de como dar de baja  
         Route::post('documentos/{id}/baja', [DocumentoController::class, 'darDeBaja'])->name('documentos.baja');
 
+        Route::get('/documentos/{documento}/edit', [DocumentoController::class, 'edit'])->name('documentos.edit');
+        Route::put('/documentos/{documento}', [DocumentoController::class, 'update'])->name('documentos.update');
 
-        
-            // marcar obsoleto para revisiones 
+
+
+        // marcar obsoleto para revisiones 
 
         Route::post(
             '/documento-revisiones/{revision}/marcar-obsoleto',
