@@ -104,16 +104,32 @@
                             <input type="text" name="codigo_documento" value="{{ old('codigo_documento', $solicitud->codigo_documento) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="Ej. SGI-PR-001" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de versión <span class="text-red-500" x-show="isAtender()">*</span></label>
-                                <input type="date" name="fecha_version" id="fecha_version" value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                            </div>
-                            <div x-show="isCambioRevision()" x-transition>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Fecha de revisión</label>
-                                <input type="date" name="fecha_revision" id="fecha_revision" value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}" :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                            </div>
-                        </div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de versión <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                                        <input type="date" name="fecha_version" id="fecha_version" value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                                    </div>
+                                                    <div x-show="isCambioRevision()" x-transition>
+                                                        <div class="mb-4">
+                                                            <label class="inline-flex items-center cursor-pointer">
+                                                                <input type="checkbox" x-model="mismaFechaRevision" class="w-4 h-4 rounded text-blue-600 focus:ring-2 focus:ring-blue-500">
+                                                                <span class="ml-3 text-sm font-medium text-gray-700">Usar la misma fecha de versión</span>
+                                                            </label>
+                                                        </div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de revisión <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span></label>
+                                                        <input type="date" name="fecha_revision" id="fecha_revision" value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}" :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Formato <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                                    <select name="formato_el_pa" :disabled="isRechazar()" :required="isAtender()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                                        <option value="">Seleccionar...</option>
+                                                        <option value="EL" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL' ? 'selected' : '' }}>EL (Electrónico)</option>
+                                                        <option value="PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'PA' ? 'selected' : '' }}>PA (Papel)</option>
+                                                        <option value="EL/PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL/PA' ? 'selected' : '' }}>EL/PA (Ambos)</option>
+                                                    </select>
+                                                </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
