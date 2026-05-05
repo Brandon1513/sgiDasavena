@@ -46,14 +46,10 @@
     @endif
 
 
-    <img src="https://dasavenasite.domcloud.dev/images/dasavena-logo.png"
-        alt="dsda"
-        class="pointer-events-none fixed bottom-6 right-6 object-contain z-10 select-none"
-        style="mix-blend-mode: multiply; width: 130px; height: auto;">
-
-    <img src="https://dasavenasite.domcloud.dev/images/dasavena-logo.png"
+   
+    <img src="https://permisos.dasavena-intranet.com/images/logo.png"
         alt="Dasavena Gourmet watermark"
-        class="pointer-events-none fixed bottom-6 right-6 w-20 h-20 object-contain z-5 select-none opacity-20"
+        class="pointer-events-none fixed bottom-6 right-6 w-28 h-28 object-contain z-5 select-none opacity-20"
         style="mix-blend-mode:multiply Z-20">
 
     <script>
