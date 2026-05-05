@@ -41,6 +41,29 @@
         box-shadow:0 4px 14px rgba(106,44,117,.3);
     }
 </style>
+  <div id="sgi-loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#6A2C75] via-[#5a2565] to-[#4a1f55] backdrop-blur-sm">
+        <div class="flex flex-col items-center gap-6">
+            <div class="relative w-24 h-24">
+                <img src="https://permisos.dasavena-intranet.com/images/logo.png"
+                     alt="Dasavena Gourmet logo"
+                     class="w-full h-full object-contain animate-pulse">
+                <div class="absolute inset-0 border-4 border-transparent border-t-[#D6A644] border-r-[#D6A644] rounded-full animate-spin"></div>
+            </div>
+            <div class="text-center">
+                <p class="text-white text-lg font-semibold">Cargando Sistema SGI</p>
+                <p class="text-[#D6A644] text-sm mt-2">Por favor espera...</p>
+            </div>
+        </div>
+    </div>
+    <script>
+    // Ocultar pantalla de carga cuando la página cargue completamente
+    window.addEventListener('load', () => {
+        const loading = document.getElementById('sgi-loading');
+        loading.style.opacity = '0';
+        loading.style.pointerEvents = 'none';
+        loading.style.transition = 'opacity 0.6s cubic-bezier(.22,1,.36,1)';
+    });
+</script>
 
     <x-slot name="header">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 anim-fade">

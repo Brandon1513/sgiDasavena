@@ -2,7 +2,7 @@
     <div id="sgi-loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#6A2C75] via-[#5a2565] to-[#4a1f55] backdrop-blur-sm">
         <div class="flex flex-col items-center gap-6">
             <div class="relative w-24 h-24">
-                <img src="https://dasavenasite.domcloud.dev/images/dasavena-logo.png"
+                <img src="https://permisos.dasavena-intranet.com/images/logo.png"
                      alt="Dasavena Gourmet logo"
                      class="w-full h-full object-contain animate-pulse">
                 <div class="absolute inset-0 border-4 border-transparent border-t-[#D6A644] border-r-[#D6A644] rounded-full animate-spin"></div>
