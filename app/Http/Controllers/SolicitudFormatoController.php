@@ -196,7 +196,7 @@ class SolicitudFormatoController extends Controller
 
     public function show(SolicitudFormato $solicitud)
     {
-        $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento']);
+        $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento',]);
         return view('solicitudes.show', compact('solicitud'));
     }
 

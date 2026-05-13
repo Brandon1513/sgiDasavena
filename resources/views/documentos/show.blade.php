@@ -80,19 +80,19 @@
         $revisionesPorVersion = $revisionesPorVersion ?? $revisiones->groupBy(fn($r) => $r->version?->version ?? ('Versión ID '.$r->documento_version_id));
         @endphp
 
+       
         <div class="py-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
 
             {{-- A) Datos del documento --}}
             <div class="bg-white rounded-2xl shadow border p-6 space-y-3">
                 <h3 class="text-lg font-bold border-b pb-2">Datos del Documento</h3>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <p><strong>Código:</strong> {{ $documento->codigo ?? '—' }}</p>
                     <p><strong>Nombre:</strong> {{ $documento->nombre ?? '—' }}</p>
                     <p><strong>Tipo:</strong> {{ $documento->tipo_documento ?? '—' }}</p>
                     <p><strong>EL / PA:</strong> {{ $documento->formato_el_pa ?? '—' }}</p>
                     <p><strong>Área (depto):</strong> {{ $documento->area ?? '—' }}</p>
                     <p><strong>Estatus:</strong> {{ $documento->estatus ?? '—' }}</p>
+                    <p><strong>Observaciones Jefe:</strong> {{ $solicitud->observaciones_jefe ?? 'Sin observaciones' }}</p>
                 </div>
             </div>
 

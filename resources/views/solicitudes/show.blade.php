@@ -105,6 +105,16 @@
                 <p><strong>Área:</strong> {{ optional($solicitud->usuario)->area ?? '—' }}</p>
                 <p><strong>Puesto:</strong> {{ optional($solicitud->usuario)->puesto ?? '—' }}</p>
                 <p><strong>Acción:</strong> {{ ucfirst($solicitud->accion) }}</p>
+                 
+                 <p><strong>Observaciones Jefe:</strong> 
+        @if(isset($solicitud) && $solicitud->observaciones_jefe)
+            <span class="text-blue-700 font-medium">{{ $solicitud->observaciones_jefe }}</span>
+        @elseif(isset($documento->solicitud) && $documento->solicitud->observaciones_jefe)
+            <span class="text-blue-700 font-medium">{{ $documento->solicitud->observaciones_jefe }}</span>
+        @else
+            <span class="text-gray-400 italic">Sin observaciones registradas</span>
+        @endif
+    </p>
             </div>
 
             <p>
