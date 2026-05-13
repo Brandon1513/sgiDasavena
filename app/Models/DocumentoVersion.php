@@ -20,7 +20,6 @@ class DocumentoVersion extends Model
     'vigencia_revision_dias',
     'fecha_vencimiento_version',
     'fecha_vencimiento_revision',
-    'estatus',
     'liga_archivo',
     'lugar_almacenamiento',
     'archivo_storage',

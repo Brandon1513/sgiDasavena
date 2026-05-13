@@ -17,6 +17,7 @@ use App\Models\Documento;
 use App\Models\DocumentoVersion;
 use Illuminate\Support\Facades\DB;
 use App\Models\DocumentoRevision;
+use App\Models\TipoDocumento;
 
 
 

@@ -9,6 +9,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use App\Models\DocumentoRevision;
+use Illuminate\Support\Facades\DB;
+
+
 
 class DocumentoController extends Controller
 {
@@ -208,38 +211,226 @@ class DocumentoController extends Controller
         return back()->with('success', 'Documento dado de baja correctamente.');
     }
 
-    public function edit(Documento $documento){
-        
-          $user = auth()->User();
-          //solo permitir a admin sgi o admin
-          if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
-              abort(403, 'No tienes permiso para editar documentos.');
-          }
-            return view ('documentos.edit', compact('documento'));
+    public function edit(Documento $documento)
+    {
 
+        $user = auth()->User();
+        //solo permitir a admin sgi o admin
+        if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
+            abort(403, 'No tienes permiso para editar documentos.');
+        }
+        return view('documentos.edit', compact('documento'));
     }
     // Método para procesar los cambios
+
+
 public function update(Request $request, Documento $documento)
 {
-    $user = auth()->user();
-    if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
-        abort(403);
-    }
-
     $request->validate([
-        'codigo'            => 'required|string|max:255|unique:documentos,codigo,' . $documento->id,
-        'nombre'            => 'required|string|max:255',
-        'tipo_documento'    => 'nullable|string',
-        'formato_el_pa'     => 'nullable|string',
-        'area'              => 'nullable|string',
-        'estatus'           => 'required|in:baja,vigente', // Ajustado a tus ENUM
+
+        // DOCUMENTO
+        'codigo' => 'required|string|max:255',
+        'nombre' => 'required|string|max:255',
+
+        // OPCIONALES
+        'tipo_documento' => 'nullable|string|max:255',
+        'formato_el_pa' => 'nullable|string|max:50',
+        'area' => 'nullable|string|max:255',
+
         'sharepoint_folder' => 'nullable|string|max:500',
+
+        'estatus' => 'required|in:vigente,baja',
+
+        // VERSION
+        'version' => 'nullable|string|max:100',
+
+        // REVISION
+        'revision_actual' => 'nullable|string|max:100',
+
+        // FECHAS
+        'fecha_version' => 'nullable|date',
+        'fecha_revision' => 'nullable|date',
+
+        // VIGENCIAS
+        'vigencia_version_dias' => 'nullable|integer|min:1',
+        'vigencia_revision_dias' => 'nullable|integer|min:1',
+
+        // SHAREPOINT
+        'sharepoint_path' => 'nullable|string|max:500',
+        'sharepoint_file_id' => 'nullable|string|max:255',
+
+        'sp_drive_id' => 'nullable|string|max:255',
+        'sp_item_id' => 'nullable|string|max:255',
+        'sp_web_url' => 'nullable|string|max:1000',
+        'sp_folder_path' => 'nullable|string|max:500',
+
+        // OTROS
+        'liga_archivo' => 'nullable|string|max:1000',
+        'lugar_almacenamiento' => 'nullable|string|max:255',
+
+        'observaciones_sgi' => 'nullable|string',
     ]);
 
-    // Actualizamos los datos maestros
-    $documento->update($request->all());
+    DB::transaction(function () use ($request, $documento) {
 
-    return redirect()->route('documentos.show', $documento->id)
-        ->with('success', 'Información del documento actualizada correctamente.');
+        // =========================================
+        // ACTUALIZAR DOCUMENTO MAESTRO
+        // =========================================
+
+        $documento->update([
+
+            'codigo' => $request->codigo,
+
+            'nombre' => $request->nombre,
+
+            'tipo_documento' => $request->tipo_documento,
+
+            'formato_el_pa' => $request->formato_el_pa,
+
+            'area' => $request->area,
+
+            'sharepoint_folder' => $request->sharepoint_folder,
+
+            'estatus' => $request->estatus,
+        ]);
+
+        // =========================================
+        // OBTENER VERSION VIGENTE
+        // =========================================
+
+        $version = $documento->versionVigente;
+
+        // fallback por si no existe relación
+        if (!$version) {
+
+            $version = $documento->versiones()
+                ->latest('id')
+                ->first();
+        }
+
+        // =========================================
+        // ACTUALIZAR VERSION
+        // =========================================
+
+        if ($version) {
+
+            // =====================================
+            // FECHAS BASE
+            // =====================================
+
+            $fechaVersion = $request->fecha_version
+                ? \Carbon\Carbon::parse($request->fecha_version)
+                    ->startOfDay()
+                : now()->startOfDay();
+
+            $fechaRevision = $request->fecha_revision
+                ? \Carbon\Carbon::parse($request->fecha_revision)
+                    ->startOfDay()
+                : now()->startOfDay();
+
+            // =====================================
+            // RECALCULAR VENCIMIENTOS
+            // =====================================
+
+            $fechaVencimientoVersion = null;
+
+            if ($request->vigencia_version_dias) {
+
+                $fechaVencimientoVersion = $fechaVersion
+                    ->copy()
+                    ->addDays(
+                        (int)$request->vigencia_version_dias
+                    );
+            }
+
+            $fechaVencimientoRevision = null;
+
+            if ($request->vigencia_revision_dias) {
+
+                $fechaVencimientoRevision = $fechaRevision
+                    ->copy()
+                    ->addDays(
+                        (int)$request->vigencia_revision_dias
+                    );
+            }
+
+            // =====================================
+            // ACTUALIZAR documento_versiones
+            // =====================================
+
+            $version->update([
+
+                // VERSIONADO
+               'version' => $request->version ?? $version->version,
+
+                'revision_actual' => $request->revision_actual ?? $version->revision_actual,
+
+                // FECHAS
+                'fecha_version' => $fechaVersion,
+
+                'fecha_revision' => $fechaRevision,
+
+                // VIGENCIAS
+                'vigencia_version_dias' => $request->vigencia_version_dias,
+
+                'vigencia_revision_dias' => $request->vigencia_revision_dias,
+
+                // VENCIMIENTOS
+                'fecha_vencimiento_version'
+                    => $fechaVencimientoVersion,
+
+                'fecha_vencimiento_revision'
+                    => $fechaVencimientoRevision,
+
+                // ARCHIVOS
+                'liga_archivo' => $request->liga_archivo,
+
+                'lugar_almacenamiento'
+                    => $request->lugar_almacenamiento,
+
+                // SHAREPOINT
+                'sharepoint_path'
+                    => $request->sharepoint_path,
+
+                'sharepoint_file_id'
+                    => $request->sharepoint_file_id,
+
+                'sp_drive_id'
+                    => $request->sp_drive_id,
+
+                'sp_item_id'
+                    => $request->sp_item_id,
+
+                'sp_web_url'
+                    => $request->sp_web_url,
+
+                'sp_folder_path'
+                    => $request->sp_folder_path,
+
+                // SGI
+                'observaciones_sgi'
+                    => $request->observaciones_sgi,
+            ]);
+
+            // =====================================
+            // ASEGURAR VERSION VIGENTE
+            // =====================================
+
+            $documento->update([
+                'version_vigente_id' => $version->id
+            ]);
+        }
+    });
+
+    return redirect()
+        ->route('documentos.show', $documento->id)
+        ->with(
+            'success',
+            'Documento y versión actualizados correctamente.'
+        );
 }
+
+
+
+    
 }
