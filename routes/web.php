@@ -132,7 +132,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
 
-
+    Route::delete('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'destroy'])->name('solicitudes.destroy');
 
     Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
         ->name('documentos.versiones.show');
