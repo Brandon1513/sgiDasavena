@@ -34,6 +34,7 @@
                     isBaja() { return this.accion === 'baja' },
                     isNuevo() { return this.accion === 'nuevo_documento' }
                   }"
+                  onsubmit="this.querySelector('button[type=submit]').disabled = true;"
                   class="space-y-8">
                 @csrf
 
