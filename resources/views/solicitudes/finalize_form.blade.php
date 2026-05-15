@@ -68,130 +68,86 @@
                 </div>
 
                 {{-- SECCIÓN 2: DATOS DE SGI --}}
-                {{-- SECCIÓN 2: DATOS DE SGI --}}
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" 
-     x-show="!isRechazar()" 
-     x-transition:enter="transition ease-out duration-300"
-     x-transition:enter-start="opacity-0 transform -translate-y-4"
-     x-transition:enter-end="opacity-100 transform translate-y-0">
-    
-    <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-gray-200">
-        <h3 class="text-lg font-semibold text-gray-900">Datos Oficiales (SGI)</h3>
-        <p class="text-xs text-gray-600 mt-1">Estos datos son obligatorios solo para finalizar la atención de la solicitud.</p>
-    </div>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Datos Oficiales (SGI)</h3>
+                        <p class="text-xs text-gray-600 mt-1">Solo se requieren al “Atender”.</p>
+                    </div>
 
-    <div class="px-6 py-5 space-y-6">
-        {{-- Selector de Tipo de Cambio --}}
-        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de cambio realizado por SGI</label>
-            <select name="tipo_cambio" x-model="tipoCambio" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
-                <option value="revision">Cambió revisión (y también la versión)</option>
-                <option value="version">Solo cambió la versión</option>
-            </select>
-        </div>
+                    <div class="px-6 py-5 space-y-6">
+                        <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de cambio realizado por SGI</label>
+                            <select name="tipo_cambio" x-model="tipoCambio" :disabled="isRechazar()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                <option value="revision">Cambió revisión (y también la versión)</option>
+                                <option value="version">Solo cambió la versión</option>
+                            </select>
+                        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Alta en Sistema --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Alta en el sistema de gestión</label>
-                <input type="date" name="fecha_alta_sgi" 
-                    value="{{ old('fecha_alta_sgi', optional($solicitud->fecha_alta_sgi)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Alta en el sistema de gestión</label>
+                            <input type="date" name="fecha_alta_sgi" value="{{ old('fecha_alta_sgi', optional($solicitud->fecha_alta_sgi)->format('Y-m-d') ?? now()->format('Y-m-d')) }}" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
 
-            {{-- Código de Documento --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Código de documento <span class="text-red-500">*</span></label>
-                <input type="text" name="codigo_documento" 
-                    value="{{ old('codigo_documento', $solicitud->codigo_documento) }}" 
-                    :required="isAtender()" 
-                    placeholder="Ej. SGI-PR-001" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="isCambioRevision()" x-transition>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Actual <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                <input type="text" name="revision_actual" value="{{ old('revision_actual', $solicitud->revision_actual) }}" :disabled="isRechazar() || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Anterior</label>
+                                <input type="text" name="revision_anterior" value="{{ old('revision_anterior', $solicitud->revision_anterior) }}" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
 
-        {{-- Revisión Actual y Anterior (Solo si es Cambio de Revisión) --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="isCambioRevision()" x-transition>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Actual <span class="text-red-500">*</span></label>
-                <input type="text" name="revision_actual" 
-                    value="{{ old('revision_actual', $solicitud->revision_actual) }}" 
-                    :required="isAtender() && isCambioRevision()" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Anterior</label>
-                <input type="text" name="revision_anterior" 
-                    value="{{ old('revision_anterior', $solicitud->revision_anterior) }}" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Código de documento <span class="text-red-500" x-show="isAtender()">*</span></label>
+                            <input type="text" name="codigo_documento" value="{{ old('codigo_documento', $solicitud->codigo_documento) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="Ej. SGI-PR-001" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Fecha de Versión --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de versión <span class="text-red-500">*</span></label>
-                <input type="date" name="fecha_version" id="fecha_version" 
-                    value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}" 
-                    :required="isAtender()" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de versión <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                                        <input type="date" name="fecha_version" id="fecha_version" value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                                    </div>
+                                                    <div x-show="isCambioRevision()" x-transition>
+                                                        <div class="mb-4">
+                                                            <label class="inline-flex items-center cursor-pointer">
+                                                                <input type="checkbox" x-model="mismaFechaRevision" class="w-4 h-4 rounded text-blue-600 focus:ring-2 focus:ring-blue-500">
+                                                                <span class="ml-3 text-sm font-medium text-gray-700">Usar la misma fecha de versión</span>
+                                                            </label>
+                                                        </div>
+                                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de revisión <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span></label>
+                                                        <input type="date" name="fecha_revision" id="fecha_revision" value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}" :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                                    </div>
+                                                </div>
 
-            {{-- Fecha de Revisión (Sincronizada o Manual) --}}
-            <div x-show="isCambioRevision()" x-transition>
-                <div class="mb-2">
-                    <label class="inline-flex items-center cursor-pointer">
-                        <input type="checkbox" x-model="mismaFechaRevision" class="w-4 h-4 rounded text-blue-600 focus:ring-2 focus:ring-blue-500">
-                        <span class="ml-2 text-xs font-medium text-gray-600 uppercase">Igual a fecha de versión</span>
-                    </label>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Formato <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                                    <select name="formato_el_pa" :disabled="isRechazar()" :required="isAtender()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                                        <option value="">Seleccionar...</option>
+                                                        <option value="EL" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL' ? 'selected' : '' }}>EL (Electrónico)</option>
+                                                        <option value="PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'PA' ? 'selected' : '' }}>PA (Papel)</option>
+                                                        <option value="EL/PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL/PA' ? 'selected' : '' }}>EL/PA (Ambos)</option>
+                                                    </select>
+                                                </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vigencia versión (días) <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                <input type="number" name="vigencia_version_dias" value="{{ old('vigencia_version_dias', $solicitud->vigencia_version_dias ?? 365) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                            <div x-show="isCambioRevision()" x-transition>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vigencia revisión (días) <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span></label>
+                                <input type="number" name="vigencia_revision_dias" value="{{ old('vigencia_revision_dias', $solicitud->vigencia_revision_dias ?? 730) }}" :required="isAtender() && isCambioRevision()" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Medio de archivo (Liga SharePoint) <span class="text-red-500" x-show="isAtender()">*</span></label>
+                            <input type="text" name="liga_archivo" value="{{ old('liga_archivo', $solicitud->liga_archivo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="https://..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
                 </div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de revisión <span class="text-red-500">*</span></label>
-                <input type="date" name="fecha_revision" id="fecha_revision" 
-                    value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}" 
-                    :disabled="mismaFechaRevision" 
-                    :required="isAtender() && isCambioRevision() && !mismaFechaRevision" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500">
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Formato Físico/Electrónico --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Formato de Almacenamiento <span class="text-red-500">*</span></label>
-                <select name="formato_el_pa" :required="isAtender()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
-                    <option value="">Seleccionar...</option>
-                    <option value="EL" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL' ? 'selected' : '' }}>EL (Electrónico)</option>
-                    <option value="PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'PA' ? 'selected' : '' }}>PA (Papel)</option>
-                    <option value="EL/PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL/PA' ? 'selected' : '' }}>EL/PA (Ambos)</option>
-                </select>
-            </div>
-
-            {{-- Vigencia --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Vigencia versión (días) <span class="text-red-500">*</span></label>
-                <input type="number" name="vigencia_version_dias" 
-                    value="{{ old('vigencia_version_dias', $solicitud->vigencia_version_dias ?? 365) }}" 
-                    :required="isAtender()" 
-                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-        </div>
-
-        {{-- Liga de Archivo --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Medio de archivo (Liga SharePoint) <span class="text-red-500">*</span></label>
-            <div class="relative">
-                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                </span>
-                <input type="text" name="liga_archivo" 
-                    value="{{ old('liga_archivo', $solicitud->liga_archivo) }}" 
-                    :required="isAtender()" 
-                    placeholder="https://dasavena.sharepoint.com/..." 
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-            </div>
-        </div>
-    </div>
-</div>
 
                 {{-- SECCIÓN 3: NOTIFICACIONES --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
