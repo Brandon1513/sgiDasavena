@@ -250,16 +250,17 @@ class SolicitudFormatoController extends Controller
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
     }
 
-    public function finalize(Request $request, SolicitudFormato $solicitud)
+ public function finalize(Request $request, SolicitudFormato $solicitud)
 {
     if (!auth()->user()->hasRole('administrador_sgi')) {
         abort(403);
     }
 
     $tipoCambio = $request->input('tipo_cambio', 'revision');
+    $accion = $request->input('accion'); // 'atender' o 'rechazar'
 
-    // 1. Validación condicional
-    if ($request->accion === 'atender') {
+    // 1. Validación condicional (Solo si se va a ATENDER)
+    if ($accion === 'atender') {
         $rules = [
             'liga_archivo' => 'required|url',
             'fecha_alta_sgi' => 'required|date',
@@ -277,10 +278,22 @@ class SolicitudFormatoController extends Controller
     }
 
     try {
-        DB::transaction(function () use ($solicitud, $request, $tipoCambio) {
-            $estado = $request->accion === 'atender' ? 'atendido' : 'rechazado_sgi';
+        DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
+            
+            // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
+            if ($accion !== 'atender') {
+                $solicitud->update([
+                    'estado' => 'rechazado_sgi',
+                    'administrador_sgi_id' => auth()->id(),
+                ]);
+                return; // Corta la ejecución de la transacción aquí
+            }
 
-            // Preparar fechas de versión
+            // --- DE AQUÍ EN ADELANTE SOLO SE EJECUTA SI ES "ATENDER" ---
+            
+            $estado = 'atendido';
+
+            // Preparar fechas
             $fechaV = Carbon::parse($request->fecha_version);
             $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
 
@@ -291,10 +304,8 @@ class SolicitudFormatoController extends Controller
                 }
                 $doc = Documento::findOrFail($solicitud->documento_id);
             } else {
-                $codigo = $request->codigo_documento ?? $solicitud->codigo_documento;
-                if (!$codigo) {
-                    throw new \Exception('El código del documento es obligatorio');
-                }
+                // Aquí usamos el código del request porque ya pasó la validación
+                $codigo = $request->codigo_documento;
 
                 $doc = Documento::firstOrCreate(
                     ['codigo' => $codigo],
@@ -305,12 +316,10 @@ class SolicitudFormatoController extends Controller
                     ]
                 );
             }
-
-            // 3. Obtener la versión vigente para heredar datos si es necesario
-            // Asegúrate de que la relación 'versionVigente' esté definida en el Modelo Documento
+    
             $vigenteAnterior = $doc->versionVigente;
 
-            // 4. Lógica de Revisiones (Herencia o Nueva)
+            // 4. Lógica de Revisiones
             if ($tipoCambio === 'revision') {
                 $fRev = $request->fecha_revision ? Carbon::parse($request->fecha_revision) : $fechaV;
                 $revActual = $request->revision_actual;
@@ -318,14 +327,12 @@ class SolicitudFormatoController extends Controller
                 $vigenciaR = $request->vigencia_revision_dias;
                 $vencimientoR = $fRev->copy()->addDays((int)$vigenciaR);
             } else {
-                // CAMBIO DE VERSIÓN: Mantenemos la revisión técnica
                 if ($vigenteAnterior) {
                     $revActual    = $vigenteAnterior->revision_actual;
                     $revAnterior  = $vigenteAnterior->revision_anterior;
                     $fRev         = $vigenteAnterior->fecha_revision;
                     $vencimientoR = $vigenteAnterior->fecha_vencimiento_revision;
                 } else {
-                    // Fallback si es un documento nuevo y solo se marcó "Versión"
                     $revActual    = $solicitud->revision_actual ?? '0'; 
                     $revAnterior  = $solicitud->revision_anterior ?? '0';
                     $fRev         = $solicitud->fecha_revision ?? $fechaV;
@@ -333,9 +340,9 @@ class SolicitudFormatoController extends Controller
                 }
             }
 
-            // 5. Actualizar Solicitud con los datos finales
+            // 5. Actualizar Solicitud
             $solicitud->update([
-                'documento_id' => $doc->id, // Aseguramos el ID del documento
+                'documento_id' => $doc->id,
                 'estado' => $estado,
                 'revision_actual' => $revActual,
                 'revision_anterior' => $revAnterior,
@@ -347,9 +354,7 @@ class SolicitudFormatoController extends Controller
                 'liga_archivo' => $request->liga_archivo,
             ]);
 
-            if ($estado !== 'atendido') return;
-
-            // 6. Crear Nueva Versión en el historial
+            // 6. Crear Nueva Versión
             $nuevaVersion = DocumentoVersion::create([
                 'documento_id' => $doc->id,
                 'version' => $request->folio_version ?? ('VER-' . now()->format('Ymd')),
@@ -364,7 +369,7 @@ class SolicitudFormatoController extends Controller
                 'publicado_por' => auth()->id(),
             ]);
 
-            // 7. Si fue cambio de revisión, registrar en la tabla de auditoría de revisiones
+            // 7. Auditoría y 8. Maestro
             if ($tipoCambio === 'revision') {
                 DocumentoRevision::create([
                     'documento_version_id' => $nuevaVersion->id,
@@ -373,18 +378,9 @@ class SolicitudFormatoController extends Controller
                     'estatus' => 'vigente',
                     'registrado_por' => auth()->id(),
                 ]);
-
-                // Obsoletar revisiones anteriores del mismo documento
-                DocumentoRevision::whereIn('documento_version_id', $doc->versiones()->pluck('id'))
-                    ->where('id', '!=', $nuevaVersion->id)
-                    ->update(['estatus' => 'obsoleta']);
             }
 
-            // 8. Actualizar Documento Maestro
-            // Marcar versiones anteriores como obsoletas
             $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
-            
-            // Actualizar puntero de versión vigente y estatus
             $doc->update([
                 'version_vigente_id' => $nuevaVersion->id,
                 'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
