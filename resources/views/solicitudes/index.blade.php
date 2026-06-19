@@ -169,6 +169,7 @@
                                 <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Solicitante</th>
                                 <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Acción</th>
                                 <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Estado</th>
+                                <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Fecha</th>
                                 <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Comentarios</th>
                                 <th class="px-6 py-4 text-left text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">Acciones</th>
                             </tr>
@@ -219,6 +220,9 @@
                                         <span class="w-1.5 h-1.5 rounded-full {{ $dot }} flex-shrink-0"></span>
                                         {{ ucfirst(str_replace('_', ' ', $solicitud->estado)) }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4 text-xs text-[#5a4a65]">
+                                    {{ $solicitud->created_at->format('d M Y') }}
                                 </td>
 
                                 <td class="px-6 py-4 max-w-xs">

@@ -148,9 +148,9 @@ class SolicitudFormatoController extends Controller
             $doc = \App\Models\Documento::findOrFail($request->documento_id);
 
             // 🔒 validación por área
-          if (!$user->hasRole('administrador_sgi') && $doc->area !== $user->area) {
-    abort(403, 'No puedes solicitar acción sobre un documento fuera de tu área.');
-}
+            if (!$user->hasRole('administrador_sgi') && $doc->area !== $user->area) {
+                abort(403, 'No puedes solicitar acción sobre un documento fuera de tu área.');
+            }
         }
 
         // 🧾 crear solicitud
@@ -250,36 +250,36 @@ class SolicitudFormatoController extends Controller
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
     }
 
- public function finalize(Request $request, SolicitudFormato $solicitud)
-{
-    if (!auth()->user()->hasRole('administrador_sgi')) {
-        abort(403);
-    }
-
-    $tipoCambio = $request->input('tipo_cambio', 'revision');
-    $accion = $request->input('accion'); // 'atender' o 'rechazar'
-
-    // 1. Validación condicional (Solo si se va a ATENDER)
-    if ($accion === 'atender') {
-        $rules = [
-            'liga_archivo' => 'required|url',
-            'fecha_alta_sgi' => 'required|date',
-            'codigo_documento' => 'required|string',
-            'fecha_version' => 'required|date',
-            'vigencia_version_dias' => 'required|integer|min:1',
-        ];
-
-        if ($tipoCambio === 'revision') {
-            $rules['revision_actual'] = 'required|string';
-            $rules['vigencia_revision_dias'] = 'required|integer|min:1';
+    public function finalize(Request $request, SolicitudFormato $solicitud)
+    {
+        if (!auth()->user()->hasRole('administrador_sgi')) {
+            abort(403);
         }
 
-        $request->validate($rules);
-    }
+        $tipoCambio = $request->input('tipo_cambio', 'revision');
+        $accion = $request->input('accion'); // 'atender' o 'rechazar'
 
-    try {
+        // 1. Validación condicional (Solo si se va a ATENDER)
+        if ($accion === 'atender') {
+            $rules = [
+                'liga_archivo' => 'required|url',
+                'fecha_alta_sgi' => 'required|date',
+                'codigo_documento' => 'required|string',
+                'fecha_version' => 'required|date',
+                'vigencia_version_dias' => 'required|integer|min:1',
+            ];
+
+            if ($tipoCambio === 'revision') {
+                $rules['revision_actual'] = 'required|string';
+                $rules['vigencia_revision_dias'] = 'required|integer|min:1';
+            }
+
+            $request->validate($rules);
+        }
+
+try {
         DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
-            
+
             // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
             if ($accion !== 'atender') {
                 $solicitud->update([
@@ -290,7 +290,7 @@ class SolicitudFormatoController extends Controller
             }
 
             // --- DE AQUÍ EN ADELANTE SOLO SE EJECUTA SI ES "ATENDER" ---
-            
+
             $estado = 'atendido';
 
             // Preparar fechas
@@ -316,7 +316,7 @@ class SolicitudFormatoController extends Controller
                     ]
                 );
             }
-    
+
             $vigenteAnterior = $doc->versionVigente;
 
             // 4. Lógica de Revisiones
@@ -333,7 +333,7 @@ class SolicitudFormatoController extends Controller
                     $fRev         = $vigenteAnterior->fecha_revision;
                     $vencimientoR = $vigenteAnterior->fecha_vencimiento_revision;
                 } else {
-                    $revActual    = $solicitud->revision_actual ?? '0'; 
+                    $revActual    = $solicitud->revision_actual ?? '0';
                     $revAnterior  = $solicitud->revision_anterior ?? '0';
                     $fRev         = $solicitud->fecha_revision ?? $fechaV;
                     $vencimientoR = $solicitud->fecha_vencimiento_revision ?? $vencimientoV;
@@ -387,12 +387,24 @@ class SolicitudFormatoController extends Controller
             ]);
         });
 
-        return redirect()->route('solicitudes.index')->with('success', 'Proceso completado correctamente.');
+        // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
+        if ($accion === 'atender' && $request->has('usuarios_notificados')) {
+            $usuarios = User::whereIn('id', $request->usuarios_notificados)->get();
 
+            foreach ($usuarios as $usuario) {
+                if ($usuario->email) {
+                    // Enviamos usando la clase de tu mailable y le pasamos los datos de la solicitud
+                    Mail::to($usuario->email)->send(new \App\Mail\DocumentoAltaMailable($solicitud));
+                }
+            }
+        }
+        // =======================================================
+
+        return redirect()->route('solicitudes.index')->with('success', 'Proceso completado correctamente.');
     } catch (\Exception $e) {
         return back()->withErrors('Error al finalizar: ' . $e->getMessage())->withInput();
     }
-}
+    }
 
     public function solicitarActualizacionForm(Request $request)
     {
@@ -422,12 +434,14 @@ class SolicitudFormatoController extends Controller
         $doc  = Documento::findOrFail($request->documento_id);
 
 
-     if (!$user->hasRole('administrador_sgi') &&
-    ($user->hasRole('usuario') || $user->hasRole('jefe')) &&
-    $doc->area !== $user->area) {
+        if (
+            !$user->hasRole('administrador_sgi') &&
+            ($user->hasRole('usuario') || $user->hasRole('jefe')) &&
+            $doc->area !== $user->area
+        ) {
 
-    abort(403, 'No puedes solicitar actualización de un documento fuera de tu departamento.');
-}
+            abort(403, 'No puedes solicitar actualización de un documento fuera de tu departamento.');
+        }
 
         $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
 

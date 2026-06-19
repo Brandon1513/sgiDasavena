@@ -11,7 +11,8 @@ use App\Mail\NuevaSolicitudMailable;
 use App\Mail\SolicitudAprobadaSgiMailable;
 use App\Mail\DocumentoNecesitaActualizacionMailable;
 use App\Mail\DivulgacionFormatoMailable;
-use App\Mail\DocumentoObsoletoMailable; // 🔥 CAMBIO
+use App\Mail\DocumentoObsoletoMailable;
+use App\Mail\DocumentoAltaMailable;
 
 class TestMails extends Command
 {
@@ -51,7 +52,7 @@ class TestMails extends Command
             $this->error('❌ Error Aprobado SGI: ' . $e->getMessage());
         }
 
-        // 🔥 AQUÍ ESTABA TU ERROR ANTES
+       
         try {
             Mail::to($correo)->send(
                 new DocumentoNecesitaActualizacionMailable(
@@ -83,6 +84,14 @@ class TestMails extends Command
             $this->info('✔ Obsoleto enviado');
         } catch (\Exception $e) {
             $this->error('❌ Error obsoleto: ' . $e->getMessage());
+        }
+
+        try {
+            Mail::to($correo)->send(new DocumentoAltaMailable($solicitud));
+            $this->info('✔ Alta de documento enviado');
+        } catch (\Exception $e) {
+            $this->error('❌ Error alta de documento: ' . $e->getMessage());
+            \Log::error('DocumentoAltaMailable error: ' . $e->getMessage());
         }
 
         $this->info('Proceso terminado 🚀');

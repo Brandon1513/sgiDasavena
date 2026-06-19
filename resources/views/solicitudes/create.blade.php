@@ -28,12 +28,13 @@
             <form method="POST"
                   action="{{ route('solicitudes.store') }}"
                   enctype="multipart/form-data"
-                  x-data="{
-                    accion: '{{ old('accion', '') }}',
-                    isActualizacion() { return this.accion === 'actualizacion' },
-                    isBaja() { return this.accion === 'baja' },
-                    isNuevo() { return this.accion === 'nuevo_documento' }
-                  }"
+                                    x-data="{
+                                        accion: '{{ old('accion', '') }}',
+                                        searchDocumento: '{{ old('searchDocumento', '') }}',
+                                        isActualizacion() { return this.accion === 'actualizacion' },
+                                        isBaja() { return this.accion === 'baja' },
+                                        isNuevo() { return this.accion === 'nuevo_documento' }
+                                    }"
                   onsubmit="this.querySelector('button[type=submit]').disabled = true;"
                   class="space-y-8">
                 @csrf
@@ -111,13 +112,19 @@
                 Selecciona el documento <span class="text-red-500">*</span>
             </label>
 
+            <input type="text"
+                   x-model="searchDocumento"
+                   placeholder="Buscar documento..."
+                   class="w-full px-4 py-2 mb-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"/>
+
             <select name="documento_id"
                     x-bind:disabled="!isActualizacion() && !isBaja()"
                     x-bind:required="isActualizacion() || isBaja()"
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-sm">
                 <option value="">-- Selecciona un documento del catálogo --</option>
                 @foreach($documentos as $d)
-                    <option value="{{ $d->id }}" @selected(old('documento_id') == $d->id)>
+                    <option value="{{ $d->id }}" @selected(old('documento_id') == $d->id)
+                            x-bind:hidden="!('{{ strtolower($d->codigo.' '.$d->nombre.' '.$d->area) }}'.includes(searchDocumento.toLowerCase()))">
                         {{ $d->codigo }} — {{ $d->nombre }} 
                         ({{ $d->area }})
                     </option>
