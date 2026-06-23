@@ -135,12 +135,12 @@ $roles = $user && method_exists($user, 'getRoleNames')
                 {{-- VIDEO --}}
                 <div class="sgi-video-wrap sgi-reveal" style="--ri:5">
                     <video autoplay muted loop playsinline class="sgi-video">
-                        <source src="/videos/animacion.mp4" type="video/mp4">
+                        <source src="{{ asset('videos/animacion.mp4') }}" type="video/mp4">
                     </video>
                 </div>
-                
 
-                {{-- GRÁFICA --}}
+
+                {{-- GRÁFICA }}
                 <div class="sgi-card sgi-reveal" style="--ri:3">
                     <div class="sgi-card-head">
                         <div>
