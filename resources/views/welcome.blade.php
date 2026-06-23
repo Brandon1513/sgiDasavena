@@ -7,7 +7,7 @@
     .welcome-root {
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
         min-height: 100vh;
-        background-color: #faf7fb;
+        background-color: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
