@@ -119,18 +119,24 @@ class SolicitudFormatoController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+        $rules = [
+    'accion' => 'required|in:actualizacion,baja,nuevo_documento',
 
-            // 🔥 ahora también obligatorio en BAJA
-            'documento_id' => 'required_if:accion,actualizacion,baja|exists:documentos,id',
+    'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
 
-            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
+    'comentarios' => 'required|string|max:2000',
 
-            'comentarios' => 'required|string|max:2000',
-            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
-            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
-        ]);
+    'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+
+    'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+];
+
+// Solo validar documento_id cuando aplica
+if (in_array($request->accion, ['actualizacion', 'baja'])) {
+    $rules['documento_id'] = 'required|exists:documentos,id';
+}
+
+$request->validate($rules);
 
 
         $user = auth()->user();
@@ -153,7 +159,7 @@ class SolicitudFormatoController extends Controller
             }
         }
 
-        // 🧾 crear solicitud
+        //  crear solicitud
         $solicitud = \App\Models\SolicitudFormato::create([
             'user_id' => $user->id,
             'accion' => $request->accion,
@@ -162,12 +168,12 @@ class SolicitudFormatoController extends Controller
             'jefe_id' => $user->jefe_id,
             'comentarios' => $request->comentarios,
 
-            // 🔥 ahora sí se guarda también en BAJA
+            // ahora sí se guarda también en BAJA
             'documento_id' => in_array($request->accion, ['actualizacion', 'baja'])
                 ? $request->documento_id
                 : null,
 
-            // 🔥 también corregido para BAJA
+            
             'nombre_documento' => in_array($request->accion, ['actualizacion', 'baja'])
                 ? ($doc?->nombre)
                 : $request->nombre_documento,
@@ -175,7 +181,7 @@ class SolicitudFormatoController extends Controller
             // baja
             'motivo_baja' => $request->motivo_baja,
 
-            // 📌 snapshot del documento (muy importante)
+            
             'codigo_documento' => $doc?->codigo,
             'tipo_documento' => $doc?->tipo_documento,
             'formato_el_pa' => $doc?->formato_el_pa,
@@ -277,133 +283,133 @@ class SolicitudFormatoController extends Controller
             $request->validate($rules);
         }
 
-try {
-        DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
+        try {
+            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
 
-            // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
-            if ($accion !== 'atender') {
-                $solicitud->update([
-                    'estado' => 'rechazado_sgi',
-                    'administrador_sgi_id' => auth()->id(),
-                ]);
-                return; // Corta la ejecución de la transacción aquí
-            }
-
-            // --- DE AQUÍ EN ADELANTE SOLO SE EJECUTA SI ES "ATENDER" ---
-
-            $estado = 'atendido';
-
-            // Preparar fechas
-            $fechaV = Carbon::parse($request->fecha_version);
-            $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
-
-            // 2. Buscar o crear el documento principal
-            if ($solicitud->accion === 'baja') {
-                if (!$solicitud->documento_id) {
-                    throw new \Exception('La solicitud de baja no tiene documento asociado');
+                // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
+                if ($accion !== 'atender') {
+                    $solicitud->update([
+                        'estado' => 'rechazado_sgi',
+                        'administrador_sgi_id' => auth()->id(),
+                    ]);
+                    return; // Corta la ejecución de la transacción aquí
                 }
-                $doc = Documento::findOrFail($solicitud->documento_id);
-            } else {
-                // Aquí usamos el código del request porque ya pasó la validación
-                $codigo = $request->codigo_documento;
 
-                $doc = Documento::firstOrCreate(
-                    ['codigo' => $codigo],
-                    [
-                        'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
-                        'area' => optional($solicitud->usuario)->area,
-                        'estatus' => 'vigente'
-                    ]
-                );
-            }
+                // --- DE AQUÍ EN ADELANTE SOLO SE EJECUTA SI ES "ATENDER" ---
 
-            $vigenteAnterior = $doc->versionVigente;
+                $estado = 'atendido';
 
-            // 4. Lógica de Revisiones
-            if ($tipoCambio === 'revision') {
-                $fRev = $request->fecha_revision ? Carbon::parse($request->fecha_revision) : $fechaV;
-                $revActual = $request->revision_actual;
-                $revAnterior = $request->revision_anterior;
-                $vigenciaR = $request->vigencia_revision_dias;
-                $vencimientoR = $fRev->copy()->addDays((int)$vigenciaR);
-            } else {
-                if ($vigenteAnterior) {
-                    $revActual    = $vigenteAnterior->revision_actual;
-                    $revAnterior  = $vigenteAnterior->revision_anterior;
-                    $fRev         = $vigenteAnterior->fecha_revision;
-                    $vencimientoR = $vigenteAnterior->fecha_vencimiento_revision;
+                // Preparar fechas
+                $fechaV = Carbon::parse($request->fecha_version);
+                $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
+
+                // 2. Buscar o crear el documento principal
+                if ($solicitud->accion === 'baja') {
+                    if (!$solicitud->documento_id) {
+                        throw new \Exception('La solicitud de baja no tiene documento asociado');
+                    }
+                    $doc = Documento::findOrFail($solicitud->documento_id);
                 } else {
-                    $revActual    = $solicitud->revision_actual ?? '0';
-                    $revAnterior  = $solicitud->revision_anterior ?? '0';
-                    $fRev         = $solicitud->fecha_revision ?? $fechaV;
-                    $vencimientoR = $solicitud->fecha_vencimiento_revision ?? $vencimientoV;
+                    // Aquí usamos el código del request porque ya pasó la validación
+                    $codigo = $request->codigo_documento;
+
+                    $doc = Documento::firstOrCreate(
+                        ['codigo' => $codigo],
+                        [
+                            'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
+                            'area' => optional($solicitud->usuario)->area,
+                            'estatus' => 'vigente'
+                        ]
+                    );
                 }
-            }
 
-            // 5. Actualizar Solicitud
-            $solicitud->update([
-                'documento_id' => $doc->id,
-                'estado' => $estado,
-                'revision_actual' => $revActual,
-                'revision_anterior' => $revAnterior,
-                'fecha_version' => $fechaV,
-                'fecha_vencimiento_version' => $vencimientoV,
-                'fecha_revision' => $fRev,
-                'fecha_vencimiento_revision' => $vencimientoR,
-                'administrador_sgi_id' => auth()->id(),
-                'liga_archivo' => $request->liga_archivo,
-            ]);
+                $vigenteAnterior = $doc->versionVigente;
 
-            // 6. Crear Nueva Versión
-            $nuevaVersion = DocumentoVersion::create([
-                'documento_id' => $doc->id,
-                'version' => $request->folio_version ?? ('VER-' . now()->format('Ymd')),
-                'revision_actual' => $revActual,
-                'revision_anterior' => $revAnterior,
-                'fecha_version' => $fechaV,
-                'fecha_vencimiento_version' => $vencimientoV,
-                'fecha_revision' => $fRev,
-                'fecha_vencimiento_revision' => $vencimientoR,
-                'estatus' => 'vigente',
-                'liga_archivo' => $request->liga_archivo,
-                'publicado_por' => auth()->id(),
-            ]);
+                // 4. Lógica de Revisiones
+                if ($tipoCambio === 'revision') {
+                    $fRev = $request->fecha_revision ? Carbon::parse($request->fecha_revision) : $fechaV;
+                    $revActual = $request->revision_actual;
+                    $revAnterior = $request->revision_anterior;
+                    $vigenciaR = $request->vigencia_revision_dias;
+                    $vencimientoR = $fRev->copy()->addDays((int)$vigenciaR);
+                } else {
+                    if ($vigenteAnterior) {
+                        $revActual    = $vigenteAnterior->revision_actual;
+                        $revAnterior  = $vigenteAnterior->revision_anterior;
+                        $fRev         = $vigenteAnterior->fecha_revision;
+                        $vencimientoR = $vigenteAnterior->fecha_vencimiento_revision;
+                    } else {
+                        $revActual    = $solicitud->revision_actual ?? '0';
+                        $revAnterior  = $solicitud->revision_anterior ?? '0';
+                        $fRev         = $solicitud->fecha_revision ?? $fechaV;
+                        $vencimientoR = $solicitud->fecha_vencimiento_revision ?? $vencimientoV;
+                    }
+                }
 
-            // 7. Auditoría y 8. Maestro
-            if ($tipoCambio === 'revision') {
-                DocumentoRevision::create([
-                    'documento_version_id' => $nuevaVersion->id,
+                // 5. Actualizar Solicitud
+                $solicitud->update([
+                    'documento_id' => $doc->id,
+                    'estado' => $estado,
                     'revision_actual' => $revActual,
+                    'revision_anterior' => $revAnterior,
+                    'fecha_version' => $fechaV,
+                    'fecha_vencimiento_version' => $vencimientoV,
                     'fecha_revision' => $fRev,
-                    'estatus' => 'vigente',
-                    'registrado_por' => auth()->id(),
+                    'fecha_vencimiento_revision' => $vencimientoR,
+                    'administrador_sgi_id' => auth()->id(),
+                    'liga_archivo' => $request->liga_archivo,
                 ]);
-            }
 
-            $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
-            $doc->update([
-                'version_vigente_id' => $nuevaVersion->id,
-                'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
-            ]);
-        });
+                // 6. Crear Nueva Versión
+                $nuevaVersion = DocumentoVersion::create([
+                    'documento_id' => $doc->id,
+                    'version' => $request->folio_version ?? ('VER-' . now()->format('Ymd')),
+                    'revision_actual' => $revActual,
+                    'revision_anterior' => $revAnterior,
+                    'fecha_version' => $fechaV,
+                    'fecha_vencimiento_version' => $vencimientoV,
+                    'fecha_revision' => $fRev,
+                    'fecha_vencimiento_revision' => $vencimientoR,
+                    'estatus' => 'vigente',
+                    'liga_archivo' => $request->liga_archivo,
+                    'publicado_por' => auth()->id(),
+                ]);
 
-        // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
-        if ($accion === 'atender' && $request->has('usuarios_notificados')) {
-            $usuarios = User::whereIn('id', $request->usuarios_notificados)->get();
+                // 7. Auditoría y 8. Maestro
+                if ($tipoCambio === 'revision') {
+                    DocumentoRevision::create([
+                        'documento_version_id' => $nuevaVersion->id,
+                        'revision_actual' => $revActual,
+                        'fecha_revision' => $fRev,
+                        'estatus' => 'vigente',
+                        'registrado_por' => auth()->id(),
+                    ]);
+                }
 
-            foreach ($usuarios as $usuario) {
-                if ($usuario->email) {
-                    // Enviamos usando la clase de tu mailable y le pasamos los datos de la solicitud
-                    Mail::to($usuario->email)->send(new \App\Mail\DocumentoAltaMailable($solicitud));
+                $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
+                $doc->update([
+                    'version_vigente_id' => $nuevaVersion->id,
+                    'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
+                ]);
+            });
+
+            // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
+            if ($accion === 'atender' && $request->has('usuarios_notificados')) {
+                $usuarios = User::whereIn('id', $request->usuarios_notificados)->get();
+
+                foreach ($usuarios as $usuario) {
+                    if ($usuario->email) {
+                        // Enviamos usando la clase de tu mailable y le pasamos los datos de la solicitud
+                        Mail::to($usuario->email)->send(new \App\Mail\DocumentoAltaMailable($solicitud));
+                    }
                 }
             }
-        }
-        // =======================================================
+            // =======================================================
 
-        return redirect()->route('solicitudes.index')->with('success', 'Proceso completado correctamente.');
-    } catch (\Exception $e) {
-        return back()->withErrors('Error al finalizar: ' . $e->getMessage())->withInput();
-    }
+            return redirect()->route('solicitudes.index')->with('success', 'Proceso completado correctamente.');
+        } catch (\Exception $e) {
+            return back()->withErrors('Error al finalizar: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function solicitarActualizacionForm(Request $request)
