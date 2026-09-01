@@ -10,6 +10,9 @@ use App\Http\Controllers\DocumentoVersionController;
 use App\Http\Controllers\DocumentoRevisionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentoUsuarioController;
+use App\Http\Controllers\AccionCorrectivaController;
+
+
 
 
 Route::get('/', fn() => view('welcome'))->name('home');
@@ -170,6 +173,44 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::prefix('acciones-correctivas')
+    ->name('acciones-correctivas.')
+    ->group(function () {
+        Route::get(
+            '/',
+            [AccionCorrectivaController::class, 'index']
+        )->name('index');
+
+        Route::get(
+            '/{accionCorrectiva}',
+            [AccionCorrectivaController::class, 'show']
+        )->name('show');
+    });
+Route::get(
+    '/acciones-correctivas/{accionCorrectiva}/analisis',
+    [AccionCorrectivaController::class, 'analisis']
+)->name('acciones-correctivas.analisis');
 Route::get('/register', fn() => redirect()->route('login'));
+
+Route::get(
+    '/acciones-correctivas/{accionCorrectiva}/analisis',
+    [AccionCorrectivaController::class, 'analisis']
+)->name('acciones-correctivas.analisis');
+Route::post(
+    '/acciones-correctivas/{accionCorrectiva}/analisis/iniciar',
+    [AccionCorrectivaController::class, 'iniciarAnalisis']
+)->name('acciones-correctivas.analisis.iniciar');
+
+Route::post(
+    '/acciones-correctivas/{accionCorrectiva}/analisis/ideas',
+    [AccionCorrectivaController::class, 'agregarIdea']
+)->name('acciones-correctivas.analisis.idea');
+
+Route::post(
+    '/acciones-correctivas/{accionCorrectiva}/analisis/cinco-porques/iniciar',
+    [AccionCorrectivaController::class, 'iniciarCincoPorques']
+)->name('acciones-correctivas.cinco-porques.iniciar');
+
+
 
 require __DIR__ . '/auth.php';
