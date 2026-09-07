@@ -110,7 +110,7 @@
                     <tr>
                         <td bgcolor="#2d1033" align="center" style="padding:30px 40px;">
                             <p style="margin:0;font-size:11px;color:#ffffff;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-family:Arial, sans-serif;">{{ config('app.name') }}</p>
-                            <p style="margin:10px 0 0;font-size:10px;color:#a38ca8;font-family:Arial, sans-serif;">&copy; {{ date('Y') }} Gestión Documental SGI</p>
+                            <p style="margin:10px 0 0;font-size:10px;color:#a38ca8;font-family:Arial, sans-serif;">&copy; {{ date('Y') }} Gestión Documental SGI · Notificación automática, por favor no responda a este mensaje.</p>
                         </td>
                     </tr>
                 </table>

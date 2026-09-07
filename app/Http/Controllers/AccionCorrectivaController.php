@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Domains\Incidencias\Models\AccionCorrectiva;
-use App\Domains\Incidencias\Models\EstadoAccionCorrectiva;
 use App\Domains\Incidencias\Models\OrigenAccionCorrectiva;
 use App\Models\User;
 use Illuminate\Http\Request;
+
 use App\Domains\Incidencias\Actions\AccionesDisponiblesAccionCorrectiva;
 use App\Domains\Incidencias\Actions\IniciarAnalisis;
 use App\Domains\Incidencias\Actions\AgregarIdeaAnalisis;
@@ -17,6 +17,10 @@ use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
 use App\Domains\Incidencias\Actions\ValidarCausaRaiz;
 use App\Domains\Incidencias\Models\AcCincoPorque;
 use App\Domains\Incidencias\Models\AcCausaRaiz;
+use App\Domains\Incidencias\Actions\CambiarEstadoAccionCorrectiva;
+use App\Domains\Incidencias\Actions\CrearContencion;
+use App\Domains\Incidencias\Models\EstadoAccionCorrectiva as EstadoModel;
+use App\Domains\Incidencias\Enums\EstadoAccionCorrectiva;
 
 class AccionCorrectivaController extends Controller
 {
@@ -181,101 +185,165 @@ class AccionCorrectivaController extends Controller
             );
     }
     public function agregarIdea(
-    Request $request,
-    AccionCorrectiva $accionCorrectiva,
-    AgregarIdeaAnalisis $agregarIdea
-) {
-    $analisis = $accionCorrectiva->analisis()
-        ->where(
-            'ciclo',
-            $accionCorrectiva->ciclo_actual
-        )
-        ->firstOrFail();
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AgregarIdeaAnalisis $agregarIdea
+    ) {
+        $analisis = $accionCorrectiva->analisis()
+            ->where(
+                'ciclo',
+                $accionCorrectiva->ciclo_actual
+            )
+            ->firstOrFail();
 
-    $datos = $request->validate([
-        'descripcion' => [
-            'required',
-            'string',
-            'max:1000',
-        ],
+        $datos = $request->validate([
+            'descripcion' => [
+                'required',
+                'string',
+                'max:1000',
+            ],
 
-        'categoria_ishikawa' => [
-            'required',
-            'in:mano_obra,metodo,maquinaria,materia_prima,medicion,medio_ambiente',
-        ],
+            'categoria_ishikawa' => [
+                'required',
+                'in:mano_obra,metodo,maquinaria,materia_prima,medicion,medio_ambiente',
+            ],
 
-        'es_causa_probable' => [
-            'nullable',
-            'boolean',
-        ],
+            'es_causa_probable' => [
+                'nullable',
+                'boolean',
+            ],
 
-        'observaciones' => [
-            'nullable',
-            'string',
-            'max:2000',
-        ],
-    ]);
+            'observaciones' => [
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+        ]);
 
-    $agregarIdea->ejecutar(
-        $analisis,
-        $datos
-    );
-
-    return redirect()
-        ->route(
-            'acciones-correctivas.analisis',
-            $accionCorrectiva
-        )
-        ->with(
-            'success',
-            'La idea fue agregada correctamente.'
+        $agregarIdea->ejecutar(
+            $analisis,
+            $datos
         );
-}
 
-public function iniciarCincoPorques(
-    Request $request,
-    AccionCorrectiva $accionCorrectiva,
-    IniciarCincoPorques $iniciarCincoPorques
-) {
-    $analisis = $accionCorrectiva->analisis()
-        ->where(
-            'ciclo',
-            $accionCorrectiva->ciclo_actual
-        )
-        ->firstOrFail();
+        return redirect()
+            ->route(
+                'acciones-correctivas.analisis',
+                $accionCorrectiva
+            )
+            ->with(
+                'success',
+                'La idea fue agregada correctamente.'
+            );
+    }
 
-    $datos = $request->validate([
-        'idea_id' => [
-            'required',
-            'integer',
-            'exists:ac_ideas,id',
-        ],
+    public function iniciarCincoPorques(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        IniciarCincoPorques $iniciarCincoPorques
+    ) {
+        $analisis = $accionCorrectiva->analisis()
+            ->where(
+                'ciclo',
+                $accionCorrectiva->ciclo_actual
+            )
+            ->firstOrFail();
 
-        'titulo' => [
-            'required',
-            'string',
-            'max:255',
-        ],
-    ]);
+        $datos = $request->validate([
+            'idea_id' => [
+                'required',
+                'integer',
+                'exists:ac_ideas,id',
+            ],
 
-    $idea = $analisis->ideas()
-        ->where('id', $datos['idea_id'])
-        ->firstOrFail();
+            'titulo' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+        ]);
 
-    $iniciarCincoPorques->ejecutar(
-        $analisis,
-        $idea,
-        $datos['titulo']
-    );
+        $idea = $analisis->ideas()
+            ->where('id', $datos['idea_id'])
+            ->firstOrFail();
 
-    return redirect()
-        ->route(
-            'acciones-correctivas.analisis',
-            $accionCorrectiva
-        )
-        ->with(
-            'success',
-            'La cadena de 5 Porqués fue iniciada correctamente.'
+        $iniciarCincoPorques->ejecutar(
+            $analisis,
+            $idea,
+            $datos['titulo']
         );
-}
+
+        return redirect()
+            ->route(
+                'acciones-correctivas.analisis',
+                $accionCorrectiva
+            )
+            ->with(
+                'success',
+                'La cadena de 5 Porqués fue iniciada correctamente.'
+            );
+    }
+
+    public function cambiarEstado(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        CambiarEstadoAccionCorrectiva $cambiarEstado
+    ) {
+        $request->validate([
+            'estado' => ['required', 'string'],
+        ]);
+
+        try {
+            $nuevoEstado = EstadoAccionCorrectiva::from(
+                $request->input('estado')
+            );
+
+            $cambiarEstado->ejecutar(
+                $accionCorrectiva,
+                $nuevoEstado
+            );
+
+            return redirect()
+                ->route('acciones-correctivas.show', $accionCorrectiva)
+                ->with(
+                    'success',
+                    'El estado de la Acción Correctiva fue actualizado correctamente.'
+                );
+        } catch (\ValueError $e) {
+
+            return back()
+                ->withErrors([
+                    'estado' => 'El estado seleccionado no es válido.',
+                ])
+                ->withInput();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
+    }
+
+
+    public function crearContencion(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        CrearContencion $crearContencion
+    ) {
+        $datos = $request->validate([
+            'descripcion' => ['required', 'string', 'max:2000'],
+            'responsable_id' => ['required', 'integer', 'exists:users,id'],
+            'fecha_implementacion' => ['required', 'date'],
+            'estado' => ['required', 'in:pendiente,completada'],
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $crearContencion->ejecutar(
+            $accionCorrectiva,
+            $datos
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with('success', 'La acción de contención fue registrada correctamente.');
+    }
 }

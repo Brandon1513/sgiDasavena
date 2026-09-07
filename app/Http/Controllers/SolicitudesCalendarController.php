@@ -27,9 +27,13 @@ public function data(Request $request)
     $today = now()->startOfDay();
 
     $rows = DocumentoVersion::query()
-        ->with(['documento'])
+        ->with(['documento', 'ultimaRevision'])
         ->when(!$historicos, function ($qq) {
-            $qq->where('estatus', 'vigente');
+            // Sin históricos: solo versiones vigentes de documentos que no estén de baja
+            $qq->where('estatus', 'vigente')
+               ->whereHas('documento', function ($d) {
+                   $d->where('estatus', '!=', 'baja');
+               });
         })
         ->when($q !== '', function ($qq) use ($q) {
             $qq->whereHas('documento', function ($w) use ($q) {
@@ -45,6 +49,10 @@ public function data(Request $request)
         $doc = $ver->documento;
         if (!$doc) continue;
 
+        $esBaja = $doc->estatus === 'baja';
+        $versionObsoleta = $ver->estatus === 'obsoleto';
+        $revisionObsoleta = $versionObsoleta || optional($ver->ultimaRevision)->estatus === 'obsoleta';
+
         $base = [
             'documento_id' => $doc->id,
             'version_id'   => $ver->id,
@@ -55,18 +63,19 @@ public function data(Request $request)
             'folio_version'    => $ver->version,
             'area' => $doc->area,
             'url_documento' => route('documentos.show', $doc->id),
+            'estatus_documento' => $doc->estatus,
             ];
-            
+
         // VERSION
         if (($tipo === 'both' || $tipo === 'version') && $ver->fecha_vencimiento_version) {
             $d = Carbon::parse($ver->fecha_vencimiento_version)->startOfDay();
             $days = $today->diffInDays($d, false);
-            
+
             $list->push(array_merge($base, [
                 'vencimiento_tipo' => 'version',
                 'fecha_vencimiento' => $d->toDateString(),
-                'days_left' => (int)$days,
-                'severity' => $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'),
+                'days_left' => ($esBaja || $versionObsoleta) ? null : (int)$days,
+                'severity' => $esBaja ? 'baja' : ($versionObsoleta ? 'obsoleto' : ($days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'))),
             ]));
         }
 
@@ -78,8 +87,8 @@ public function data(Request $request)
             $list->push(array_merge($base, [
                 'vencimiento_tipo' => 'revision',
                 'fecha_vencimiento' => $d->toDateString(),
-                'days_left' => (int)$days,
-                'severity' => $days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'),
+                'days_left' => ($esBaja || $revisionObsoleta) ? null : (int)$days,
+                'severity' => $esBaja ? 'baja' : ($revisionObsoleta ? 'obsoleto' : ($days <= 30 ? 'danger' : ($days <= 60 ? 'warning' : 'success'))),
             ]));
         }
     }
@@ -87,26 +96,41 @@ public function data(Request $request)
     // --- ESTADÍSTICAS (Comparado con tu lógica anterior y corregido) ---
     // Aseguramos que 'regla' cuente a todos los que tienen más de 60 días
     $stats = [
-        'critico' => $list->filter(fn($e) => $e['days_left'] <= 30)->count(),
-        'alerta'  => $list->filter(fn($e) => $e['days_left'] >= 31 && $e['days_left'] <= 60)->count(),
-        'regla'   => $list->filter(fn($e) => $e['days_left'] > 60)->count(),
+        'critico' => $list->filter(fn($e) => !in_array($e['severity'], ['baja', 'obsoleto']) && $e['days_left'] <= 30)->count(),
+        'alerta'  => $list->filter(fn($e) => !in_array($e['severity'], ['baja', 'obsoleto']) && $e['days_left'] >= 31 && $e['days_left'] <= 60)->count(),
+        'regla'   => $list->filter(fn($e) => !in_array($e['severity'], ['baja', 'obsoleto']) && $e['days_left'] > 60)->count(),
         // Agregamos 'vencidos' explícitamente por si tu vista lo usa
-        'vencidos' => $list->filter(fn($e) => $e['days_left'] < 0)->count(),
+        'vencidos' => $list->filter(fn($e) => !in_array($e['severity'], ['baja', 'obsoleto']) && $e['days_left'] < 0)->count(),
+        'baja' => $list->filter(fn($e) => $e['severity'] === 'baja')->count(),
+        'obsoleto' => $list->filter(fn($e) => $e['severity'] === 'obsoleto')->count(),
     ];
 
     // --- FILTRADO POR ESTADO ---
-    if ($estado && $estado !== 'all') {
-        $list = $list->filter(function ($e) use ($estado) {
-            $d = (int)$e['days_left'];
-            return match ($estado) {
-                'vencidos'   => $d < 0,
-                'por_vencer' => $d >= 0 && $d <= 30, // Estos son los 'criticos' pero no vencidos
-                'alerta'     => $d >= 31 && $d <= 60,
-                'en_regla'   => $d > 60, // Aquí es donde entran los que "están bien"
-                default      => true,
-            };
-        })->values();
-    }
+    // Los "baja" y "obsoleto" solo se muestran cuando se piden explícitamente
+    // (p.ej. la carpeta de Obsoletos). El calendario normal (Mes/Lista) nunca los mezcla.
+    $list = $list->filter(function ($e) use ($estado) {
+        if ($e['severity'] === 'baja') {
+            return $estado === 'baja';
+        }
+        if ($e['severity'] === 'obsoleto') {
+            return $estado === 'obsoleto';
+        }
+        if ($estado === 'baja' || $estado === 'obsoleto') {
+            return false;
+        }
+        if (!$estado || $estado === 'all') {
+            return true;
+        }
+
+        $d = (int)$e['days_left'];
+        return match ($estado) {
+            'vencidos'   => $d < 0,
+            'por_vencer' => $d >= 0 && $d <= 30, // Estos son los 'criticos' pero no vencidos
+            'alerta'     => $d >= 31 && $d <= 60,
+            'en_regla'   => $d > 60, // Aquí es donde entran los que "están bien"
+            default      => true,
+        };
+    })->values();
     // --- AGREGA ESTO: FILTRADO POR ÁREA ---
 if ($area && $area !== 'all') {
     $list = $list->filter(function ($e) use ($area) {

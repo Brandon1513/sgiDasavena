@@ -252,6 +252,7 @@ $request->validate($rules);
     public function finalizeForm(SolicitudFormato $solicitud)
     {
         $usuarios = User::where('activo', 1)->get();
+        $solicitud->load('documento.versionVigente');
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
     }
 
@@ -265,7 +266,9 @@ $request->validate($rules);
         $accion = $request->input('accion'); // 'atender' o 'rechazar'
 
         // 1. Validación condicional (Solo si se va a ATENDER)
-        if ($accion === 'atender') {
+        // Las solicitudes de BAJA no capturan Datos Oficiales: solo decomisionan
+        // el documento existente, no requieren fechas/vigencia/archivo nuevos.
+        if ($accion === 'atender' && $solicitud->accion !== 'baja') {
             $rules = [
                 'liga_archivo' => 'required|url',
                 'fecha_alta_sgi' => 'required|date',
@@ -298,29 +301,45 @@ $request->validate($rules);
 
                 $estado = 'atendido';
 
+                // --- BAJA: no captura Datos Oficiales, solo decomisiona el documento ---
+                if ($solicitud->accion === 'baja') {
+                    if (!$solicitud->documento_id) {
+                        throw new \Exception('La solicitud de baja no tiene documento asociado');
+                    }
+
+                    $doc = Documento::with('versiones')->findOrFail($solicitud->documento_id);
+
+                    $doc->versiones()->update(['estatus' => 'obsoleto']);
+                    DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
+                        ->update(['estatus' => 'obsoleta']);
+
+                    $doc->update(['estatus' => 'baja']);
+
+                    $solicitud->update([
+                        'documento_id' => $doc->id,
+                        'estado' => $estado,
+                        'administrador_sgi_id' => auth()->id(),
+                    ]);
+
+                    return;
+                }
+
                 // Preparar fechas
                 $fechaV = Carbon::parse($request->fecha_version);
                 $vencimientoV = $fechaV->copy()->addDays((int)$request->vigencia_version_dias);
 
                 // 2. Buscar o crear el documento principal
-                if ($solicitud->accion === 'baja') {
-                    if (!$solicitud->documento_id) {
-                        throw new \Exception('La solicitud de baja no tiene documento asociado');
-                    }
-                    $doc = Documento::findOrFail($solicitud->documento_id);
-                } else {
-                    // Aquí usamos el código del request porque ya pasó la validación
-                    $codigo = $request->codigo_documento;
+                // Aquí usamos el código del request porque ya pasó la validación
+                $codigo = $request->codigo_documento;
 
-                    $doc = Documento::firstOrCreate(
-                        ['codigo' => $codigo],
-                        [
-                            'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
-                            'area' => optional($solicitud->usuario)->area,
-                            'estatus' => 'vigente'
-                        ]
-                    );
-                }
+                $doc = Documento::firstOrCreate(
+                    ['codigo' => $codigo],
+                    [
+                        'nombre' => $request->nombre_documento ?? $solicitud->nombre_documento,
+                        'area' => optional($solicitud->usuario)->area,
+                        'estatus' => 'vigente'
+                    ]
+                );
 
                 $vigenteAnterior = $doc->versionVigente;
 
@@ -388,7 +407,7 @@ $request->validate($rules);
                 $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
                 $doc->update([
                     'version_vigente_id' => $nuevaVersion->id,
-                    'estatus' => ($solicitud->accion === 'baja') ? 'baja' : 'vigente'
+                    'estatus' => 'vigente',
                 ]);
             });
 

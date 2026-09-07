@@ -127,8 +127,7 @@
                             {{ config('app.name') }}
                         </p>
                         <p style="margin:12px 0 0;font-size:11px;color:#a38ca8;line-height:1.6;font-family:Arial, sans-serif;">
-                            &copy; {{ date('Y') }} Gestión Documental · Unidad de TI<br>
-                            Notificación automática, por favor no responder.
+                            &copy; {{ date('Y') }} Gestión Documental · Unidad de TI · Notificación automática, por favor no responda a este mensaje.
                         </p>
                     </td>
                 </tr>

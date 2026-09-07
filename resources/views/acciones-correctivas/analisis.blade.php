@@ -206,26 +206,202 @@
                  <div class="d-flex justify-content-between align-items-center">
 
                      <div>
-
                          <h2 class="h5 mb-1">
                              Ideas / causas potenciales
                          </h2>
 
                          <div class="text-muted small">
-                             Identificación de posibles causas.
+                             Identificación de posibles causas mediante las 6M de Ishikawa.
                          </div>
-
                      </div>
 
-                     <span class="badge bg-secondary">
-                         {{ $analisisActual?->ideas?->count() ?? 0 }}
-                     </span>
+                     <div class="d-flex align-items-center gap-2">
+
+                         <span class="badge bg-secondary">
+                             {{ $analisisActual?->ideas?->count() ?? 0 }}
+                         </span>
+
+                         @if($analisisActual?->estado === 'en_proceso')
+                         <button
+                             type="button"
+                             class="btn btn-sm btn-primary"
+                             onclick="toggleIdea()">
+                             + Agregar idea
+                         </button>
+                         @endif
+
+                     </div>
 
                  </div>
 
              </div>
-
              <div class="card-body">
+                 @if($analisisActual?->estado === 'en_proceso')
+
+                 <div
+                     id="formIdea"
+                     class="mb-4"
+                     style="display: none;">
+
+                     <div class="border rounded-3 p-4 bg-light">
+
+                         <div class="fw-semibold mb-1">
+                             Registrar idea / causa potencial
+                         </div>
+
+                         <div class="text-muted small mb-4">
+                             Identifica una posible causa del problema y clasifícala dentro de las 6M.
+                         </div>
+
+                         <form
+                             method="POST"
+                             action="{{ route('acciones-correctivas.analisis.idea', $accionCorrectiva) }}">
+                             @csrf
+
+                             <div class="row g-3">
+
+                                 <div class="col-12">
+
+                                     <label class="form-label fw-semibold">
+                                         Descripción de la causa potencial
+                                     </label>
+
+                                     <textarea
+                                         name="descripcion"
+                                         class="form-control"
+                                         rows="3"
+                                         required
+                                         maxlength="2000"
+                                         placeholder="Describe la posible causa identificada...">{{ old('descripcion') }}</textarea>
+
+                                 </div>
+
+                                 <div class="col-md-6">
+
+                                     <label class="form-label fw-semibold">
+                                         Categoría Ishikawa
+                                     </label>
+
+                                     <select
+                                         name="categoria_ishikawa"
+                                         class="form-select"
+                                         required>
+                                         <option value="">
+                                             Seleccionar categoría
+                                         </option>
+
+                                         <option
+                                             value="mano_obra"
+                                             @selected(old('categoria_ishikawa')==='mano_obra' )>
+                                             Mano de obra
+                                         </option>
+
+                                         <option
+                                             value="metodo"
+                                             @selected(old('categoria_ishikawa')==='metodo' )>
+                                             Método
+                                         </option>
+
+                                         <option
+                                             value="maquinaria"
+                                             @selected(old('categoria_ishikawa')==='maquinaria' )>
+                                             Maquinaria
+                                         </option>
+
+                                         <option
+                                             value="materia_prima"
+                                             @selected(old('categoria_ishikawa')==='materia_prima' )>
+                                             Materia prima
+                                         </option>
+
+                                         <option
+                                             value="medicion"
+                                             @selected(old('categoria_ishikawa')==='medicion' )>
+                                             Medición
+                                         </option>
+
+                                         <option
+                                             value="medio_ambiente"
+                                             @selected(old('categoria_ishikawa')==='medio_ambiente' )>
+                                             Medio ambiente
+                                         </option>
+
+                                     </select>
+
+                                 </div>
+
+                                 <div class="col-md-6">
+
+                                     <label class="form-label fw-semibold">
+                                         ¿Es una causa probable?
+                                     </label>
+
+                                     <div class="form-check mt-2">
+
+                                         <input
+                                             type="hidden"
+                                             name="es_causa_probable"
+                                             value="0">
+
+                                         <input
+                                             class="form-check-input"
+                                             type="checkbox"
+                                             name="es_causa_probable"
+                                             value="1"
+                                             id="esCausaProbable"
+                                             @checked(old('es_causa_probable', true))>
+
+                                         <label
+                                             class="form-check-label"
+                                             for="esCausaProbable">
+                                             Marcar como causa probable
+                                         </label>
+
+                                     </div>
+
+                                 </div>
+
+                                 <div class="col-12">
+
+                                     <label class="form-label fw-semibold">
+                                         Observaciones
+                                     </label>
+
+                                     <textarea
+                                         name="observaciones"
+                                         class="form-control"
+                                         rows="2"
+                                         maxlength="2000"
+                                         placeholder="Observaciones adicionales...">{{ old('observaciones') }}</textarea>
+
+                                 </div>
+
+                             </div>
+
+                             <div class="d-flex justify-content-end gap-2 mt-4">
+
+                                 <button
+                                     type="button"
+                                     class="btn btn-light"
+                                     onclick="toggleIdea()">
+                                     Cancelar
+                                 </button>
+
+                                 <button
+                                     type="submit"
+                                     class="btn btn-primary">
+                                     Guardar idea
+                                 </button>
+
+                             </div>
+
+                         </form>
+
+                     </div>
+
+                 </div>
+
+                 @endif
 
                  @forelse($analisisActual?->ideas ?? [] as $idea)
 
@@ -662,6 +838,19 @@
 
      </div>
 
+     <script>
+         function toggleIdea() {
+             const formulario = document.getElementById('formIdea');
 
+             if (!formulario) {
+                 return;
+             }
+
+             formulario.style.display =
+                 formulario.style.display === 'none' ?
+                 'block' :
+                 'none';
+         }
+     </script>
 
  </x-app-layout>

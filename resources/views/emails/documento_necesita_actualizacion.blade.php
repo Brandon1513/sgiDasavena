@@ -1,8 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
     <title>Actualización requerida</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f3eef6;font-family:Arial,Helvetica,sans-serif;color:#2d1033;">
@@ -85,10 +93,18 @@
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:40px;">
                             <tr>
                                 <td align="center">
-                                    <a href="{{ route('documentos.show', $documento->id) }}"
-                                       style="display:inline-block;padding:14px 34px;font-size:13px;font-weight:bold;color:#2d1033;background:linear-gradient(135deg,#D4A018,#f0c84a);border-radius:8px;text-transform:uppercase;letter-spacing:1px;text-decoration:none;box-shadow:0 4px 20px rgba(212,160,24,0.25);">
-                                        Ver Documento →
-                                    </a>
+                                    <div>
+                                        <!--[if mso]>
+                                        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ route('documentos.show', $documento->id) }}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="18%" stroke="f" fillcolor="#D4A018">
+                                            <w:anchorlock/>
+                                            <center style="color:#2d1033;font-family:Arial,sans-serif;font-size:13px;font-weight:bold;text-transform:uppercase;">Ver Documento</center>
+                                        </v:roundrect>
+                                        <![endif]-->
+                                        <a href="{{ route('documentos.show', $documento->id) }}"
+                                           style="display:inline-block;padding:14px 34px;font-size:13px;font-weight:bold;color:#2d1033;background:linear-gradient(135deg,#D4A018,#f0c84a);border-radius:8px;text-transform:uppercase;letter-spacing:1px;text-decoration:none;box-shadow:0 4px 20px rgba(212,160,24,0.25);mso-hide:all;">
+                                            Ver Documento →
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         </table>
@@ -101,7 +117,7 @@
                             {{ config('app.name') }}
                         </p>
                         <p style="margin:12px 0 0;font-size:11px;color:rgba(255,255,255,0.65);">
-                            &copy; {{ date('Y') }} Gestión Documental
+                            &copy; {{ date('Y') }} Gestión Documental · Notificación automática, por favor no responda a este mensaje.
                         </p>
                     </td>
                 </tr>

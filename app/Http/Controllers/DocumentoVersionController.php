@@ -39,12 +39,14 @@ public function marcarObsoleto(DocumentoVersion $version)
         'estatus' => 'obsoleto'
     ]);
 
-    return back()->with('success', 'Version marcada como obsoleta');
-     // 📧 enviar correo a admins SGI
+    // enviar correo a admins SGI
+    $documento = $version->documento;
     $admins = User::role('administrador_sgi')->get();
 
     foreach ($admins as $admin) {
-        Mail::to($admin->email)->send(new DocumentoBajaMailable($documento));
+        if ($admin->email) {
+            Mail::to($admin->email)->send(new DocumentoBajaMailable($documento));
+        }
     }
 
     return back()->with('success', 'Versión marcada como obsoleta y notificada');

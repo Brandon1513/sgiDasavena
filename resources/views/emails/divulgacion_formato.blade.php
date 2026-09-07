@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--[if gte mso 9]>
+    <xml>
+        <o:OfficeDocumentSettings>
+            <o:AllowPNG/>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
     <title>Formato Divulgado</title>
-    <link href="https://fonts.googleapis.com/css2?family=Questrial&display=swap" rel="stylesheet">
     <style>
-        body { margin: 0; padding: 0; background-color: #f3eef6; font-family: 'Century Gothic', 'Questrial', Helvetica, Arial, sans-serif; }
+        body { margin: 0; padding: 0; background-color: #f3eef6; font-family: Arial, Helvetica, sans-serif; }
         table { border-collapse: collapse; }
         a { text-decoration: none !important; }
         @media only screen and (max-width: 620px) {
@@ -15,7 +22,7 @@
         }
     </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f3eef6;">
+<body style="margin:0;padding:0;background-color:#f3eef6;font-family:Arial, Helvetica, sans-serif;">
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3eef6;padding:40px 0;">
 <tr><td align="center">
@@ -31,11 +38,11 @@
                 
                 <table role="presentation" width="100%" style="position:relative;z-index:2;">
                     <tr><td align="center">
-                        <div style="display:inline-block;padding:5px 16px;border-radius:100px;background:rgba(159,111,176,0.2);border:1px solid rgba(159,111,176,0.4);color:#e0c3fc;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;margin-bottom:24px;">
+                        <div style="display:inline-block;padding:5px 16px;border-radius:100px;background:rgba(159,111,176,0.2);border:1px solid rgba(159,111,176,0.4);color:#e0c3fc;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:bold;margin-bottom:24px;font-family:Arial, sans-serif;">
                             ✓ &nbsp;Proceso Finalizado
                         </div>
-                        <h1 style="margin:0;font-size:26px;color:#ffffff;font-weight:bold;">Formato<br>Divulgado</h1>
-                        <p style="margin:14px 0 0;font-size:14px;color:rgba(255,255,255,0.7);">La actualización se ha completado satisfactoriamente y ya está disponible.</p>
+                        <h1 style="margin:0;font-size:26px;color:#ffffff;font-weight:bold;font-family:Arial, sans-serif;">Formato<br>Divulgado</h1>
+                        <p style="margin:14px 0 0;font-size:14px;color:rgba(255,255,255,0.7);font-family:Arial, sans-serif;">La actualización se ha completado satisfactoriamente y ya está disponible.</p>
                     </td></tr>
                 </table>
             </td>
@@ -43,21 +50,26 @@
 
         <tr>
             <td class="pad" style="padding:44px 50px 36px;">
-                <p style="margin:0 0 10px;font-size:15px;color:#2d1033;font-weight:bold;">Hola equipo,</p>
-                <p style="margin:0 0 36px;font-size:14px;color:#5a4a65;line-height:1.75;">Se ha concluido el flujo de actualización. El nuevo formato ya se encuentra vigente en la plataforma:</p>
+                <p style="margin:0 0 10px;font-size:15px;color:#2d1033;font-weight:bold;font-family:Arial, sans-serif;">Hola equipo,</p>
+                <p style="margin:0 0 36px;font-size:14px;color:#5a4a65;line-height:1.75;font-family:Arial, sans-serif;">Se ha concluido el flujo de actualización. El nuevo formato ya se encuentra vigente en la plataforma:</p>
 
-                <table role="presentation" width="100%" style="background:linear-gradient(180deg, #fcfbfd 0%, #f7f4f9 100%);border:1px solid #e8deed;border-radius:12px;overflow:hidden;">
+                <table role="presentation" width="100%" style="background:#ffffff;border:1px solid #e8deed;border-radius:12px;overflow:hidden;">
+                    <tr>
+                        <td colspan="2" style="padding:14px 20px;background:linear-gradient(180deg, #fcfbfd 0%, #f7f4f9 100%);border-bottom:1px solid #e8deed;">
+                            <span style="font-size:10px;font-weight:bold;color:#6A2C75;letter-spacing:1px;text-transform:uppercase;font-family:Arial, sans-serif;">Resumen del Formato</span>
+                        </td>
+                    </tr>
                     <tr>
                         <td style="padding:20px;">
                             <table role="presentation" width="100%">
                                 <tr>
-                                    <td style="font-size:11px;color:#8b6b96;font-weight:bold;text-transform:uppercase;">Documento</td>
-                                    <td style="font-size:14px;color:#3a1844;text-align:right;font-weight:bold;">{{ $documento->nombre }}</td>
+                                    <td style="font-size:11px;color:#8b6b96;font-weight:bold;text-transform:uppercase;font-family:Arial, sans-serif;">Documento</td>
+                                    <td style="font-size:14px;color:#3a1844;text-align:right;font-weight:bold;font-family:Arial, sans-serif;">{{ $documento->nombre }}</td>
                                 </tr>
                                 <tr><td colspan="2" style="height:15px;"></td></tr>
                                 <tr>
-                                    <td style="font-size:11px;color:#8b6b96;font-weight:bold;text-transform:uppercase;">Código</td>
-                                    <td style="font-size:14px;color:#3a1844;text-align:right;">{{ $documento->codigo }}</td>
+                                    <td style="font-size:11px;color:#8b6b96;font-weight:bold;text-transform:uppercase;font-family:Arial, sans-serif;">Código</td>
+                                    <td style="font-size:14px;color:#3a1844;text-align:right;font-family:Arial, sans-serif;">{{ $documento->codigo }}</td>
                                 </tr>
                             </table>
                         </td>
@@ -66,7 +78,15 @@
 
                 <table role="presentation" width="100%" style="margin-top:30px;">
                     <tr><td align="center">
-                        <a href="{{ route('documentos.show', $documento->id) }}" style="display:inline-block;padding:16px 40px;font-size:12px;font-weight:bold;color:#ffffff;border-radius:8px;background:linear-gradient(135deg,#6A2C75,#8f56a0);box-shadow:0 4px 20px rgba(106,44,117,0.3);text-transform:uppercase;letter-spacing:2px;">Acceder al Formato</a>
+                        <div>
+                            <!--[if mso]>
+                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{ route('documentos.show', $documento->id) }}" style="height:48px;v-text-anchor:middle;width:220px;" arcsize="17%" stroke="f" fillcolor="#6A2C75">
+                                <w:anchorlock/>
+                                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:12px;font-weight:bold;text-transform:uppercase;">Acceder al Formato</center>
+                            </v:roundrect>
+                            <![endif]-->
+                            <a href="{{ route('documentos.show', $documento->id) }}" style="display:inline-block;padding:16px 40px;font-size:12px;font-weight:bold;color:#ffffff;border-radius:8px;background:linear-gradient(135deg,#6A2C75,#8f56a0);box-shadow:0 4px 20px rgba(106,44,117,0.3);text-transform:uppercase;letter-spacing:2px;font-family:Arial, sans-serif;mso-hide:all;">Acceder al Formato</a>
+                        </div>
                     </td></tr>
                 </table>
             </td>
@@ -74,7 +94,8 @@
 
         <tr>
             <td style="padding:28px 50px 32px;background:#2d1033;text-align:center;">
-                <p style="margin:0;font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Sistema de Gestión Integral</p>
+                <p style="margin:0;font-size:11px;color:#ffffff;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-family:Arial, sans-serif;">{{ config('app.name') }}</p>
+                <p style="margin:10px 0 0;font-size:11px;color:rgba(255,255,255,0.6);font-family:Arial, sans-serif;">&copy; {{ date('Y') }} Gestión Documental SGI · Notificación automática, por favor no responda a este mensaje.</p>
             </td>
         </tr>
     </table>

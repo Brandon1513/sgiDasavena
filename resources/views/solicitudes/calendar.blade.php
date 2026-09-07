@@ -200,6 +200,8 @@
                                     <option value="por_vencer">Por vencer (0–30 días)</option>
                                     <option value="alerta">Alerta (31–60 días)</option>
                                     <option value="en_regla">En regla (&gt;60 días)</option>
+                                    <option value="baja">Dados de baja</option>
+                                    <option value="obsoleto">Obsoletos</option>
                                 </select>
                             </div>
                             <div class="space-y-1">
@@ -214,6 +216,14 @@
                                 <input id="historicos" type="checkbox" class="w-4 h-4 rounded border-[#6A2C75]/30 text-[#6A2C75] focus:ring-[#6A2C75]/30">
                                 <span class="text-[10px] font-bold text-[#4a2a55] uppercase tracking-widest">Históricos</span>
                             </label>
+                            <button type="button" id="btnObsoletos"
+                                class="self-end flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-300 rounded-lg text-slate-600 text-xs font-bold hover:bg-slate-200 hover:-translate-y-0.5 active:scale-95 transition-all duration-200">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                                </svg>
+                                Obsoletos
+                                <span id="statObsoletosBadge" class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-slate-500 text-white text-[10px] font-bold">0</span>
+                            </button>
                             <button id="btnFiltrar"
                                 class="self-end px-6 py-2 bg-gradient-to-r from-[#D4A018] to-[#f0c84a] text-[#2d1033] rounded-lg text-xs font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all duration-200">
                                 Aplicar Filtros
@@ -248,6 +258,45 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Carpeta: Obsoletos --}}
+    <div id="modalObsoletos" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4">
+        <div id="modalObsoletosBackdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+        <div class="relative bg-white w-full max-w-4xl max-h-[80vh] rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col anim-fade">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center text-slate-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-slate-800">Carpeta: Obsoletos</h3>
+                        <p class="text-xs text-slate-500">Versiones y revisiones marcadas como obsoletas</p>
+                    </div>
+                </div>
+                <button id="closeObsoletos" class="p-2 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="overflow-y-auto flex-1">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-100 sticky top-0">
+                            <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tipo</th>
+                            <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Código</th>
+                            <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nombre</th>
+                            <th class="px-6 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest">Área</th>
+                            <th class="px-6 py-3 text-center text-[10px] font-bold text-slate-500 uppercase tracking-widest">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="obsoletosBody" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -310,7 +359,11 @@
                 `;
 
                 events.slice(0,3).forEach(e => {
-                    const color = e.severity === 'danger'
+                    const color = e.severity === 'baja'
+                        ? 'border-gray-400 bg-gray-100 text-gray-600'
+                        : e.severity === 'obsoleto'
+                        ? 'border-slate-400 bg-slate-100 text-slate-600'
+                        : e.severity === 'danger'
                         ? 'border-[#6A2C75] bg-[#6A2C75]/06 text-[#6A2C75]'
                         : e.severity === 'warning'
                         ? 'border-amber-500 bg-amber-50 text-amber-700'
@@ -343,22 +396,36 @@
             }
 
             list.forEach(row => {
+                const isBaja = row.severity === 'baja';
+                const isObsoleto = row.severity === 'obsoleto';
                 // CORRECCIÓN: Forzar conversión a número para evitar fallos en la lógica de colores
                 const days = parseInt(row.days_left);
-                let badge, dot;
+                let badge, dot, label;
 
-                if (days < 0) {
+                if (isBaja) {
+                    badge = 'bg-gray-100 text-gray-600 border-gray-200';
+                    dot   = 'bg-gray-400';
+                    label = 'Baja';
+                } else if (isObsoleto) {
+                    badge = 'bg-slate-100 text-slate-600 border-slate-200';
+                    dot   = 'bg-slate-400';
+                    label = 'Obsoleto';
+                } else if (days < 0) {
                     badge = 'bg-[#6A2C75]/10 text-[#6A2C75] border-[#6A2C75]/25';
                     dot   = 'bg-[#6A2C75]';
+                    label = 'Vencido';
                 } else if (days <= 30) {
                     badge = 'bg-red-100 text-red-700 border-red-200';
                     dot   = 'bg-red-500';
+                    label = days + ' días';
                 } else if (days <= 60) {
                     badge = 'bg-amber-100 text-amber-700 border-amber-200';
                     dot   = 'bg-amber-500';
+                    label = days + ' días';
                 } else {
                     badge = 'bg-emerald-100 text-emerald-700 border-emerald-200';
                     dot   = 'bg-emerald-500';
+                    label = days + ' días';
                 }
 
                 body.insertAdjacentHTML('beforeend', `
@@ -366,7 +433,7 @@
                         <td class="px-6 py-4">
                             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border ${badge}">
                                 <span class="w-1.5 h-1.5 rounded-full ${dot} flex-shrink-0"></span>
-                                ${days < 0 ? 'Vencido' : days + ' días'}
+                                ${label}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-[10px] font-bold text-[#6A2C75]/60 uppercase tracking-widest">${row.vencimiento_tipo || ''}</td>
@@ -386,6 +453,62 @@
                 `);
             });
         }
+
+        function loadObsoletos() {
+            const params = new URLSearchParams({
+                month:      yyyymm(current),
+                historicos: '1',
+                estado:     'obsoleto',
+                tipo:       'both',
+            });
+
+            fetch(`${DATA_URL}?${params.toString()}`)
+                .then(r => r.json())
+                .then(data => {
+                    const list = data.list || [];
+                    document.getElementById('statObsoletosBadge').innerText = list.length;
+                    renderObsoletos(list);
+                })
+                .catch(err => console.error('Error cargando obsoletos:', err));
+        }
+
+        function renderObsoletos(list) {
+            const body = document.getElementById('obsoletosBody');
+            body.innerHTML = '';
+
+            if (!list.length) {
+                body.innerHTML = `<tr><td colspan="5" class="py-16 text-center text-slate-400 text-sm">No hay elementos obsoletos.</td></tr>`;
+                return;
+            }
+
+            list.forEach(row => {
+                body.insertAdjacentHTML('beforeend', `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">${row.vencimiento_tipo || ''}</td>
+                        <td class="px-6 py-4 text-xs font-bold text-slate-800">${row.codigo_documento || ''}</td>
+                        <td class="px-6 py-4">
+                            <p class="text-xs font-semibold text-slate-800">${row.nombre_documento || ''}</p>
+                            <p class="text-[10px] text-slate-400 uppercase mt-0.5">${row.tipo_documento || ''}</p>
+                        </td>
+                        <td class="px-6 py-4 text-xs text-slate-600">${row.area || 'N/A'}</td>
+                        <td class="px-6 py-4 text-center">
+                            <a href="${row.url_documento || '#'}" target="_blank"
+                                class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 text-[10px] font-bold transition-colors border border-slate-200">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        const modalObsoletos = document.getElementById('modalObsoletos');
+        document.getElementById('btnObsoletos').onclick = () => {
+            modalObsoletos.classList.remove('hidden');
+            loadObsoletos();
+        };
+        document.getElementById('closeObsoletos').onclick = () => modalObsoletos.classList.add('hidden');
+        document.getElementById('modalObsoletosBackdrop').onclick = () => modalObsoletos.classList.add('hidden');
 
         document.getElementById('prevMonth').onclick = () => { current.setMonth(current.getMonth()-1); loadData(); };
         document.getElementById('nextMonth').onclick = () => { current.setMonth(current.getMonth()+1); loadData(); };
@@ -414,5 +537,6 @@
         }, 1000);
 
         loadData();
+        loadObsoletos();
     </script>
 </x-app-layout>

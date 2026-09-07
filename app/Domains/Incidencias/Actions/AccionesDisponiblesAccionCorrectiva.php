@@ -20,6 +20,7 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'primary',
                     'texto' => 'Abrir acción correctiva',
                     'accion' => 'abrir',
+                    'estado_destino' => 'abierta',
                 ],
             ],
 
@@ -28,6 +29,7 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'primary',
                     'texto' => 'Gestionar contención',
                     'accion' => 'contencion',
+                    'estado_destino' => 'contencion',
                 ],
             ],
 
@@ -36,6 +38,7 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'primary',
                     'texto' => 'Continuar análisis',
                     'accion' => 'analisis',
+                    'estado_destino' => 'analisis',
                 ],
             ],
 
@@ -44,14 +47,16 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'primary',
                     'texto' => 'Continuar análisis',
                     'accion' => 'analisis',
+                    'estado_destino' => 'analisis',
                 ],
             ],
 
             'validacion_causa' => [
                 [
                     'tipo' => 'primary',
-                    'texto' => 'Validar causa raíz',
+                    'texto' => 'Continuar al plan de acción',
                     'accion' => 'validar_causa',
+                    'estado_destino' => 'plan_accion',
                 ],
             ],
 
@@ -62,32 +67,36 @@ class AccionesDisponiblesAccionCorrectiva
             'ejecucion' => [
                 [
                     'tipo' => 'primary',
-                    'texto' => 'Gestionar actividades',
-                    'accion' => 'ejecucion',
+                    'texto' => 'Continuar a verificación de cierre',
+                    'accion' => 'verificacion_cierre',
+                    'estado_destino' => 'verificacion_cierre',
                 ],
             ],
 
             'verificacion_cierre' => [
                 [
                     'tipo' => 'primary',
-                    'texto' => 'Registrar verificación de cierre',
-                    'accion' => 'verificacion_cierre',
+                    'texto' => 'Pasar a espera de eficacia',
+                    'accion' => 'espera_eficacia',
+                    'estado_destino' => 'espera_eficacia',
                 ],
             ],
 
             'espera_eficacia' => [
                 [
                     'tipo' => 'warning',
-                    'texto' => 'Verificar eficacia',
+                    'texto' => 'Pasar a verificación de eficacia',
                     'accion' => 'espera_eficacia',
+                    'estado_destino' => 'verificacion_eficacia',
                 ],
             ],
 
             'verificacion_eficacia' => [
                 [
                     'tipo' => 'primary',
-                    'texto' => 'Registrar verificación de eficacia',
+                    'texto' => 'Continuar verificación de eficacia',
                     'accion' => 'verificacion_eficacia',
+                    'estado_destino' => 'verificacion_eficacia',
                 ],
             ],
 
@@ -98,6 +107,7 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'danger',
                     'texto' => 'Revisar acción correctiva',
                     'accion' => 'revisar',
+                    'estado_destino' => 'analisis',
                 ],
             ],
 
@@ -111,41 +121,34 @@ class AccionesDisponiblesAccionCorrectiva
         $plan = $accionCorrectiva->planesAccion
             ->firstWhere('ciclo', $accionCorrectiva->ciclo_actual);
 
-        /*
-         * Todavía no existe un plan para el ciclo actual.
-         */
         if (!$plan) {
             return [
                 [
                     'tipo' => 'primary',
                     'texto' => 'Crear plan de acción',
                     'accion' => 'plan_accion',
+                    'estado_destino' => 'plan_accion',
                 ],
             ];
         }
 
-        /*
-         * El plan ya fue completado.
-         * La AC debe avanzar a ejecución.
-         */
         if ($plan->estado === 'completado') {
             return [
                 [
                     'tipo' => 'primary',
                     'texto' => 'Continuar ejecución',
                     'accion' => 'ejecucion',
+                    'estado_destino' => 'ejecucion',
                 ],
             ];
         }
 
-        /*
-         * El plan todavía está en proceso.
-         */
         return [
             [
                 'tipo' => 'primary',
                 'texto' => 'Gestionar plan de acción',
                 'accion' => 'plan_accion',
+                'estado_destino' => 'plan_accion',
             ],
         ];
     }

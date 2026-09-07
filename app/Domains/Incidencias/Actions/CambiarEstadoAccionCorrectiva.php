@@ -11,6 +11,9 @@ use Illuminate\Validation\ValidationException;
 use App\Domains\Incidencias\Models\AcVerificacionCierre;
 use App\Domains\Incidencias\Models\AcVerificacionEficacia;
 
+
+use Illuminate\Http\Request;
+
 class CambiarEstadoAccionCorrectiva
 {
     /**
@@ -75,7 +78,6 @@ class CambiarEstadoAccionCorrectiva
              */
             $accionCorrectiva->loadMissing([
                 'estado',
-                'contenciones',
             ]);
 
             /*
@@ -118,7 +120,7 @@ class CambiarEstadoAccionCorrectiva
                 $estadoActual === EstadoAccionCorrectiva::CONTENCION->value &&
                 $nuevoEstado === EstadoAccionCorrectiva::ANALISIS
             ) {
-                if ($accionCorrectiva->contenciones->isEmpty()) {
+                if (!$accionCorrectiva->contenciones()->exists()) {
                     throw ValidationException::withMessages([
                         'estado' =>
                         'No es posible avanzar al análisis de causa raíz. '
@@ -566,4 +568,6 @@ class CambiarEstadoAccionCorrectiva
             ]);
         });
     }
+
+    
 }

@@ -39,6 +39,8 @@
                 }">
                 @csrf
 
+                @php $doc = $solicitud->documento; $verVigente = $doc?->versionVigente; @endphp
+
                 {{-- SECCIÓN 1: RESUMEN --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
@@ -67,7 +69,75 @@
                     </div>
                 </div>
 
-                {{-- SECCIÓN 2: DATOS DE SGI --}}
+                {{-- SECCIÓN 2 (BAJA): Info del documento a decomisionar, solo lectura --}}
+                @if($solicitud->accion === 'baja')
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="px-6 py-4 bg-gradient-to-r from-red-50 to-red-100 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Documento a dar de Baja</h3>
+                        <p class="text-xs text-gray-600 mt-1">Al atender, el documento y su versión/revisión vigentes quedarán marcados como baja/obsoletos.</p>
+                    </div>
+
+                    <div class="px-6 py-5 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Código</label>
+                                <input type="text" value="{{ $doc->codigo ?? $solicitud->codigo_documento }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre</label>
+                                <input type="text" value="{{ $doc->nombre ?? $solicitud->nombre_documento }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Área</label>
+                                <input type="text" value="{{ $doc->area ?? '—' }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Versión vigente</label>
+                                <input type="text" value="{{ $verVigente->version ?? '—' }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Revisión actual</label>
+                                <input type="text" value="{{ $verVigente->revision_actual ?? '—' }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Estatus actual</label>
+                                <input type="text" value="{{ strtoupper($doc->estatus ?? '—') }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento de versión</label>
+                                <input type="text" value="{{ optional($verVigente?->fecha_vencimiento_version)->format('Y-m-d') ?? '—' }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Vencimiento de revisión</label>
+                                <input type="text" value="{{ optional($verVigente?->fecha_vencimiento_revision)->format('Y-m-d') ?? '—' }}" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Liga de archivo</label>
+                            @if($verVigente?->liga_archivo)
+                            <a href="{{ $verVigente->liga_archivo }}" target="_blank" class="block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-[#6A2C75] hover:underline truncate">{{ $verVigente->liga_archivo }}</a>
+                            @else
+                            <input type="text" value="—" readonly class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed">
+                            @endif
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Motivo de la baja (solicitante)</label>
+                            <textarea readonly rows="3" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-600 cursor-not-allowed resize-none">{{ $solicitud->motivo_baja }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- SECCIÓN 2: DATOS DE SGI (no aplica para solicitudes de BAJA) --}}
+                @if($solicitud->accion !== 'baja')
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                     <div class="px-6 py-4 bg-gradient-to-r from-green-50 to-green-100 border-b border-gray-200">
                         <h3 class="text-lg font-semibold text-gray-900">Datos Oficiales (SGI)</h3>
@@ -91,23 +161,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-show="isCambioRevision()" x-transition>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Actual <span class="text-red-500" x-show="isAtender()">*</span></label>
-                                <input type="text" name="revision_actual" value="{{ old('revision_actual', $solicitud->revision_actual) }}" :disabled="isRechazar() || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <input type="text" name="revision_actual" value="{{ old('revision_actual', $solicitud->revision_actual ?? $verVigente?->revision_actual) }}" :disabled="isRechazar() || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Número de Revisión Anterior</label>
-                                <input type="text" name="revision_anterior" value="{{ old('revision_anterior', $solicitud->revision_anterior) }}" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <input type="text" name="revision_anterior" value="{{ old('revision_anterior', $solicitud->revision_anterior ?? $verVigente?->revision_anterior) }}" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Código de documento <span class="text-red-500" x-show="isAtender()">*</span></label>
-                            <input type="text" name="codigo_documento" value="{{ old('codigo_documento', $solicitud->codigo_documento) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="Ej. SGI-PR-001" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <input type="text" name="codigo_documento" value="{{ old('codigo_documento', $solicitud->codigo_documento ?? $doc?->codigo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="Ej. SGI-PR-001" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         </div>
 
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de versión <span class="text-red-500" x-show="isAtender()">*</span></label>
-                                                        <input type="date" name="fecha_version" id="fecha_version" value="{{ old('fecha_version', optional($solicitud->fecha_version)->format('Y-m-d')) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                                        <input type="date" name="fecha_version" id="fecha_version" value="{{ old('fecha_version', optional($solicitud->fecha_version ?? $verVigente?->fecha_version)->format('Y-m-d')) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                                                     </div>
                                                     <div x-show="isCambioRevision()" x-transition>
                                                         <div class="mb-4">
@@ -117,37 +187,39 @@
                                                             </label>
                                                         </div>
                                                         <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de revisión <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span></label>
-                                                        <input type="date" name="fecha_revision" id="fecha_revision" value="{{ old('fecha_revision', optional($solicitud->fecha_revision)->format('Y-m-d')) }}" :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
+                                                        <input type="date" name="fecha_revision" id="fecha_revision" value="{{ old('fecha_revision', optional($solicitud->fecha_revision ?? $verVigente?->fecha_revision)->format('Y-m-d')) }}" :disabled="isRechazar() || mismaFechaRevision || isSoloVersion()" :required="isAtender() && isCambioRevision()" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
                                                     </div>
                                                 </div>
 
                                                 <div>
                                                     <label class="block text-sm font-medium text-gray-700 mb-2">Formato <span class="text-red-500" x-show="isAtender()">*</span></label>
+                                                    @php $formatoActual = old('formato_el_pa', $solicitud->formato_el_pa ?? $doc?->formato_el_pa); @endphp
                                                     <select name="formato_el_pa" :disabled="isRechazar()" :required="isAtender()" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition">
                                                         <option value="">Seleccionar...</option>
-                                                        <option value="EL" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL' ? 'selected' : '' }}>EL (Electrónico)</option>
-                                                        <option value="PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'PA' ? 'selected' : '' }}>PA (Papel)</option>
-                                                        <option value="EL/PA" {{ old('formato_el_pa', $solicitud->formato_el_pa) === 'EL/PA' ? 'selected' : '' }}>EL/PA (Ambos)</option>
+                                                        <option value="EL" {{ $formatoActual === 'EL' ? 'selected' : '' }}>EL (Electrónico)</option>
+                                                        <option value="PA" {{ $formatoActual === 'PA' ? 'selected' : '' }}>PA (Papel)</option>
+                                                        <option value="EL/PA" {{ $formatoActual === 'EL/PA' ? 'selected' : '' }}>EL/PA (Ambos)</option>
                                                     </select>
                                                 </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Vigencia versión (días) <span class="text-red-500" x-show="isAtender()">*</span></label>
-                                <input type="number" name="vigencia_version_dias" value="{{ old('vigencia_version_dias', $solicitud->vigencia_version_dias ?? 365) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <input type="number" name="vigencia_version_dias" value="{{ old('vigencia_version_dias', $solicitud->vigencia_version_dias ?? $verVigente?->vigencia_version_dias ?? 365) }}" :required="isAtender()" :disabled="isRechazar()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                             <div x-show="isCambioRevision()" x-transition>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Vigencia revisión (días) <span class="text-red-500" x-show="isAtender() && isCambioRevision()">*</span></label>
-                                <input type="number" name="vigencia_revision_dias" value="{{ old('vigencia_revision_dias', $solicitud->vigencia_revision_dias ?? 730) }}" :required="isAtender() && isCambioRevision()" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <input type="number" name="vigencia_revision_dias" value="{{ old('vigencia_revision_dias', $solicitud->vigencia_revision_dias ?? $verVigente?->vigencia_revision_dias ?? 730) }}" :required="isAtender() && isCambioRevision()" :disabled="isRechazar() || isSoloVersion()" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Medio de archivo (Liga SharePoint) <span class="text-red-500" x-show="isAtender()">*</span></label>
-                            <input type="text" name="liga_archivo" value="{{ old('liga_archivo', $solicitud->liga_archivo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="https://..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <input type="text" name="liga_archivo" value="{{ old('liga_archivo', $solicitud->liga_archivo ?? $verVigente?->liga_archivo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="https://..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         </div>
                     </div>
                 </div>
+                @endif
 
                 {{-- SECCIÓN 3: NOTIFICACIONES --}}
                 <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

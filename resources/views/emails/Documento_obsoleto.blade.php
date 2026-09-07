@@ -26,13 +26,13 @@
                                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                         <tr>
                                             <td style="background-color:rgba(220,38,38,0.2);border:1px solid #dc2626;padding:6px 16px;border-radius:100px;">
-                                                <span style="color:#fca5a5;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;">● Aviso de Vigencia</span>
+                                                <span style="color:#fca5a5;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;font-family:Arial, Helvetica, sans-serif;">● Aviso de Vigencia</span>
                                             </td>
                                         </tr>
                                     </table>
                                     
-                                    <h1 style="margin:24px 0 0;font-size:26px;line-height:1.2;font-weight:bold;color:#ffffff;">Documento<br>Marcado como Obsoleto</h1>
-                                    <p style="margin:14px 0 0;font-size:14px;color:#9ca3af;line-height:1.6;">
+                                    <h1 style="margin:24px 0 0;font-size:26px;line-height:1.2;font-weight:bold;color:#ffffff;font-family:Arial, Helvetica, sans-serif;">Documento<br>Marcado como Obsoleto</h1>
+                                    <p style="margin:14px 0 0;font-size:14px;color:#9ca3af;line-height:1.6;font-family:Arial, Helvetica, sans-serif;">
                                         Este archivo ha sido retirado de la circulación oficial y ya no debe ser utilizado.
                                     </p>
                                 </td>
@@ -43,46 +43,46 @@
 
                 <tr>
                     <td style="padding:40px;background-color:#ffffff;">
-                        <p style="margin:0 0 10px;font-size:15px;color:#111827;font-weight:bold;">Atención,</p>
-                        <p style="margin:0 0 30px;font-size:14px;color:#4b5563;line-height:1.75;">
+                        <p style="margin:0 0 10px;font-size:15px;color:#111827;font-weight:bold;font-family:Arial, Helvetica, sans-serif;">Atención,</p>
+                        <p style="margin:0 0 30px;font-size:14px;color:#4b5563;line-height:1.75;font-family:Arial, Helvetica, sans-serif;">
                             Se le informa que el siguiente documento ha cambiado su estado de vigencia:
                         </p>
 
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;">
                             <tr>
                                 <td colspan="2" bgcolor="#f3f4f6" style="padding:14px 24px;border-bottom:1px solid #e5e7eb;border-radius:12px 12px 0 0;">
-                                    <span style="font-size:10px;font-weight:bold;color:#374151;letter-spacing:1px;text-transform:uppercase;">Identificación del Documento</span>
+                                    <span style="font-size:10px;font-weight:bold;color:#374151;letter-spacing:1px;text-transform:uppercase;font-family:Arial, Helvetica, sans-serif;">Identificación del Documento</span>
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;">Código</td>
-                                <td align="right" style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;font-weight:bold;">
+                                <td style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;font-family:Arial, Helvetica, sans-serif;">Código</td>
+                                <td align="right" style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;font-weight:bold;font-family:Arial, Helvetica, sans-serif;">
                                     {{ $documento->codigo }}
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;">Nombre</td>
-                                <td align="right" style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;">
+                                <td style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;font-family:Arial, Helvetica, sans-serif;">Nombre</td>
+                                <td align="right" style="padding:16px 24px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;font-family:Arial, Helvetica, sans-serif;">
                                     {{ $documento->nombre }}
                                 </td>
                             </tr>
                             <tr>
-                                <td style="padding:16px 24px;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;">Área</td>
-                                <td align="right" style="padding:16px 24px;font-size:14px;color:#111827;">
+                                <td style="padding:16px 24px;font-size:11px;color:#6b7280;font-weight:bold;text-transform:uppercase;font-family:Arial, Helvetica, sans-serif;">Área</td>
+                                <td align="right" style="padding:16px 24px;font-size:14px;color:#111827;font-family:Arial, Helvetica, sans-serif;">
                                     {{ $documento->area }}
                                 </td>
                             </tr>
                         </table>
 
                         <div style="margin-top:24px;padding:20px;background-color:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
-                            <p style="margin:0 0 8px;font-size:10px;color:#991b1b;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">Acción realizada por:</p>
-                            <p style="margin:0;font-size:14px;color:#b91c1c;line-height:1.4;">
+                            <p style="margin:0 0 8px;font-size:10px;color:#991b1b;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-family:Arial, Helvetica, sans-serif;">Acción realizada por:</p>
+                            <p style="margin:0;font-size:14px;color:#b91c1c;line-height:1.4;font-family:Arial, Helvetica, sans-serif;">
                                 <strong>{{ $usuario->name }}</strong><br>
                                 <span style="font-size:13px;opacity:0.8;">{{ $usuario->email }}</span>
                             </p>
                         </div>
 
-                        <p style="margin:30px 0 0;font-size:13px;color:#6b7280;text-align:center;font-style:italic;">
+                        <p style="margin:30px 0 0;font-size:13px;color:#6b7280;text-align:center;font-style:italic;font-family:Arial, Helvetica, sans-serif;">
                             "Este documento ya no debe utilizarse para ningún proceso operativo o auditoría dentro del sistema SGI."
                         </p>
                     </td>
@@ -90,12 +90,11 @@
 
                 <tr>
                     <td bgcolor="#111827" align="center" style="padding:32px 40px;color:#ffffff;">
-                        <p style="margin:0;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;">
+                        <p style="margin:0;font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;font-family:Arial, Helvetica, sans-serif;">
                             {{ config('app.name') }}
                         </p>
-                        <p style="margin:12px 0 0;font-size:11px;color:#9ca3af;line-height:1.6;">
-                            &copy; {{ date('Y') }} Gestión de Calidad e Inocuidad<br>
-                            Este es un aviso automático de control documental.
+                        <p style="margin:12px 0 0;font-size:11px;color:#9ca3af;line-height:1.6;font-family:Arial, Helvetica, sans-serif;">
+                            &copy; {{ date('Y') }} Gestión de Calidad e Inocuidad · Este es un aviso automático, por favor no responda a este mensaje.
                         </p>
                     </td>
                 </tr>

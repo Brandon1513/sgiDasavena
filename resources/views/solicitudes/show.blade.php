@@ -62,12 +62,15 @@
         $vencVersion   = $vencVersion   ? \Carbon\Carbon::parse($vencVersion)->toDateString()   : null;
         $vencRevision  = $vencRevision  ? \Carbon\Carbon::parse($vencRevision)->toDateString()  : null;
 
+        // Documento dado de baja: se detiene el conteo de días
+        $esBaja = ($doc?->estatus ?? null) === 'baja';
+
         // Días restantes
-        $daysVersion = $vencVersion
+        $daysVersion = ($vencVersion && !$esBaja)
             ? $today->diffInDays(\Carbon\Carbon::parse($vencVersion)->startOfDay(), false)
             : null;
 
-        $daysRevision = $vencRevision
+        $daysRevision = ($vencRevision && !$esBaja)
             ? $today->diffInDays(\Carbon\Carbon::parse($vencRevision)->startOfDay(), false)
             : null;
 
@@ -185,8 +188,8 @@
                             <p class="text-sm text-gray-600">Vence: {{ $vencVersion ?? '—' }}</p>
                             <p class="text-xs text-gray-500 mt-1">Vigencia: {{ $vigV }} días</p>
                         </div>
-                        <span class="px-3 py-1 rounded text-sm font-bold {{ $badgeColor($daysVersion) }}">
-                            {{ $daysVersion !== null ? $daysVersion.' días' : 'N/A' }}
+                        <span class="px-3 py-1 rounded text-sm font-bold {{ $esBaja ? 'bg-gray-200 text-gray-700' : $badgeColor($daysVersion) }}">
+                            {{ $esBaja ? 'Baja' : ($daysVersion !== null ? $daysVersion.' días' : 'N/A') }}
                         </span>
                     </div>
                 </div>
@@ -200,8 +203,8 @@
                             <p class="text-sm text-gray-600">Vence: {{ $vencRevision ?? '—' }}</p>
                             <p class="text-xs text-gray-500 mt-1">Vigencia: {{ $vigR }} días</p>
                         </div>
-                        <span class="px-3 py-1 rounded text-sm font-bold {{ $badgeColor($daysRevision) }}">
-                            {{ $daysRevision !== null ? $daysRevision.' días' : 'N/A' }}
+                        <span class="px-3 py-1 rounded text-sm font-bold {{ $esBaja ? 'bg-gray-200 text-gray-700' : $badgeColor($daysRevision) }}">
+                            {{ $esBaja ? 'Baja' : ($daysRevision !== null ? $daysRevision.' días' : 'N/A') }}
                         </span>
                     </div>
                 </div>

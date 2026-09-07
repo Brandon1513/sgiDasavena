@@ -36,7 +36,7 @@ class TestMails extends Command
             return;
         }
 
-        $correo = 'TU_CORREO@gmail.com';
+        $correo = 'aux.sistemas@dasavena.com';
 
         try {
             Mail::to($correo)->send(new NuevaSolicitudMailable($solicitud));

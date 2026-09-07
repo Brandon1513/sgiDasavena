@@ -30,6 +30,8 @@ class Documento extends Model
     }
     public function getDiasParaVencimientoAttribute(): ?int
     {
+        if ($this->estatus === 'baja') return null;
+
         $v = $this->versionVigente;
         if (!$v) return null;
 
@@ -49,6 +51,8 @@ class Documento extends Model
     }
     public function getSemaforoVencimientoAttribute(): string
     {
+        if ($this->estatus === 'baja') return 'baja';
+
         $days = $this->dias_para_vencimiento;
 
         if ($days === null) return 'sin_fecha';
@@ -60,6 +64,7 @@ class Documento extends Model
     public function getEtiquetaVencimientoAttribute(): string
     {
         return match ($this->semaforo_vencimiento) {
+            'baja'    => 'Baja',
             'vencido' => 'Vencido',
             'critico' => 'Por vencer (≤ 30 días)',
             'alerta'  => 'Alerta (31–60 días)',

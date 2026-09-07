@@ -14,8 +14,12 @@
         .header h2 { margin: 0; color: #0f2a55; font-size: 24px; }
         .header p { margin: 0; color: #64748b; font-size: 14px; }
         .intro { color: #475569; line-height: 1.75; margin-bottom: 20px; }
-        .details { background: #f5fbff; border: 1px solid #d7e9ff; border-radius: 14px; padding: 18px; margin: 20px 0; }
-        .details p { margin: 0; color: #1f3a8a; font-weight: 600; }
+        .details { background: #f5fbff; border: 1px solid #d7e9ff; border-radius: 14px; padding: 4px 18px; margin: 20px 0; }
+        .detail-row { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid #e1edfa; }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: #5b7a9d; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+        .detail-value { color: #1f3a8a; font-weight: 600; text-align: right; }
+        .note { background: #fffcf5; border-left: 4px solid #D4A018; padding: 14px 16px; border-radius: 6px; color: #7a6040; font-size: 13px; line-height: 1.6; margin: 20px 0; }
         .footer { margin-top: 24px; font-size: 13px; color: #6b7280; border-top: 1px solid #e2e8f0; padding-top: 16px; }
     </style>
 </head>
@@ -35,11 +39,59 @@
             <p class="intro">Te informamos que se ha procesado con éxito el alta del documento en el sistema.</p>
 
             <div class="details">
-                <p><strong>Folio / Detalle:</strong> <span>{{ $data->nombre ?? 'N/A' }}</span></p>
-                @if(!empty($data->descripcion))
-                    <p><span>{{ $data->descripcion }}</span></p>
+                <div class="detail-row">
+                    <span class="detail-label">Documento</span>
+                    <span class="detail-value">{{ $solicitud->nombre_documento ?? 'N/A' }}</span>
+                </div>
+                @if(!empty($solicitud->codigo_documento))
+                    <div class="detail-row">
+                        <span class="detail-label">Código</span>
+                        <span class="detail-value">{{ $solicitud->codigo_documento }}</span>
+                    </div>
+                @endif
+                @if(!empty($solicitud->tipo_documento))
+                    <div class="detail-row">
+                        <span class="detail-label">Tipo de documento</span>
+                        <span class="detail-value">{{ $solicitud->tipo_documento }}</span>
+                    </div>
+                @endif
+                @if(!empty($solicitud->formato_el_pa))
+                    <div class="detail-row">
+                        <span class="detail-label">Formato</span>
+                        <span class="detail-value">{{ $solicitud->formato_el_pa }}</span>
+                    </div>
+                @endif
+                @if(!empty($solicitud->folio_version))
+                    <div class="detail-row">
+                        <span class="detail-label">Folio / Versión</span>
+                        <span class="detail-value">{{ $solicitud->folio_version }}</span>
+                    </div>
+                @endif
+                @if($solicitud->fecha_alta_sgi)
+                    <div class="detail-row">
+                        <span class="detail-label">Fecha de alta</span>
+                        <span class="detail-value">{{ $solicitud->fecha_alta_sgi->format('d/m/Y') }}</span>
+                    </div>
+                @endif
+                @if(!empty($solicitud->lugar_almacenamiento))
+                    <div class="detail-row">
+                        <span class="detail-label">Lugar de almacenamiento</span>
+                        <span class="detail-value">{{ $solicitud->lugar_almacenamiento }}</span>
+                    </div>
+                @endif
+                @if(!empty($solicitud->liga_archivo))
+                    <div class="detail-row">
+                        <span class="detail-label">Archivo</span>
+                        <span class="detail-value"><a href="{{ $solicitud->liga_archivo }}" style="color:#0f6fc2;">Ver documento</a></span>
+                    </div>
                 @endif
             </div>
+
+            @if(!empty($solicitud->comentarios))
+                <div class="note">
+                    <strong>Comentarios:</strong> {{ $solicitud->comentarios }}
+                </div>
+            @endif
 
             <p class="intro">Si tienes alguna duda o aclaración, por favor ponte en contacto con el administrador del sistema.</p>
 

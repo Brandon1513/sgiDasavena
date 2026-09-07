@@ -13,7 +13,8 @@
             <div class="flex flex-col sm:flex-row gap-3 items-start md:items-center shrink-0">
                 @php
                 $badgeDoc = match($documento->semaforo_vencimiento ?? 'sin_fecha') {
-                    'vencido'  => 'bg-gray-100 text-gray-600 border-gray-200',
+                    'baja'     => 'bg-gray-200 text-gray-700 border-gray-300',
+                    'vencido'  => 'bg-red-600 text-white border-red-700',
                     'critico'  => 'bg-red-50 text-red-700 border-red-200',
                     'alerta'   => 'bg-amber-50 text-amber-700 border-amber-200',
                     'en_regla' => 'bg-cyan-50 text-cyan-700 border-cyan-200',
@@ -24,7 +25,7 @@
                     {{ $documento->etiqueta_vencimiento ?? 'Sin fecha' }}
                 </span>
 
-                @if(auth()->user()->hasRole('administrador_sgi') || auth()->user()->hasRole('administrador'))
+                @if($documento->estatus !== 'baja' && (auth()->user()->hasRole('administrador_sgi') || auth()->user()->hasRole('administrador')))
                 <a href="{{ route('documentos.edit', $documento->id) }}"
                     class="bg-[#6A2C75] hover:bg-[#53225c] text-white font-semibold py-2 px-5 rounded-xl shadow-md transition-all duration-300 flex items-center gap-2">
                     <i class="fas fa-edit"></i> Editar Datos Oficiales
@@ -52,7 +53,7 @@
 
     $badgeColor = function($days) {
         if ($days === null) return 'bg-gray-100 text-gray-600';
-        if ($days < 0) return 'bg-gray-200 text-gray-700';
+        if ($days < 0) return 'bg-red-600 text-white';
         if ($days <= 30) return 'bg-red-100 text-red-700';
         if ($days <= 60) return 'bg-amber-100 text-amber-700';
         return 'bg-cyan-100 text-cyan-700';

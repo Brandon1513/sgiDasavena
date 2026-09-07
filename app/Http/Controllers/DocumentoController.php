@@ -187,11 +187,9 @@ class DocumentoController extends Controller
 
             $doc = Documento::with('versiones')->findOrFail($id);
 
-            // 🔴 Documento
+            // Documento
             $doc->update([
-                'estatus' => 'obsoleto',
-                'fecha_baja' => now(),
-                'baja_por' => $user->id,
+                'estatus' => 'baja',
             ]);
 
             // 🔴 Versiones
@@ -218,6 +216,9 @@ class DocumentoController extends Controller
         //solo permitir a admin sgi o admin
         if (!$user->hasRole('administrador_sgi') && !$user->hasRole('administrador')) {
             abort(403, 'No tienes permiso para editar documentos.');
+        }
+        if ($documento->estatus === 'baja') {
+            abort(403, 'No se pueden editar los datos oficiales de un documento dado de baja.');
         }
         return view('documentos.edit', compact('documento'));
     }

@@ -5,165 +5,187 @@
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
     }
 
-    /* ── Navbar principal ── */
+    /* Navbar principal */
     .nav-root nav {
-        background: rgba(250, 247, 251, 0.92);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border-bottom: 1px solid rgba(106, 44, 117, 0.12);
-        box-shadow: 0 2px 20px rgba(106, 44, 117, 0.07);
-        position: relative;
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(16px) saturate(160%);
+        -webkit-backdrop-filter: blur(16px) saturate(160%);
+        border-bottom: 1px solid rgba(106, 44, 117, 0.08);
+        position: sticky;
+        top: 0;
         z-index: 50;
+        transition: box-shadow .25s ease;
     }
 
-    /* Línea dorada superior */
+    /* Linea dorada superior, muy fina */
     .nav-root nav::before {
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 2px;
         background: linear-gradient(90deg, #6A2C75, #D4A018, #6A2C75);
+        background-size: 200% 100%;
+        animation: nav-gleam 6s linear infinite;
+    }
+    @keyframes nav-gleam {
+        0%   { background-position: 0% 0; }
+        100% { background-position: 200% 0; }
     }
 
-    /* ── Logo ── */
+    /* Logo */
     .nav-logo {
-        transition: transform 0.2s ease, opacity 0.2s ease;
+        transition: transform .35s cubic-bezier(.34,1.56,.64,1);
     }
-    .nav-logo:hover { transform: scale(1.04); opacity: 0.85; }
+    .nav-logo:hover { transform: scale(1.06) rotate(-3deg); }
+    .nav-logo:active { transform: scale(.96); }
 
-    /* ── Botón activo Inicio ── */
-    .nav-link-active {
-        background: linear-gradient(135deg, #6A2C75, #8e3d9e) !important;
-        color: #fff !important;
-        box-shadow: 0 3px 12px rgba(106, 44, 117, 0.3);
-    }
-
-    /* ── Botones dropdown ── */
-    .nav-dropdown-btn {
+    /* Item de navegacion unificado (links + triggers de dropdown) */
+    .nav-item {
+        position: relative;
         display: inline-flex;
         align-items: center;
-        padding: 7px 16px;
-        font-size: 0.82rem;
-        font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        color: #4a2a55;
-        background: rgba(106, 44, 117, 0.06);
-        border: 1px solid rgba(106, 44, 117, 0.18);
-        border-radius: 8px;
-        transition: all 0.2s ease;
-        cursor: pointer;
         gap: 6px;
-    }
-    .nav-dropdown-btn:hover {
-        background: rgba(106, 44, 117, 0.12);
-        border-color: rgba(106, 44, 117, 0.35);
-        box-shadow: 0 3px 12px rgba(106, 44, 117, 0.12);
-        color: #6A2C75;
-    }
-    .nav-dropdown-btn svg { transition: transform 0.25s ease; }
-    .nav-dropdown-btn:focus svg { transform: rotate(180deg); }
-
-    /* ── Nav link normal ── */
-    .nav-link-base {
-        display: inline-flex;
-        align-items: center;
-        padding: 7px 16px;
-        font-size: 0.82rem;
+        padding: 9px 14px;
+        font-size: 0.8rem;
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
         font-weight: 600;
-        letter-spacing: 0.04em;
-        color: #4a2a55;
-        border-radius: 8px;
+        letter-spacing: 0.03em;
+        color: #5b3a63;
+        background: transparent;
+        border: none;
+        border-radius: 10px;
         text-decoration: none;
-        transition: all 0.2s ease;
-        border: 1px solid transparent;
+        cursor: pointer;
+        transition: color .2s ease, background-color .2s ease, transform .15s ease;
     }
-    .nav-link-base:hover {
-        background: rgba(106, 44, 117, 0.06);
-        border-color: rgba(106, 44, 117, 0.15);
+    .nav-item::after {
+        content: '';
+        position: absolute;
+        left: 14px; right: 14px; bottom: 3px;
+        height: 2px;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #6A2C75, #D4A018);
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform .3s cubic-bezier(.4,0,.2,1);
+    }
+    .nav-item:hover {
         color: #6A2C75;
+        background: rgba(106, 44, 117, 0.05);
+    }
+    .nav-item:hover::after { transform: scaleX(1); }
+    .nav-item:active { transform: scale(.95); }
+
+    .nav-item-active {
+        color: #6A2C75 !important;
+        background: rgba(106, 44, 117, 0.07);
+    }
+    .nav-item-active::after { transform: scaleX(1) !important; }
+
+    .nav-item svg.nav-chevron {
+        transition: transform .25s ease;
+        opacity: .55;
     }
 
-    /* ── Avatar / Perfil ── */
+    /* Avatar / Perfil */
     .nav-avatar {
-        width: 30px; height: 30px;
+        width: 28px; height: 28px;
         border-radius: 50%;
         background: linear-gradient(135deg, #6A2C75, #D4A018);
         display: flex; align-items: center; justify-content: center;
         color: #fff;
-        font-size: 0.78rem;
+        font-size: 0.75rem;
         font-weight: 700;
         flex-shrink: 0;
-        box-shadow: 0 2px 8px rgba(106,44,117,0.3);
+        box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 2px 8px rgba(106,44,117,0.25);
+        transition: box-shadow .2s ease;
     }
 
-    /* ── Botón perfil ── */
+    /* Boton perfil */
     .nav-profile-btn {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 6px 14px 6px 8px;
+        padding: 5px 14px 5px 6px;
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 600;
         color: #4a2a55;
-        background: rgba(106, 44, 117, 0.06);
-        border: 1px solid rgba(106, 44, 117, 0.18);
+        background: rgba(106, 44, 117, 0.04);
+        border: 1px solid rgba(106, 44, 117, 0.12);
         border-radius: 100px;
-        transition: all 0.2s ease;
+        transition: all .2s ease;
         cursor: pointer;
     }
     .nav-profile-btn:hover {
-        background: rgba(106, 44, 117, 0.12);
-        border-color: rgba(106, 44, 117, 0.35);
-        box-shadow: 0 3px 12px rgba(106, 44, 117, 0.12);
+        background: rgba(106, 44, 117, 0.09);
+        border-color: rgba(106, 44, 117, 0.28);
     }
+    .nav-profile-btn:hover .nav-avatar { box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(212,160,24,0.3); }
+    .nav-profile-btn:active { transform: scale(.96); }
 
-    /* ── Dropdown content override ── */
+    /* Dropdown content override */
     .nav-dropdown-item {
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
         font-size: 0.82rem;
         color: #4a2a55;
+        transition: background-color .15s ease, color .15s ease, padding-left .15s ease;
     }
-    .nav-dropdown-item:hover { background: rgba(106, 44, 117, 0.07) !important; color: #6A2C75; }
+    .nav-dropdown-item:hover { background: rgba(106, 44, 117, 0.06) !important; color: #6A2C75; padding-left: 1.15rem !important; }
     .nav-dropdown-item-danger { color: #c0392b !important; }
-    .nav-dropdown-item-danger:hover { background: rgba(192, 57, 43, 0.06) !important; }
+    .nav-dropdown-item-danger:hover { background: rgba(192, 57, 43, 0.06) !important; padding-left: 1.15rem !important; }
 
-    /* ── Hamburger ── */
+    /* Hamburger animado (3 lineas a X) */
     .nav-hamburger {
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 8px;
+        width: 34px; height: 34px;
         color: #6A2C75;
-        border: 1px solid rgba(106, 44, 117, 0.2);
-        border-radius: 8px;
-        background: rgba(106, 44, 117, 0.05);
-        transition: all 0.2s ease;
+        border: 1px solid rgba(106, 44, 117, 0.15);
+        border-radius: 9px;
+        background: rgba(106, 44, 117, 0.04);
+        transition: background-color .2s ease, transform .15s ease;
     }
-    .nav-hamburger:hover { background: rgba(106, 44, 117, 0.12); }
+    .nav-hamburger:hover { background: rgba(106, 44, 117, 0.1); }
+    .nav-hamburger:active { transform: scale(.92); }
+    .hamburger-box { position: relative; width: 16px; height: 12px; }
+    .hamburger-line {
+        position: absolute; left: 0; width: 16px; height: 2px;
+        border-radius: 2px; background: currentColor;
+        transition: transform .3s cubic-bezier(.4,0,.2,1), opacity .2s ease, top .3s cubic-bezier(.4,0,.2,1);
+    }
+    .hamburger-line:nth-child(1) { top: 0; }
+    .hamburger-line:nth-child(2) { top: 5px; }
+    .hamburger-line:nth-child(3) { top: 10px; }
+    .hamburger-line-1-open { top: 5px; transform: rotate(45deg); }
+    .hamburger-line-2-open { opacity: 0; transform: scaleX(0); }
+    .hamburger-line-3-open { top: 5px; transform: rotate(-45deg); }
 
-    /* ── Mobile menu ── */
+    /* Mobile menu (colapso animado, sin display:none abrupto) */
     .nav-mobile {
-        background: rgba(250, 247, 251, 0.98);
-        border-top: 1px solid rgba(106, 44, 117, 0.1);
+        background: rgba(255, 255, 255, 0.98);
+        border-top: 1px solid rgba(106, 44, 117, 0.08);
+        transition: max-height .32s cubic-bezier(.4,0,.2,1), opacity .22s ease;
     }
     .nav-mobile-link {
+        position: relative;
         display: block;
-        padding: 9px 14px;
+        padding: 9px 14px 9px 18px;
         border-radius: 8px;
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
         font-size: 0.83rem;
         font-weight: 600;
         color: #4a2a55;
         text-decoration: none;
-        transition: all 0.2s;
+        border-left: 2px solid transparent;
+        transition: background-color .18s ease, color .18s ease, border-color .18s ease, padding-left .18s ease;
     }
-    .nav-mobile-link:hover { background: rgba(106, 44, 117, 0.08); color: #6A2C75; }
+    .nav-mobile-link:hover { background: rgba(106, 44, 117, 0.07); color: #6A2C75; padding-left: 22px; }
     .nav-mobile-link-active {
-        background: linear-gradient(135deg, #6A2C75, #8e3d9e);
-        color: #fff !important;
+        background: rgba(106, 44, 117, 0.08);
+        border-left-color: #D4A018;
+        color: #6A2C75 !important;
     }
 
     /* Login button */
@@ -178,7 +200,7 @@
         letter-spacing: 0.06em;
         color: #fff;
         background: linear-gradient(135deg, #6A2C75, #8e3d9e);
-        border-radius: 8px;
+        border-radius: 100px;
         text-decoration: none;
         transition: all 0.25s ease;
         box-shadow: 0 3px 14px rgba(106, 44, 117, 0.28);
@@ -189,6 +211,9 @@
         box-shadow: 0 5px 18px rgba(212, 160, 24, 0.35);
         transform: translateY(-1px);
     }
+    .nav-btn-login:active { transform: translateY(0) scale(.96); }
+    .nav-btn-login svg { transition: transform .25s ease; }
+    .nav-btn-login:hover svg { transform: translateX(3px); }
 
     /* Divider dorado en dropdown */
     .nav-divider {
@@ -214,7 +239,7 @@
                 </div>
 
                 <!-- Separator visual -->
-                <div class="hidden sm:block w-px h-6 bg-gradient-to-b from-transparent via-[#6A2C75]/25 to-transparent"></div>
+                <div class="hidden sm:block w-px h-6 bg-gradient-to-b from-transparent via-[#6A2C75]/20 to-transparent"></div>
 
                 <!-- Navigation Links -->
                 @if (Auth::check())
@@ -222,24 +247,24 @@
 
                     <!-- Inicio -->
                     <a href="{{ route('dashboard') }}"
-                        class="nav-link-base {{ request()->routeIs('dashboard') ? 'nav-link-active' : '' }}">
+                        class="nav-item {{ request()->routeIs('dashboard') ? 'nav-item-active' : '' }}">
                         <svg class="w-3.5 h-3.5 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
                         {{ __('Inicio') }}
                     </a>
 
-                    <!-- Menú Administración -->
-                    <x-dropdown align="left" width="52">
+                    <!-- Menu Administracion (rol administrador) -->
+                    <x-dropdown align="left" width="52" contentClasses="py-1.5 bg-white">
                         <x-slot name="trigger">
                             @role('administrador')
-                            <button class="nav-dropdown-btn">
+                            <button class="nav-item" type="button">
                                 <svg class="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
                                 Administración
-                                <svg class="w-3.5 h-3.5 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3.5 h-3.5 nav-chevron" :class="{ 'rotate-180': open }" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
                             </button>
@@ -257,15 +282,15 @@
                         </x-slot>
                     </x-dropdown>
 
-                    <!-- Menú SGI -->
-                    <x-dropdown align="left" width="56">
+                    <!-- Menu SGI -->
+                    <x-dropdown align="left" width="56" contentClasses="py-1.5 bg-white">
                         <x-slot name="trigger">
-                            <button class="nav-dropdown-btn">
+                            <button class="nav-item" type="button">
                                 <svg class="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 SGI
-                                <svg class="w-3.5 h-3.5 opacity-50" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="w-3.5 h-3.5 nav-chevron" :class="{ 'rotate-180': open }" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                                 </svg>
                             </button>
@@ -308,14 +333,14 @@
             <!-- DERECHA: Perfil -->
             <div class="hidden sm:flex sm:items-center gap-3">
                 @if (Auth::check())
-                <x-dropdown align="right" width="52">
+                <x-dropdown align="right" width="52" contentClasses="py-1.5 bg-white">
                     <x-slot name="trigger">
-                        <button class="nav-profile-btn">
+                        <button class="nav-profile-btn" type="button">
                             <div class="nav-avatar">
                                 {{ substr(Auth::user()->name, 0, 1) }}
                             </div>
                             <span>{{ Auth::user()->name }}</span>
-                            <svg class="w-3.5 h-3.5 opacity-40" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-3.5 h-3.5 nav-chevron" :class="{ 'rotate-180': open }" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
                             </svg>
                         </button>
@@ -357,18 +382,20 @@
 
             <!-- Hamburger -->
             <div class="flex items-center sm:hidden">
-                <button @click="open = !open" class="nav-hamburger">
-                    <svg class="w-5 h-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': !open}" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                        <path :class="{'hidden': !open, 'inline-flex': open}" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
+                <button @click="open = !open" class="nav-hamburger" type="button" :aria-expanded="open.toString()" aria-label="Abrir menú">
+                    <span class="hamburger-box">
+                        <span class="hamburger-line" :class="{ 'hamburger-line-1-open': open }"></span>
+                        <span class="hamburger-line" :class="{ 'hamburger-line-2-open': open }"></span>
+                        <span class="hamburger-line" :class="{ 'hamburger-line-3-open': open }"></span>
+                    </span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- ── Mobile Menu ── -->
-    <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden nav-mobile">
+    <!-- Mobile Menu -->
+    <div :class="open ? 'max-h-[520px] opacity-100' : 'max-h-0 opacity-0'"
+        class="overflow-hidden sm:hidden nav-mobile">
         <div class="px-4 pt-3 pb-3 space-y-1">
             <a href="{{ route('dashboard') }}"
                 class="nav-mobile-link {{ request()->routeIs('dashboard') ? 'nav-mobile-link-active' : '' }}">

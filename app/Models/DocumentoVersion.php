@@ -11,7 +11,7 @@ class DocumentoVersion extends Model
     protected $fillable = [
          'documento_id',
     'version',
-    'status',
+    'estatus',
     'revision_actual',
     'revision_anterior',
     'fecha_version',
@@ -20,6 +20,8 @@ class DocumentoVersion extends Model
     'vigencia_revision_dias',
     'fecha_vencimiento_version',
     'fecha_vencimiento_revision',
+    'alerta_version_enviada_para',
+    'alerta_revision_enviada_para',
     'liga_archivo',
     'lugar_almacenamiento',
     'archivo_storage',
@@ -40,6 +42,8 @@ class DocumentoVersion extends Model
         'fecha_revision' => 'date',
         'fecha_vencimiento_version' => 'date',
         'fecha_vencimiento_revision' => 'date',
+        'alerta_version_enviada_para' => 'date',
+        'alerta_revision_enviada_para' => 'date',
         'publicado_en' => 'datetime',
     ];
 

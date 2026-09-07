@@ -48,12 +48,23 @@ class DocumentosImport implements ToCollection
             );
 
             // 🔹 REVISION (LA IMPORTANTE 🔥)
+            $fechaVencimiento = $this->parseFecha($fecha);
+
             DocumentoRevision::create([
                 'documento_version_id' => $ver->id,
                 'revision_actual' => $revision,
-                'fecha_vencimiento_revision' => $this->parseFecha($fecha),
+                'fecha_vencimiento_revision' => $fechaVencimiento,
                 'estatus' => 'vigente'
             ]);
+
+            // Sincroniza hacia DocumentoVersion: el calendario y las alertas
+            // de vencimiento leen fecha_vencimiento_revision de aquí, no de
+            // DocumentoRevision (ver DocumentoRevisionController::store).
+            if ($fechaVencimiento) {
+                $ver->update([
+                    'fecha_vencimiento_revision' => $fechaVencimiento,
+                ]);
+            }
         }
     }
 

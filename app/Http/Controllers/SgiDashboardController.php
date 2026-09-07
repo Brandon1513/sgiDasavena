@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Documento;
 use App\Models\SolicitudFormato;
 use Illuminate\Support\Facades\Auth;
 
@@ -58,6 +59,19 @@ class SgiDashboardController extends Controller
             ->limit(8)
             ->get();
 
+        // Documentos por vencer (vigentes, en zona de alerta/crítico/vencido)
+        $docQuery = Documento::query()->where('estatus', 'vigente')->with('versionVigente');
+        if (!$user->hasRole('administrador') && !$user->hasRole('administrador_sgi') && !empty($user->area)) {
+            $docQuery->where('area', $user->area);
+        }
+        $documentosUrgentes = $docQuery->get()
+            ->filter(fn ($d) => in_array($d->semaforo_vencimiento, ['vencido', 'critico', 'alerta']))
+            ->sortBy('dias_para_vencimiento')
+            ->values();
+
+        $totalPorVencer     = $documentosUrgentes->count();
+        $documentosPorVencer = $documentosUrgentes->take(6);
+
         return view('dashboard', [
             'total'             => $total,
             'pendientes'        => $pendientes,
@@ -67,6 +81,8 @@ class SgiDashboardController extends Controller
             'ultimasSolicitudes' => $ultimasSolicitudes,
             'porEstado'         => $porEstado,
             'porDia'            => $porDia,
+            'totalPorVencer'      => $totalPorVencer,
+            'documentosPorVencer' => $documentosPorVencer,
         ]);
     }
 }

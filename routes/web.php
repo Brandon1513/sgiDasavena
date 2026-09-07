@@ -165,52 +165,57 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/usuarios/{user}/toggle-estado', [UserController::class, 'toggleEstado'])->name('usuarios.toggleEstado');
     });
 
-    // ===============================
-    // PROFILE
-    // ===============================
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
+   // ===============================
+// PROFILE
+// ===============================
+Route::get('/profile', [ProfileController::class, 'edit'])
+    ->name('profile.edit');
 
+Route::patch('/profile', [ProfileController::class, 'update'])
+    ->name('profile.update');
+
+Route::delete('/profile', [ProfileController::class, 'destroy'])
+    ->name('profile.destroy');
+
+
+// ===============================
+// ACCIONES CORRECTIVAS
+// ===============================
 Route::prefix('acciones-correctivas')
     ->name('acciones-correctivas.')
     ->group(function () {
-        Route::get(
-            '/',
-            [AccionCorrectivaController::class, 'index']
-        )->name('index');
 
-        Route::get(
-            '/{accionCorrectiva}',
-            [AccionCorrectivaController::class, 'show']
-        )->name('show');
+        Route::get('/', [AccionCorrectivaController::class, 'index'])
+            ->name('index');
+
+        Route::get('/{accionCorrectiva}', [AccionCorrectivaController::class, 'show'])
+            ->name('show');
+
+        Route::post('/{accionCorrectiva}/estado', [AccionCorrectivaController::class, 'cambiarEstado'])
+            ->name('estado.cambiar');
+
+        Route::post('/{accionCorrectiva}/contenciones', [AccionCorrectivaController::class, 'crearContencion'])
+            ->name('contenciones.crear');
+
+        Route::get('/{accionCorrectiva}/analisis', [AccionCorrectivaController::class, 'analisis'])
+            ->name('analisis');
+
+        Route::post('/{accionCorrectiva}/analisis/iniciar', [AccionCorrectivaController::class, 'iniciarAnalisis'])
+            ->name('analisis.iniciar');
+
+        Route::post('/{accionCorrectiva}/analisis/ideas', [AccionCorrectivaController::class, 'agregarIdea'])
+            ->name('analisis.idea');
+
+        Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
+            ->name('cinco-porques.iniciar');
     });
-Route::get(
-    '/acciones-correctivas/{accionCorrectiva}/analisis',
-    [AccionCorrectivaController::class, 'analisis']
-)->name('acciones-correctivas.analisis');
-Route::get('/register', fn() => redirect()->route('login'));
 
-Route::get(
-    '/acciones-correctivas/{accionCorrectiva}/analisis',
-    [AccionCorrectivaController::class, 'analisis']
-)->name('acciones-correctivas.analisis');
-Route::post(
-    '/acciones-correctivas/{accionCorrectiva}/analisis/iniciar',
-    [AccionCorrectivaController::class, 'iniciarAnalisis']
-)->name('acciones-correctivas.analisis.iniciar');
-
-Route::post(
-    '/acciones-correctivas/{accionCorrectiva}/analisis/ideas',
-    [AccionCorrectivaController::class, 'agregarIdea']
-)->name('acciones-correctivas.analisis.idea');
-
-Route::post(
-    '/acciones-correctivas/{accionCorrectiva}/analisis/cinco-porques/iniciar',
-    [AccionCorrectivaController::class, 'iniciarCincoPorques']
-)->name('acciones-correctivas.cinco-porques.iniciar');
-
-
-
+});
+    
 require __DIR__ . '/auth.php';
+
+
+
+
+
+

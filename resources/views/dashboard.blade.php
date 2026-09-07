@@ -104,20 +104,21 @@ $roles = $user && method_exists($user, 'getRoleNames')
         ══════════════════════════════ --}}
         <section class="sgi-stats-grid sgi-reveal" style="--ri:2" aria-label="Resumen de solicitudes">
             @foreach([
-                ['label'=>'Pendientes',    'val'=>$pendientes??'—',   'theme'=>'purple', 'icon'=>'⏳', 'desc'=>'Esperando revisión del jefe'],
-                ['label'=>'Aprobado jefe', 'val'=>$aprobadoJefe??'—','theme'=>'gold',   'icon'=>'✓',  'desc'=>'En proceso de gestión SGI'],
-                ['label'=>'Atendidas',     'val'=>$atendidas??'—',    'theme'=>'green',  'icon'=>'◉',  'desc'=>'Formato actualizado con éxito'],
-                ['label'=>'Rechazadas',    'val'=>$rechazadas??'—',   'theme'=>'rose',   'icon'=>'✕',  'desc'=>'Requieren revisión y reenvío'],
+                ['label'=>'Pendientes',    'val'=>$pendientes??'—',   'theme'=>'purple', 'icon'=>'⏳', 'desc'=>'Esperando revisión del jefe',        'cta'=>'Ver solicitudes'],
+                ['label'=>'Aprobado jefe', 'val'=>$aprobadoJefe??'—','theme'=>'gold',   'icon'=>'✓',  'desc'=>'En proceso de gestión SGI',           'cta'=>'Ver solicitudes'],
+                ['label'=>'Atendidas',     'val'=>$atendidas??'—',    'theme'=>'green',  'icon'=>'◉',  'desc'=>'Formato actualizado con éxito',       'cta'=>'Ver solicitudes'],
+                ['label'=>'Rechazadas',    'val'=>$rechazadas??'—',   'theme'=>'rose',   'icon'=>'✕',  'desc'=>'Requieren revisión y reenvío',        'cta'=>'Ver solicitudes'],
+                ['label'=>'Por vencer',    'val'=>$totalPorVencer??'—','theme'=>'amber', 'icon'=>'⚠',  'desc'=>'Documentos con vigencia próxima a expirar', 'cta'=>'Ver calendario'],
             ] as $s)
             <article class="stat-card stat-{{ $s['theme'] }}" tabindex="0" role="button" aria-label="{{ $s['label'] }}: {{ $s['val'] }}">
                 <div class="stat-card-front">
                     <span class="stat-icon">{{ $s['icon'] }}</span>
-                    <span class="stat-num">{{ $s['val'] }}</span>
+                    <span class="stat-num" data-count="{{ is_numeric($s['val']) ? $s['val'] : '' }}">{{ is_numeric($s['val']) ? 0 : $s['val'] }}</span>
                     <span class="stat-label">{{ $s['label'] }}</span>
                 </div>
                 <div class="stat-card-back" aria-hidden="true">
                     <p class="stat-back-text">{{ $s['desc'] }}</p>
-                    <span class="stat-back-cta">Ver solicitudes →</span>
+                    <span class="stat-back-cta">{{ $s['cta'] }} →</span>
                 </div>
             </article>
             @endforeach
@@ -131,14 +132,12 @@ $roles = $user && method_exists($user, 'getRoleNames')
             {{-- ─── COLUMNA IZQUIERDA ─── --}}
             <div class="sgi-col-main">
 
-            
                 {{-- VIDEO --}}
                 <div class="sgi-video-wrap sgi-reveal" style="--ri:5">
                     <video autoplay muted loop playsinline class="sgi-video">
                         <source src="{{ asset('Videos/Animacion.mp4') }}" type="video/mp4">
                     </video>
                 </div>
-
 
                 {{-- GRÁFICA }}
                 <div class="sgi-card sgi-reveal" style="--ri:3">
@@ -187,11 +186,57 @@ $roles = $user && method_exists($user, 'getRoleNames')
                     @endforeach
                 </div>
 
-
             </div>
 
             {{-- ─── COLUMNA DERECHA ─── --}}
             <div class="sgi-col-side">
+
+                {{-- DOCUMENTOS POR VENCER --}}
+                <div class="sgi-card sgi-reveal" style="--ri:3">
+                    <div class="sgi-card-head">
+                        <div>
+                            <h2 class="sgi-card-title">Documentos por vencer</h2>
+                            <p class="sgi-card-sub">Vigencia de versión o revisión en zona de alerta</p>
+                        </div>
+                        @if($totalPorVencer > 0)
+                        <div class="sgi-urgent-badge">
+                            <span class="sgi-live-dot" style="background:#dc2626"></span>
+                            {{ $totalPorVencer }}
+                        </div>
+                        @endif
+                    </div>
+                    @if(!empty($documentosPorVencer) && count($documentosPorVencer))
+                    <ul class="doc-list">
+                        @foreach($documentosPorVencer as $doc)
+                        <li class="doc-item">
+                            <a href="{{ route('documentos.show', $doc->id) }}" class="doc-link">
+                                <span class="doc-badge doc-badge-{{ $doc->semaforo_vencimiento }}"></span>
+                                <div class="doc-body">
+                                    <p class="doc-code">{{ $doc->codigo }}</p>
+                                    <p class="doc-name">{{ \Illuminate\Support\Str::limit($doc->nombre, 34) }}</p>
+                                </div>
+                                <span class="doc-days doc-days-{{ $doc->semaforo_vencimiento }}">
+                                    {{ $doc->dias_para_vencimiento < 0 ? 'Vencido' : $doc->dias_para_vencimiento . ' d' }}
+                                </span>
+                            </a>
+                        </li>
+                        @endforeach
+                    </ul>
+                    @if($totalPorVencer > count($documentosPorVencer))
+                    <div class="doc-more">+ {{ $totalPorVencer - count($documentosPorVencer) }} documentos más por vencer</div>
+                    @endif
+                    @role('administrador_sgi')
+                    <a href="{{ route('solicitudes.calendar') }}" class="doc-cal-link">
+                        Ver calendario completo <span aria-hidden="true">→</span>
+                    </a>
+                    @endrole
+                    @else
+                    <div class="sgi-empty">
+                        <span class="sgi-empty-icon">✅</span>
+                        <p>Nada por vencer en los próximos 60 días</p>
+                    </div>
+                    @endif
+                </div>
 
                 {{-- ACTIVIDAD RECIENTE --}}
                 <div class="sgi-card sgi-reveal" style="--ri:3">
@@ -514,7 +559,7 @@ $roles = $user && method_exists($user, 'getRoleNames')
    STAT CARDS (flip)
 ══════════════════════════════ */
 .sgi-stats-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px;
 }
 .stat-card {
     height: 152px; cursor: pointer; perspective: 1200px;
@@ -576,6 +621,15 @@ $roles = $user && method_exists($user, 'getRoleNames')
 .stat-rose .stat-card-back   { background: linear-gradient(145deg, rgba(190,18,60,.14), rgba(244,63,94,.09)); }
 .stat-rose .stat-back-text   { color: #7f1d3a; }
 .stat-rose .stat-back-cta    { color: #be123c; }
+
+/* Amber (documentos por vencer) */
+.stat-amber .stat-card-front { background: linear-gradient(145deg, rgba(217,119,6,.11), rgba(245,158,11,.06)); }
+.stat-amber .stat-num   { color: #b45309; }
+.stat-amber .stat-icon  { color: #d97706; }
+.stat-amber .stat-label { color: #b45309; }
+.stat-amber .stat-card-back  { background: linear-gradient(145deg, rgba(217,119,6,.17), rgba(245,158,11,.1)); }
+.stat-amber .stat-back-text  { color: #7c3a00; }
+.stat-amber .stat-back-cta   { color: #b45309; }
 
 /* ══════════════════════════════
    CARDS GLASS
@@ -646,6 +700,44 @@ details[open] .acc-chevron { transform: rotate(90deg); }
 .acc-item { display: flex; align-items: flex-start; gap: 8px; padding: 3px 0; }
 .acc-bullet { width: 4px; height: 4px; border-radius: 50%; background: var(--purple-light); flex-shrink: 0; margin-top: 6px; opacity: .6; }
 .acc-item p { font-size: 12px; color: #6b7280; line-height: 1.55; }
+
+/* ── Documentos por vencer ── */
+.sgi-urgent-badge {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    padding: 4px 12px; border-radius: 100px;
+    background: rgba(220,38,38,.1); border: 1px solid rgba(220,38,38,.22);
+    font-size: 11px; font-weight: 700; color: #b91c1c;
+}
+.doc-list { list-style: none; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px 8px; }
+.doc-item { border-radius: var(--radius-sm); }
+.doc-link {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px;
+    border-radius: var(--radius-sm); text-decoration: none; transition: background var(--transition);
+}
+.doc-link:hover { background: rgba(217,119,6,.06); }
+.doc-badge { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.doc-badge-vencido { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+.doc-badge-critico { background: #f43f5e; }
+.doc-badge-alerta  { background: #d97706; }
+.doc-body { flex: 1; min-width: 0; }
+.doc-code { font-size: 12.5px; font-weight: 700; color: #1e1b4b; }
+.doc-name { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-days {
+    flex-shrink: 0; font-size: 10.5px; font-weight: 700; padding: 3px 9px;
+    border-radius: 100px; white-space: nowrap;
+}
+.doc-days-vencido { background: #dc2626; color: #fff; }
+.doc-days-critico { background: rgba(244,63,94,.12); color: #be123c; }
+.doc-days-alerta  { background: rgba(217,119,6,.12); color: #b45309; }
+.doc-more { padding: 4px 24px 14px; font-size: 11px; color: #9ca3af; }
+.doc-cal-link {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    margin: 4px 12px 16px; padding: 9px; border-radius: var(--radius-sm);
+    background: rgba(106,44,117,.06); border: 1px solid rgba(106,44,117,.15);
+    font-size: 12px; font-weight: 700; color: var(--purple); text-decoration: none;
+    transition: all var(--transition);
+}
+.doc-cal-link:hover { background: rgba(106,44,117,.12); transform: translateY(-1px); }
 
 /* ── Video ── */
 .sgi-video-wrap { display: flex; justify-content: center; padding: 8px 0; }
@@ -795,6 +887,21 @@ document.querySelectorAll('.stat-card, .info-card').forEach(card => {
     card.addEventListener('mouseleave', () => {
         card.style.transform = 'perspective(700px) rotateY(0) rotateX(0)';
     });
+});
+
+/* ── Conteo ascendente en las tarjetas de estadísticas ── */
+document.querySelectorAll('.stat-num[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count, 10);
+    if (el.dataset.count === '' || isNaN(target)) return;
+    const duration = 900;
+    const start = performance.now();
+    function tick(now) {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(eased * target);
+        if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
 });
 
 /* ── Gráfica ── */
