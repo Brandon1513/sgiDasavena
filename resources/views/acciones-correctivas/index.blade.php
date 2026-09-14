@@ -16,6 +16,26 @@
             </div>
 
         </div>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <div>
+                <h1 class="h3 mb-1">
+                    Acciones Correctivas
+                </h1>
+
+                <p class="text-muted mb-0">
+                    Gestión y seguimiento de acciones correctivas.
+                </p>
+            </div>
+
+            <a
+                href="{{ route('acciones-correctivas.create') }}"
+                class="btn btn-primary">
+                + Nueva Acción Correctiva
+            </a>
+
+        </div>
+        
 
         {{-- Filtros --}}
         <div class="card shadow-sm border-0 mb-4">
@@ -24,8 +44,7 @@
 
                 <form
                     method="GET"
-                    action="{{ route('acciones-correctivas.index') }}"
-                >
+                    action="{{ route('acciones-correctivas.index') }}">
 
                     <div class="row g-3">
 
@@ -40,8 +59,7 @@
                                 name="buscar"
                                 value="{{ request('buscar') }}"
                                 class="form-control"
-                                placeholder="Código o descripción..."
-                            >
+                                placeholder="Código o descripción...">
 
                         </div>
 
@@ -53,8 +71,7 @@
 
                             <select
                                 name="estado"
-                                class="form-select"
-                            >
+                                class="form-select">
 
                                 <option value="">
                                     Todos
@@ -62,14 +79,14 @@
 
                                 @foreach($estados as $estado)
 
-                                    <option
-                                        value="{{ $estado->codigo }}"
-                                        @selected(
-                                            request('estado') === $estado->codigo
-                                        )
+                                <option
+                                    value="{{ $estado->codigo }}"
+                                    @selected(
+                                    request('estado')===$estado->codigo
+                                    )
                                     >
-                                        {{ $estado->nombre }}
-                                    </option>
+                                    {{ $estado->nombre }}
+                                </option>
 
                                 @endforeach
 
@@ -85,8 +102,7 @@
 
                             <select
                                 name="responsable"
-                                class="form-select"
-                            >
+                                class="form-select">
 
                                 <option value="">
                                     Todos
@@ -94,16 +110,14 @@
 
                                 @foreach($responsables as $responsable)
 
-                                    <option
-                                        value="{{ $responsable->id }}"
-                                        @selected(
-                                            (string) request('responsable')
-                                            ===
-                                            (string) $responsable->id
-                                        )
+                                <option
+                                    value="{{ $responsable->id }}"
+                                    @selected(
+                                    (string) request('responsable')===(string) $responsable->id
+                                    )
                                     >
-                                        {{ $responsable->name }}
-                                    </option>
+                                    {{ $responsable->name }}
+                                </option>
 
                                 @endforeach
 
@@ -115,8 +129,7 @@
 
                             <button
                                 type="submit"
-                                class="btn btn-primary w-100"
-                            >
+                                class="btn btn-primary w-100">
                                 Filtrar
                             </button>
 
@@ -158,89 +171,85 @@
 
                             @forelse($accionesCorrectivas as $ac)
 
-                                <tr>
+                            <tr>
 
-                                    <td>
-                                        <strong>
-                                            {{ $ac->codigo }}
-                                        </strong>
-                                    </td>
+                                <td>
+                                    <strong>
+                                        {{ $ac->codigo }}
+                                    </strong>
+                                </td>
 
-                                    <td>
-                                        {{ $ac->descripcion }}
-                                    </td>
+                                <td>
+                                    {{ $ac->descripcion }}
+                                </td>
 
-                                    <td>
-                                        {{ $ac->origen->nombre ?? 'Sin origen' }}
-                                    </td>
+                                <td>
+                                    {{ $ac->origen->nombre ?? 'Sin origen' }}
+                                </td>
 
-                                    <td>
-                                        {{ $ac->responsable->name ?? 'Sin responsable' }}
-                                    </td>
+                                <td>
+                                    {{ $ac->responsable->name ?? 'Sin responsable' }}
+                                </td>
 
-                                    <td>
+                                <td>
 
-                                        <span class="badge bg-secondary">
-                                            {{ $ac->estado->nombre ?? 'Sin estado' }}
-                                        </span>
+                                    <span class="badge bg-secondary">
+                                        {{ $ac->estado->nombre ?? 'Sin estado' }}
+                                    </span>
 
-                                    </td>
+                                </td>
 
-                                    <td style="min-width: 150px;">
+                                <td style="min-width: 150px;">
 
-                                        <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2">
 
+                                        <div
+                                            class="progress flex-grow-1"
+                                            style="height: 7px;">
                                             <div
-                                                class="progress flex-grow-1"
-                                                style="height: 7px;"
-                                            >
-                                                <div
-                                                    class="progress-bar"
-                                                    role="progressbar"
-                                                    style="width: {{ $ac->porcentaje_avance }}%"
-                                                ></div>
-                                            </div>
-
-                                            <small>
-                                                {{ number_format($ac->porcentaje_avance, 0) }}%
-                                            </small>
-
+                                                class="progress-bar"
+                                                role="progressbar"
+                                                style="width: {{ $ac->porcentaje_avance }}%"></div>
                                         </div>
 
-                                    </td>
+                                        <small>
+                                            {{ number_format($ac->porcentaje_avance, 0) }}%
+                                        </small>
 
-                                    <td>
-                                        {{ $ac->ciclo_actual }}
-                                    </td>
+                                    </div>
 
-                                    <td class="text-end">
+                                </td>
 
-                                        <a
-                                            href="{{ route(
+                                <td>
+                                    {{ $ac->ciclo_actual }}
+                                </td>
+
+                                <td class="text-end">
+
+                                    <a
+                                        href="{{ route(
                                                 'acciones-correctivas.show',
                                                 $ac
                                             ) }}"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >
-                                            Ver
-                                        </a>
+                                        class="btn btn-sm btn-outline-primary">
+                                        Ver
+                                    </a>
 
-                                    </td>
+                                </td>
 
-                                </tr>
+                            </tr>
 
                             @empty
 
-                                <tr>
+                            <tr>
 
-                                    <td
-                                        colspan="8"
-                                        class="text-center py-5 text-muted"
-                                    >
-                                        No hay acciones correctivas registradas.
-                                    </td>
+                                <td
+                                    colspan="8"
+                                    class="text-center py-5 text-muted">
+                                    No hay acciones correctivas registradas.
+                                </td>
 
-                                </tr>
+                            </tr>
 
                             @endforelse
 
@@ -254,11 +263,11 @@
 
             @if($accionesCorrectivas->hasPages())
 
-                <div class="card-footer bg-white">
+            <div class="card-footer bg-white">
 
-                    {{ $accionesCorrectivas->links() }}
+                {{ $accionesCorrectivas->links() }}
 
-                </div>
+            </div>
 
             @endif
 

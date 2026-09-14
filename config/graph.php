@@ -30,4 +30,20 @@ return [
 
     'mail_from' => env('MS_MAIL_FROM'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Buzón de soporte IT
+    |--------------------------------------------------------------------------
+    |
+    | Buzón desde el cual se envían los tickets/ideas generados por el
+    | asistente de soporte del dashboard, y correo destino del área de
+    | sistemas que los recibe. Si el buzón de soporte aún no existe, cae
+    | por defecto al mismo buzón usado para el resto de notificaciones.
+    |
+    */
+
+    'mail_from_soporte' => env('MS_MAIL_FROM_SOPORTE', env('MS_MAIL_FROM')),
+
+    'mail_to_soporte' => env('MS_MAIL_TO_SOPORTE', 'aux.sistemas@dasavena.com'),
+
 ];

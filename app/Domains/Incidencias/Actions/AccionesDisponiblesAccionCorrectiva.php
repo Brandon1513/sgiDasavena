@@ -11,6 +11,8 @@ class AccionesDisponiblesAccionCorrectiva
         $accionCorrectiva->loadMissing([
             'estado',
             'planesAccion',
+            'analisis.causasRaiz',
+            'verificacionesEficacia',
         ]);
 
         return match ($accionCorrectiva->estado?->codigo) {
@@ -29,7 +31,6 @@ class AccionesDisponiblesAccionCorrectiva
                     'tipo' => 'primary',
                     'texto' => 'Gestionar contención',
                     'accion' => 'contencion',
-                    'estado_destino' => 'contencion',
                 ],
             ],
 
@@ -42,20 +43,15 @@ class AccionesDisponiblesAccionCorrectiva
                 ],
             ],
 
-            'analisis' => [
-                [
-                    'tipo' => 'primary',
-                    'texto' => 'Continuar análisis',
-                    'accion' => 'analisis',
-                    'estado_destino' => 'analisis',
-                ],
-            ],
+            'analisis' => $this->accionesAnalisis(
+                $accionCorrectiva
+            ),
 
             'validacion_causa' => [
                 [
                     'tipo' => 'primary',
-                    'texto' => 'Continuar al plan de acción',
-                    'accion' => 'validar_causa',
+                    'texto' => 'Continuar a plan de acción',
+                    'accion' => 'plan_accion',
                     'estado_destino' => 'plan_accion',
                 ],
             ],
@@ -91,28 +87,87 @@ class AccionesDisponiblesAccionCorrectiva
                 ],
             ],
 
-            'verificacion_eficacia' => [
-                [
-                    'tipo' => 'primary',
-                    'texto' => 'Continuar verificación de eficacia',
-                    'accion' => 'verificacion_eficacia',
-                    'estado_destino' => 'verificacion_eficacia',
-                ],
-            ],
+            'verificacion_eficacia' => $this->accionesVerificacionEficacia(
+                $accionCorrectiva
+            ),
 
             'cerrada' => [],
 
-            'rechazada' => [
-                [
-                    'tipo' => 'danger',
-                    'texto' => 'Revisar acción correctiva',
-                    'accion' => 'revisar',
-                    'estado_destino' => 'analisis',
-                ],
-            ],
-
             default => [],
         };
+    }
+
+    private function accionesVerificacionEficacia(
+        AccionCorrectiva $accionCorrectiva
+    ): array {
+        $verificacion = $accionCorrectiva->verificacionesEficacia
+            ->where('ciclo', $accionCorrectiva->ciclo_actual)
+            ->sortByDesc('id')
+            ->first();
+
+        if (!$verificacion) {
+            return [];
+        }
+
+        if ($verificacion->resultado_eficaz) {
+            return [
+                [
+                    'tipo' => 'success',
+                    'texto' => 'Cerrar acción correctiva',
+                    'accion' => 'cerrar',
+                    'estado_destino' => 'cerrada',
+                ],
+            ];
+        }
+
+        return [
+            [
+                'tipo' => 'warning',
+                'texto' => 'Iniciar nuevo ciclo de análisis',
+                'accion' => 'nuevo_ciclo',
+                'estado_destino' => 'analisis',
+            ],
+        ];
+    }
+
+    private function accionesAnalisis(
+        AccionCorrectiva $accionCorrectiva
+    ): array {
+        $analisis = $accionCorrectiva->analisis
+            ->firstWhere('ciclo', $accionCorrectiva->ciclo_actual);
+
+        if (!$analisis) {
+            return [
+                [
+                    'tipo' => 'primary',
+                    'texto' => 'Gestionar análisis',
+                    'accion' => 'analisis',
+                ],
+            ];
+        }
+
+        $causaRaizAprobada = $analisis->causasRaiz
+            ->where('estado_validacion', 'aprobada')
+            ->isNotEmpty();
+
+        if ($causaRaizAprobada) {
+            return [
+                [
+                    'tipo' => 'success',
+                    'texto' => 'Continuar a validación de causa',
+                    'accion' => 'validacion_causa',
+                    'estado_destino' => 'validacion_causa',
+                ],
+            ];
+        }
+
+        return [
+            [
+                'tipo' => 'primary',
+                'texto' => 'Gestionar análisis',
+                'accion' => 'analisis',
+            ],
+        ];
     }
 
     private function accionesPlanAccion(

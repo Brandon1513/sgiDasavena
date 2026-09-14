@@ -21,6 +21,16 @@ use App\Domains\Incidencias\Actions\CambiarEstadoAccionCorrectiva;
 use App\Domains\Incidencias\Actions\CrearContencion;
 use App\Domains\Incidencias\Models\EstadoAccionCorrectiva as EstadoModel;
 use App\Domains\Incidencias\Enums\EstadoAccionCorrectiva;
+use App\Domains\Incidencias\Actions\CrearPlanAccion;
+use App\Domains\Incidencias\Actions\AgregarActividadPlan;
+use App\Domains\Incidencias\Models\AcPlanAccion;
+use App\Domains\Incidencias\Actions\CrearEvidencia;
+use App\Domains\Incidencias\Actions\CompletarActividad;
+use App\Domains\Incidencias\Models\AcActividad;
+use App\Domains\Incidencias\Actions\RegistrarVerificacionCierre;
+use App\Domains\Incidencias\Actions\IniciarEsperaEficacia;
+use App\Domains\Incidencias\Actions\RegistrarVerificacionEficacia;
+use Illuminate\Support\Facades\DB;
 
 class AccionCorrectivaController extends Controller
 {
@@ -76,7 +86,7 @@ class AccionCorrectivaController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $estados = EstadoAccionCorrectiva::query()
+        $estados = EstadoModel::query()
             ->where('activo', true)
             ->orderBy('orden')
             ->get();
@@ -96,6 +106,100 @@ class AccionCorrectivaController extends Controller
         );
     }
 
+
+    public function store(Request $request)
+    {
+        $datos = $request->validate([
+            'descripcion' => [
+                'required',
+                'string',
+                'max:2000',
+            ],
+
+            'origen_id' => [
+                'required',
+                'integer',
+                'exists:origenes_acciones_correctivas,id',
+            ],
+
+            'responsable_id' => [
+                'required',
+                'integer',
+                'exists:users,id',
+            ],
+        ]);
+
+        $accionCorrectiva = DB::transaction(function () use ($datos) {
+
+            $prefijo = now()->format('y');
+
+            $ultimoNumero = AccionCorrectiva::query()
+                ->where('codigo', 'like', $prefijo . '-%')
+                ->pluck('codigo')
+                ->map(function ($codigo) use ($prefijo) {
+                    return (int) str_replace(
+                        $prefijo . '-',
+                        '',
+                        $codigo
+                    );
+                })
+                ->max() ?? 0;
+
+            $codigo = sprintf(
+                '%s-%03d',
+                $prefijo,
+                $ultimoNumero + 1
+            );
+
+            $estadoBorrador = EstadoModel::query()
+                ->where('codigo', EstadoAccionCorrectiva::BORRADOR->value)
+                ->where('activo', true)
+                ->firstOrFail();
+
+            return AccionCorrectiva::create([
+                'codigo' => $codigo,
+                'descripcion' => $datos['descripcion'],
+                'origen_id' => $datos['origen_id'],
+                'responsable_id' => $datos['responsable_id'],
+                'estado_id' => $estadoBorrador->id,
+                'fecha_apertura' => now()->toDateString(),
+                'ciclo_actual' => 1,
+                'porcentaje_avance' => 0,
+            ]);
+        });
+
+        return redirect()
+            ->route(
+                'acciones-correctivas.show',
+                $accionCorrectiva
+            )
+            ->with(
+                'success',
+                'La Acción Correctiva fue creada correctamente.'
+            );
+    }
+
+
+    public function create()
+    {
+        $origenes = OrigenAccionCorrectiva::query()
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get();
+
+        $responsables = User::query()
+            ->where('activo', true)
+            ->orderBy('name')
+            ->get();
+
+        return view(
+            'acciones-correctivas.create',
+            compact(
+                'origenes',
+                'responsables'
+            )
+        );
+    }
     /**
      * Mostrar expediente de una Acción Correctiva.
      */
@@ -345,5 +449,306 @@ class AccionCorrectivaController extends Controller
         return redirect()
             ->route('acciones-correctivas.show', $accionCorrectiva)
             ->with('success', 'La acción de contención fue registrada correctamente.');
+    }
+
+    public function agregarPorque(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AcCincoPorque $cincoPorque,
+        AgregarPorque $agregarPorque
+    ) {
+        $datos = $request->validate([
+            'respuesta' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $analisis = $accionCorrectiva->analisis()
+            ->where('ciclo', $accionCorrectiva->ciclo_actual)
+            ->firstOrFail();
+
+        if ($cincoPorque->ac_analisis_id !== $analisis->id) {
+            abort(404);
+        }
+
+        $agregarPorque->ejecutar(
+            $cincoPorque,
+            $datos['respuesta']
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.analisis', $accionCorrectiva)
+            ->with('success', 'El porqué fue registrado correctamente.');
+    }
+    public function proponerCausaRaiz(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AcCincoPorque $cincoPorque,
+        ProponerCausaRaiz $proponerCausaRaiz
+    ) {
+        $datos = $request->validate([
+            'descripcion' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $analisis = $accionCorrectiva->analisis()
+            ->where('ciclo', $accionCorrectiva->ciclo_actual)
+            ->firstOrFail();
+
+        if ($cincoPorque->ac_analisis_id !== $analisis->id) {
+            abort(404);
+        }
+
+        $proponerCausaRaiz->ejecutar(
+            $analisis,
+            $cincoPorque,
+            $datos['descripcion'],
+            auth()->id()
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.analisis', $accionCorrectiva)
+            ->with(
+                'success',
+                'La causa raíz fue propuesta correctamente.'
+            );
+    }
+
+    public function validarCausaRaiz(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AcCausaRaiz $causaRaiz,
+        ValidarCausaRaiz $validarCausaRaiz
+    ) {
+        $datos = $request->validate([
+            'aprobada' => ['required', 'boolean'],
+            'comentarios' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $analisis = $accionCorrectiva->analisis()
+            ->where('ciclo', $accionCorrectiva->ciclo_actual)
+            ->firstOrFail();
+
+        if ($causaRaiz->ac_analisis_id !== $analisis->id) {
+            abort(404);
+        }
+
+        $aprobada = (bool) $datos['aprobada'];
+
+        if (!$aprobada && blank($datos['comentarios'] ?? null)) {
+            return back()
+                ->withErrors([
+                    'comentarios' => 'Debes indicar el motivo del rechazo.',
+                ])
+                ->withInput();
+        }
+
+        $validarCausaRaiz->ejecutar(
+            $causaRaiz,
+            auth()->id(),
+            $aprobada,
+            $datos['comentarios'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.analisis', $accionCorrectiva)
+            ->with(
+                'success',
+                $aprobada
+                    ? 'La causa raíz fue aprobada correctamente.'
+                    : 'La causa raíz fue rechazada correctamente.'
+            );
+    }
+
+    public function crearPlanAccion(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        CrearPlanAccion $crearPlanAccion
+    ) {
+        $datos = $request->validate([
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $crearPlanAccion->ejecutar(
+            $accionCorrectiva,
+            $datos['observaciones'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with('success', 'El plan de acción fue creado correctamente.');
+    }
+
+    public function crearEvidencia(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AcActividad $actividad,
+        CrearEvidencia $crearEvidencia
+    ) {
+        $datos = $request->validate([
+            'archivo' => [
+                'required',
+                'file',
+                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
+                'max:20480',
+            ],
+            'descripcion' => [
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+        ]);
+
+        $crearEvidencia->ejecutar(
+            $actividad,
+            $datos['archivo'],
+            auth()->user(),
+            $datos['descripcion'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with(
+                'success',
+                'La evidencia fue registrada correctamente.'
+            );
+    }
+
+
+
+    public function completarActividad(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AcActividad $actividad,
+        CompletarActividad $completarActividad
+    ) {
+        $datos = $request->validate([
+            'observaciones' => [
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+        ]);
+
+        $completarActividad->ejecutar(
+            $actividad,
+            $datos['observaciones'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with(
+                'success',
+                'La actividad fue completada correctamente.'
+            );
+    }
+
+    public function agregarActividad(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        AgregarActividadPlan $agregarActividadPlan
+    ) {
+        $datos = $request->validate([
+            'descripcion' => ['required', 'string', 'max:2000'],
+            'responsable_id' => ['required', 'integer', 'exists:users,id'],
+            'fecha_compromiso' => ['required', 'date'],
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $plan = $accionCorrectiva->planesAccion()
+            ->where('ciclo', $accionCorrectiva->ciclo_actual)
+            ->firstOrFail();
+
+        $agregarActividadPlan->ejecutar(
+            $plan,
+            $datos
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with(
+                'success',
+                'La actividad fue agregada correctamente.'
+            );
+    }
+
+    public function registrarVerificacionCierre(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        RegistrarVerificacionCierre $registrarVerificacionCierre
+    ) {
+        $datos = $request->validate([
+            'acciones_implementadas' => ['required', 'boolean'],
+            'evidencias_completas' => ['required', 'boolean'],
+            'implementacion_conforme' => ['required', 'boolean'],
+            'resultado' => ['nullable', 'string', 'max:2000'],
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $registrarVerificacionCierre->ejecutar(
+            $accionCorrectiva,
+            auth()->id(),
+            (bool) $datos['acciones_implementadas'],
+            (bool) $datos['evidencias_completas'],
+            (bool) $datos['implementacion_conforme'],
+            $datos['resultado'] ?? null,
+            $datos['observaciones'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with(
+                'success',
+                'La verificación de cierre fue registrada correctamente.'
+            );
+    }
+
+    public function iniciarEsperaEficacia(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        IniciarEsperaEficacia $iniciarEsperaEficacia
+    ) {
+        $datos = $request->validate([
+            'responsable_id' => ['required', 'integer', 'exists:users,id'],
+            'dias_espera' => ['required', 'integer', 'min:1'],
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $iniciarEsperaEficacia->ejecutar(
+            $accionCorrectiva,
+            (int) $datos['responsable_id'],
+            (int) $datos['dias_espera'],
+            $datos['observaciones'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with('success', 'La espera de eficacia fue iniciada correctamente.');
+    }
+
+    public function registrarVerificacionEficacia(
+        Request $request,
+        AccionCorrectiva $accionCorrectiva,
+        RegistrarVerificacionEficacia $registrarVerificacionEficacia
+    ) {
+        $datos = $request->validate([
+            'criterios_cumplidos' => ['required', 'boolean'],
+            'resultado_eficaz' => ['required', 'boolean'],
+            'resultado' => ['required', 'string', 'max:2000'],
+            'observaciones' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $registrarVerificacionEficacia->ejecutar(
+            $accionCorrectiva,
+            auth()->id(),
+            (bool) $datos['criterios_cumplidos'],
+            (bool) $datos['resultado_eficaz'],
+            $datos['resultado'],
+            $datos['observaciones'] ?? null
+        );
+
+        return redirect()
+            ->route('acciones-correctivas.show', $accionCorrectiva)
+            ->with(
+                'success',
+                'La verificación de eficacia fue registrada correctamente.'
+            );
     }
 }

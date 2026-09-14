@@ -83,6 +83,10 @@ return [
             'transport' => 'graph',
         ],
 
+        'graph_soporte' => [
+            'transport' => 'graph_soporte',
+        ],
+
         'failover' => [
             'transport' => 'failover',
             'mailers' => [

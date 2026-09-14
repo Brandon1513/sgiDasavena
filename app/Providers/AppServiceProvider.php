@@ -32,5 +32,11 @@ class AppServiceProvider extends ServiceProvider
             $tokenProvider,
             (string) config('graph.mail_from'),
         ));
+
+        Mail::extend('graph_soporte', fn () => new GraphApiTransport(
+            $client,
+            $tokenProvider,
+            (string) config('graph.mail_from_soporte'),
+        ));
     }
 }

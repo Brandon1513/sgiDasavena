@@ -11,6 +11,9 @@ use App\Http\Controllers\DocumentoRevisionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentoUsuarioController;
 use App\Http\Controllers\AccionCorrectivaController;
+use App\Http\Controllers\SoporteTicketController;
+use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
+
 
 
 
@@ -23,6 +26,8 @@ Route::get('/dashboard', SgiDashboardController::class)
 
 Route::middleware(['auth'])->group(function () {
 
+    Route::post('/soporte/ticket', [SoporteTicketController::class, 'store'])
+        ->name('soporte.ticket.store');
 
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
@@ -165,28 +170,34 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/usuarios/{user}/toggle-estado', [UserController::class, 'toggleEstado'])->name('usuarios.toggleEstado');
     });
 
-   // ===============================
-// PROFILE
-// ===============================
-Route::get('/profile', [ProfileController::class, 'edit'])
-    ->name('profile.edit');
+    // ===============================
+    // PROFILE
+    // ===============================
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
 
-Route::patch('/profile', [ProfileController::class, 'update'])
-    ->name('profile.update');
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
 
-Route::delete('/profile', [ProfileController::class, 'destroy'])
-    ->name('profile.destroy');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->name('profile.destroy');
 
 
-// ===============================
-// ACCIONES CORRECTIVAS
-// ===============================
-Route::prefix('acciones-correctivas')
+    // ===============================
+    // ACCIONES CORRECTIVAS
+    // ===============================
+ Route::prefix('acciones-correctivas')
     ->name('acciones-correctivas.')
     ->group(function () {
 
         Route::get('/', [AccionCorrectivaController::class, 'index'])
             ->name('index');
+
+        Route::get('/crear', [AccionCorrectivaController::class, 'create'])
+            ->name('create');
+
+        Route::post('/', [AccionCorrectivaController::class, 'store'])
+            ->name('store');
 
         Route::get('/{accionCorrectiva}', [AccionCorrectivaController::class, 'show'])
             ->name('show');
@@ -200,22 +211,73 @@ Route::prefix('acciones-correctivas')
         Route::get('/{accionCorrectiva}/analisis', [AccionCorrectivaController::class, 'analisis'])
             ->name('analisis');
 
-        Route::post('/{accionCorrectiva}/analisis/iniciar', [AccionCorrectivaController::class, 'iniciarAnalisis'])
-            ->name('analisis.iniciar');
 
-        Route::post('/{accionCorrectiva}/analisis/ideas', [AccionCorrectivaController::class, 'agregarIdea'])
-            ->name('analisis.idea');
 
-        Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
-            ->name('cinco-porques.iniciar');
-    });
 
+
+            Route::post('/{accionCorrectiva}/analisis/iniciar', [AccionCorrectivaController::class, 'iniciarAnalisis'])
+                ->name('analisis.iniciar');
+
+            Route::post('/{accionCorrectiva}/analisis/ideas', [AccionCorrectivaController::class, 'agregarIdea'])
+                ->name('analisis.idea');
+
+            Route::post(
+                '/{accionCorrectiva}/analisis/cinco-porques/{cincoPorque}/pasos',
+                [AccionCorrectivaController::class, 'agregarPorque']
+            )->name('cinco-porques.paso');
+
+            Route::post(
+                '/{accionCorrectiva}/analisis/causa-raiz/{cincoPorque}',
+                [AccionCorrectivaController::class, 'proponerCausaRaiz']
+            )->name('causa-raiz.proponer');
+
+            Route::post(
+                '/{accionCorrectiva}/analisis/causa-raiz/{causaRaiz}/validar',
+                [AccionCorrectivaController::class, 'validarCausaRaiz']
+            )->name('causa-raiz.validar');
+
+            Route::post(
+                '/{accionCorrectiva}/planes-accion',
+                [AccionCorrectivaController::class, 'crearPlanAccion']
+            )->name('planes.crear');
+
+            Route::post(
+                '/{accionCorrectiva}/planes-accion/actividades',
+                [AccionCorrectivaController::class, 'agregarActividad']
+            )->name('planes.actividades.crear');
+
+            Route::post(
+                '/{accionCorrectiva}/verificaciones-cierre',
+                [AccionCorrectivaController::class, 'registrarVerificacionCierre']
+            )->name('verificaciones-cierre.crear');
+
+            Route::post(
+                '/{accionCorrectiva}/esperas-eficacia',
+                [AccionCorrectivaController::class, 'iniciarEsperaEficacia']
+            )->name('esperas-eficacia.crear');
+
+
+            Route::post(
+                '/{accionCorrectiva}/verificaciones-eficacia',
+                [AccionCorrectivaController::class, 'registrarVerificacionEficacia']
+            )->name('verificaciones-eficacia.crear');
+
+            Route::post('/{accionCorrectiva}/actividades/{actividad}/evidencias', [AccionCorrectivaController::class, 'crearEvidencia'])->name('actividades.evidencias.crear');
+
+            Route::post('/{accionCorrectiva}/actividades/{actividad}/completar', [AccionCorrectivaController::class, 'completarActividad'])->name('actividades.completar');
+
+            Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
+                ->name('cinco-porques.iniciar');
+            Route::post('/{accionCorrectiva}/analisis/cinco-porques/{cincoPorque}/pasos', [AccionCorrectivaController::class, 'agregarPorque'])
+                ->name('cinco-porques.paso');
+        });
+
+
+
+    Route::post(
+        '/{accionCorrectiva}/analisis/cinco-porques/{cincoPorque}/pasos',
+        [AccionCorrectivaController::class, 'agregarPorque']
+    )->name('cinco-porques.paso');
 });
-    
+
 require __DIR__ . '/auth.php';
-
-
-
-
-
-

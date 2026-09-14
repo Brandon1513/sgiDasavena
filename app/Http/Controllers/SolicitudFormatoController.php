@@ -398,7 +398,11 @@ $request->validate($rules);
                     DocumentoRevision::create([
                         'documento_version_id' => $nuevaVersion->id,
                         'revision_actual' => $revActual,
+                        'revision_anterior' => $revAnterior,
                         'fecha_revision' => $fRev,
+                        'vigencia_revision_dias' => $vigenciaR,
+                        'fecha_vencimiento_revision' => $vencimientoR,
+                        'liga_archivo' => $request->liga_archivo,
                         'estatus' => 'vigente',
                         'registrado_por' => auth()->id(),
                     ]);

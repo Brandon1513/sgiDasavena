@@ -6,6 +6,8 @@ use App\Domains\Incidencias\Models\AcCausaRaiz;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
+
+
 class ValidarCausaRaiz
 {
     public function ejecutar(

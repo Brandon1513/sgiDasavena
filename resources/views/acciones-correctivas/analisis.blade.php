@@ -537,6 +537,10 @@
     CAUSA RAÍZ
 ====================================================== --}}
 
+         {{-- =====================================================
+    CAUSA RAÍZ
+====================================================== --}}
+
          <div class="card border-0 shadow-sm mb-4">
 
              <div class="card-header bg-white">
@@ -555,23 +559,44 @@
 
                  @forelse($analisisActual?->causasRaiz ?? [] as $causa)
 
-                 <div class="border rounded p-3">
+                 <div class="border rounded-3 p-3 mb-3">
 
-                     <div class="d-flex justify-content-between align-items-start">
+                     {{-- =================================================
+                    ENCABEZADO DE LA CAUSA
+                ================================================== --}}
+
+                     <div class="d-flex justify-content-between align-items-start gap-3">
 
                          <div class="fw-semibold">
                              {{ $causa->descripcion }}
                          </div>
 
-                         @if($causa->estado_validacion)
+                         @if($causa->estado_validacion === 'aprobada')
 
-                         <span class="badge bg-secondary">
-                             {{ ucfirst(str_replace('_', ' ', $causa->estado_validacion)) }}
+                         <span class="badge bg-success">
+                             Aprobada
+                         </span>
+
+                         @elseif($causa->estado_validacion === 'rechazada')
+
+                         <span class="badge bg-danger">
+                             Rechazada
+                         </span>
+
+                         @elseif($causa->estado_validacion === 'pendiente')
+
+                         <span class="badge bg-warning text-dark">
+                             Pendiente
                          </span>
 
                          @endif
 
                      </div>
+
+
+                     {{-- =================================================
+                    DATOS DE PROPUESTA
+                ================================================== --}}
 
                      @if($causa->fecha_propuesta)
 
@@ -588,9 +613,84 @@
 
                      @endif
 
+
+                     {{-- =================================================
+                    VALIDACIÓN
+                ================================================== --}}
+
+                     @if($causa->estado_validacion === 'pendiente')
+
+                     <div class="border rounded-3 p-3 mt-4 bg-light">
+
+                         <div class="fw-semibold mb-1">
+                             Validar causa raíz
+                         </div>
+
+                         <div class="text-muted small mb-3">
+                             Revisa la causa propuesta y determina si debe aprobarse o rechazarse.
+                         </div>
+
+                         <form
+                             method="POST"
+                             action="{{ route(
+                                'acciones-correctivas.causa-raiz.validar',
+                                [
+                                    'accionCorrectiva' => $accionCorrectiva,
+                                    'causaRaiz' => $causa,
+                                ]
+                            ) }}">
+
+                             @csrf
+
+                             <div class="mb-3">
+
+                                 <label class="form-label fw-semibold">
+                                     Comentarios
+                                 </label>
+
+                                 <textarea
+                                     name="comentarios"
+                                     class="form-control"
+                                     rows="3"
+                                     maxlength="2000"
+                                     placeholder="Comentarios de la validación. Obligatorio si se rechaza.">{{ old('comentarios') }}</textarea>
+
+                             </div>
+
+                             <div class="d-flex justify-content-end gap-2">
+
+                                 <button
+                                     type="submit"
+                                     name="aprobada"
+                                     value="0"
+                                     class="btn btn-outline-danger">
+                                     Rechazar causa
+                                 </button>
+
+                                 <button
+                                     type="submit"
+                                     name="aprobada"
+                                     value="1"
+                                     class="btn btn-success">
+                                     Aprobar causa
+                                 </button>
+
+                             </div>
+
+                         </form>
+
+                     </div>
+
+                     @endif
+
+
+                     {{-- =================================================
+                    DATOS DE VALIDACIÓN
+                ================================================== --}}
+
                      @if($causa->fecha_validacion)
 
-                     <div class="small text-muted mt-2">
+                     <div class="small text-muted mt-3">
 
                          Validación:
                          {{ $causa->fecha_validacion->format('d/m/Y') }}
@@ -602,6 +702,11 @@
                      </div>
 
                      @endif
+
+
+                     {{-- =================================================
+                    COMENTARIOS DE VALIDACIÓN
+                ================================================== --}}
 
                      @if($causa->comentarios_validacion)
 
@@ -693,7 +798,7 @@
      </div>
 
      {{-- =====================================================
-    5 PORQUÉS
+    ANÁLISIS DE 5 PORQUÉS
 ====================================================== --}}
 
      <div class="card border-0 shadow-sm mb-4">
@@ -724,9 +829,9 @@
 
              @forelse($analisisActual?->cincoPorques ?? [] as $cincoPorque)
 
-             <div class="border rounded p-3 mb-4">
+             <div class="border rounded-3 p-3 mb-4">
 
-                 {{-- Encabezado --}}
+                 {{-- CABECERA --}}
                  <div class="d-flex justify-content-between align-items-start">
 
                      <div>
@@ -737,15 +842,29 @@
 
                          <div class="small text-muted mt-1">
                              Estado:
-                             {{ ucfirst($cincoPorque->estado ?? 'pendiente') }}
+                             <strong>
+                                 {{ ucfirst(str_replace('_', ' ', $cincoPorque->estado)) }}
+                             </strong>
                          </div>
 
                      </div>
 
+                     <span class="badge
+                        {{ $cincoPorque->pasos->count() === 5
+                            ? 'bg-success'
+                            : 'bg-warning text-dark' }}">
+                         {{ $cincoPorque->pasos->count() === 5
+                            ? 'Completados'
+                            : ucfirst(str_replace('_', ' ', $cincoPorque->estado)) }}
+                     </span>
+
                  </div>
 
 
-                 {{-- Pasos --}}
+                 {{-- =====================================================
+                    PASOS
+                ====================================================== --}}
+
                  @if($cincoPorque->pasos->isNotEmpty())
 
                  <div class="mt-4">
@@ -767,7 +886,7 @@
                          <div class="flex-grow-1">
 
                              <div class="small text-muted">
-                                 ¿Por qué?
+                                 Porqué {{ $paso->numero }}
                              </div>
 
                              <div class="fw-semibold">
@@ -807,36 +926,190 @@
                  @endif
 
 
-                 {{-- Causa raíz propuesta --}}
-                 @if($cincoPorque->causa_raiz_propuesta)
+                 {{-- =====================================================
+                    SIGUIENTE PORQUÉ
+                ====================================================== --}}
 
-                 <div class="mt-4 pt-3 border-top">
+                 @if($cincoPorque->estado === 'en_proceso')
 
-                     <div class="small text-muted">
-                         Causa raíz propuesta
+                 @php
+                 $numeroSiguiente = ($cincoPorque->pasos->max('numero') ?? 0) + 1;
+                 @endphp
+
+                 @if($numeroSiguiente <= 5)
+
+                     <div class="border rounded-3 p-3 mt-4 bg-light">
+
+                     <div class="fw-semibold mb-1">
+                         Porqué {{ $numeroSiguiente }}
                      </div>
 
-                     <div class="fw-semibold mt-1">
-                         {{ $cincoPorque->causa_raiz_propuesta }}
+                     <div class="text-muted small mb-3">
+                         ¿Por qué ocurrió el problema en este nivel?
                      </div>
+
+                     <form
+                         method="POST"
+                         action="{{ route(
+                                    'acciones-correctivas.cinco-porques.paso',
+                                    [
+                                        'accionCorrectiva' => $accionCorrectiva,
+                                        'cincoPorque' => $cincoPorque,
+                                    ]
+                                ) }}">
+
+                         @csrf
+
+                         <div class="mb-3">
+
+                             <label class="form-label fw-semibold">
+                                 Respuesta
+                             </label>
+
+                             <textarea
+                                 name="respuesta"
+                                 class="form-control"
+                                 rows="3"
+                                 maxlength="2000"
+                                 required
+                                 placeholder="Describe por qué ocurrió el problema..."></textarea>
+
+                         </div>
+
+                         <div class="d-flex justify-content-end">
+
+                             <button
+                                 type="submit"
+                                 class="btn btn-primary">
+                                 Registrar porqué {{ $numeroSiguiente }}
+                             </button>
+
+                         </div>
+
+                     </form>
+
+             </div>
+
+             @else
+
+             <div class="alert alert-success mt-4 mb-0">
+                 ✓ Los 5 Porqués fueron completados.
+             </div>
+
+             @endif
+
+             @endif
+
+
+             {{-- =====================================================
+                    CAUSA RAÍZ
+                ====================================================== --}}
+
+             @if($cincoPorque->pasos->count() === 5)
+
+             @php
+             $causaRaiz = $cincoPorque->causaRaiz;
+             @endphp
+
+             @if(!$causaRaiz)
+
+             <div class="border rounded-3 p-3 mt-4 bg-light">
+
+                 <div class="fw-semibold mb-1">
+                     Proponer causa raíz
+                 </div>
+
+                 <div class="text-muted small mb-3">
+                     Con base en los 5 Porqués, registra la causa raíz identificada.
+                 </div>
+
+                 <form
+                     method="POST"
+                     action="{{ route(
+                                    'acciones-correctivas.causa-raiz.proponer',
+                                    [
+                                        'accionCorrectiva' => $accionCorrectiva,
+                                        'cincoPorque' => $cincoPorque,
+                                    ]
+                                ) }}">
+
+                     @csrf
+
+                     <div class="mb-3">
+
+                         <label class="form-label fw-semibold">
+                             Causa raíz
+                         </label>
+
+                         <textarea
+                             name="descripcion"
+                             class="form-control"
+                             rows="4"
+                             maxlength="2000"
+                             required
+                             placeholder="Describe la causa raíz identificada..."></textarea>
+
+                     </div>
+
+                     <div class="d-flex justify-content-end">
+
+                         <button
+                             type="submit"
+                             class="btn btn-primary">
+                             Proponer causa raíz
+                         </button>
+
+                     </div>
+
+                 </form>
+
+             </div>
+
+             @else
+
+             <div class="mt-4 pt-3 border-top">
+
+                 <div class="small text-muted">
+                     Causa raíz propuesta
+                 </div>
+
+                 <div class="fw-semibold mt-1">
+                     {{ $causaRaiz->descripcion }}
+                 </div>
+
+                 <div class="mt-2">
+
+                     <span class="badge
+                                    {{ $causaRaiz->estado_validacion === 'aprobada'
+                                        ? 'bg-success'
+                                        : ($causaRaiz->estado_validacion === 'rechazada'
+                                            ? 'bg-danger'
+                                            : 'bg-warning text-dark') }}">
+                         {{ ucfirst(str_replace('_', ' ', $causaRaiz->estado_validacion)) }}
+                     </span>
 
                  </div>
 
-                 @endif
-
              </div>
 
-             @empty
+             @endif
 
-             <div class="text-muted text-center py-4">
-                 No hay análisis de 5 Porqués registrado para este ciclo.
-             </div>
-
-             @endforelse
+             @endif
 
          </div>
 
+         @empty
+
+         <div class="text-muted text-center py-4">
+             No hay análisis de 5 Porqués registrado para este ciclo.
+         </div>
+
+         @endforelse
+
      </div>
+
+     </div>
+
 
      <script>
          function toggleIdea() {
