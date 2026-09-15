@@ -90,12 +90,4 @@ class AcAnalisis extends Model
             'ac_analisis_id'
         );
     }
-    public function causaRaiz(): \Illuminate\Database\Eloquent\Relations\HasOne
-    {
-        return $this->hasOne(
-            AcCausaRaiz::class,
-            'ac_cinco_porque_id'
-        );
-    }
-    
 }

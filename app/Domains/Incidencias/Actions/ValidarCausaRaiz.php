@@ -30,7 +30,7 @@ class ValidarCausaRaiz
                 ]);
             }
 
-            if (!$comentarios && !$aprobada) {
+            if (trim((string) $comentarios) === '' && !$aprobada) {
                 throw ValidationException::withMessages([
                     'comentarios' =>
                         'Debe indicar el motivo del rechazo de la causa raíz.',

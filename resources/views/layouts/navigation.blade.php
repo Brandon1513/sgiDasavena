@@ -9,35 +9,91 @@
         padding: 14px 16px 0;
     }
 
-    /* Navbar principal — flotante */
+    /* Navbar principal — flotante, efecto "liquid glass" */
     .nav-root nav {
         position: relative;
         max-width: 1240px;
         margin: 0 auto;
-        background: rgba(255, 255, 255, 0.82);
-        backdrop-filter: blur(16px) saturate(160%);
-        -webkit-backdrop-filter: blur(16px) saturate(160%);
-        border: 1px solid rgba(106, 44, 117, 0.1);
+        background: rgba(255, 255, 255, 0.62);
+        border: 1px solid rgba(255, 255, 255, 0.5);
         border-radius: 26px;
-        box-shadow: 0 10px 40px rgba(106, 44, 117, 0.14), 0 2px 8px rgba(0,0,0,.04);
-        transition: box-shadow .25s ease;
+        box-shadow:
+            0 10px 40px rgba(106, 44, 117, 0.16),
+            0 2px 8px rgba(0, 0, 0, .05),
+            inset 0 1px 0 rgba(255, 255, 255, .8),
+            inset 0 -1px 0 rgba(106, 44, 117, .06);
+        transition: box-shadow .25s ease, background-color .25s ease;
+        isolation: isolate;
+        --mx: 50%;
+        --my: 0%;
+    }
+    /* Base: blur seguro en cualquier navegador */
+    .nav-root nav {
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+    /* Mejora progresiva: distorsión tipo vidrio líquido (si el navegador
+       no soporta url() dentro de backdrop-filter, ignora esta regla entera
+       y se queda con el blur de arriba — no rompe nada). */
+    @supports (backdrop-filter: blur(1px)) {
+        .nav-root nav {
+            backdrop-filter: url(#liquid-glass-distortion) blur(14px) saturate(180%) brightness(1.04);
+            -webkit-backdrop-filter: blur(14px) saturate(180%) brightness(1.04);
+        }
     }
 
-    /* Linea dorada superior, muy fina */
-    .nav-root nav::before {
+    /* Capa decorativa: brillo especular que sigue el mouse + destello ambiental */
+    .nav-glass-fx {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        border-radius: inherit;
+        overflow: hidden;
+    }
+    .nav-glass-fx::before {
+        /* Brillo especular: sigue al cursor, como luz atravesando el vidrio */
         content: '';
         position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 2px;
-        border-radius: 26px 26px 0 0;
-        background: linear-gradient(90deg, #6A2C75, #D4A018, #6A2C75);
-        background-size: 200% 100%;
-        animation: nav-gleam 6s linear infinite;
+        inset: 0;
+        background: radial-gradient(
+            220px 140px at var(--mx) var(--my),
+            rgba(255, 255, 255, .55),
+            rgba(255, 255, 255, .12) 45%,
+            transparent 70%
+        );
+        opacity: 0;
+        transition: opacity .4s ease;
     }
-    @keyframes nav-gleam {
-        0%   { background-position: 0% 0; }
-        100% { background-position: 200% 0; }
+    .nav-root nav:hover .nav-glass-fx::before,
+    .nav-root nav:focus-within .nav-glass-fx::before {
+        opacity: 1;
     }
+    .nav-glass-fx::after {
+        /* Destello ambiental: un barrido diagonal lento, como luz moviéndose sobre el vidrio */
+        content: '';
+        position: absolute;
+        inset: -40% -10%;
+        background: linear-gradient(
+            115deg,
+            transparent 30%,
+            rgba(255, 255, 255, .35) 45%,
+            rgba(255, 255, 255, .05) 55%,
+            transparent 70%
+        );
+        background-size: 250% 250%;
+        animation: nav-liquid-sheen 9s ease-in-out infinite;
+        mix-blend-mode: overlay;
+    }
+    @keyframes nav-liquid-sheen {
+        0%, 100% { background-position: 0% 50%; }
+        50%      { background-position: 100% 50%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .nav-glass-fx::after { animation: none; }
+    }
+
+   
 
     /* Logo */
     .nav-logo {
@@ -59,11 +115,23 @@
         letter-spacing: 0.03em;
         color: #5b3a63;
         background: transparent;
-        border: none;
+        border: 1px solid transparent;
         border-radius: 10px;
         text-decoration: none;
         cursor: pointer;
-        transition: color .2s ease, background-color .2s ease, transform .15s ease;
+        overflow: hidden;
+        transition: color .2s ease, background-color .2s ease, border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+    }
+    .nav-item::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 25%, rgba(255,255,255,.65) 50%, transparent 75%);
+        background-size: 250% 250%;
+        background-position: -120% -120%;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        transition: background-position .55s ease;
     }
     .nav-item::after {
         content: '';
@@ -78,8 +146,13 @@
     }
     .nav-item:hover {
         color: #6A2C75;
-        background: rgba(106, 44, 117, 0.05);
+        background: rgba(255, 255, 255, .45);
+        border-color: rgba(255, 255, 255, .6);
+        box-shadow: 0 4px 14px rgba(106, 44, 117, .1), inset 0 1px 0 rgba(255,255,255,.7);
+        backdrop-filter: blur(6px) saturate(160%);
+        -webkit-backdrop-filter: blur(6px) saturate(160%);
     }
+    .nav-item:hover::before { background-position: 120% 120%; }
     .nav-item:hover::after { transform: scaleX(1); }
     .nav-item:active { transform: scale(.95); }
 
@@ -110,6 +183,7 @@
 
     /* Boton perfil */
     .nav-profile-btn {
+        position: relative;
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -118,16 +192,32 @@
         font-size: 0.8rem;
         font-weight: 600;
         color: #4a2a55;
-        background: rgba(106, 44, 117, 0.04);
-        border: 1px solid rgba(106, 44, 117, 0.12);
+        background: rgba(255, 255, 255, .35);
+        backdrop-filter: blur(8px) saturate(160%);
+        -webkit-backdrop-filter: blur(8px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, .55);
         border-radius: 100px;
+        overflow: hidden;
         transition: all .2s ease;
         cursor: pointer;
     }
-    .nav-profile-btn:hover {
-        background: rgba(106, 44, 117, 0.09);
-        border-color: rgba(106, 44, 117, 0.28);
+    .nav-profile-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 25%, rgba(255,255,255,.6) 50%, transparent 75%);
+        background-size: 250% 250%;
+        background-position: -120% -120%;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        transition: background-position .55s ease;
     }
+    .nav-profile-btn:hover {
+        background: rgba(255, 255, 255, .55);
+        border-color: rgba(255, 255, 255, .75);
+        box-shadow: 0 4px 14px rgba(106, 44, 117, .12), inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .nav-profile-btn:hover::before { background-position: 120% 120%; }
     .nav-profile-btn:hover .nav-avatar { box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 0 4px rgba(212,160,24,0.3); }
     .nav-profile-btn:active { transform: scale(.96); }
 
@@ -144,17 +234,33 @@
 
     /* Hamburger animado (3 lineas a X) */
     .nav-hamburger {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: center;
         width: 34px; height: 34px;
         color: #6A2C75;
-        border: 1px solid rgba(106, 44, 117, 0.15);
+        border: 1px solid rgba(255, 255, 255, .55);
         border-radius: 9px;
-        background: rgba(106, 44, 117, 0.04);
-        transition: background-color .2s ease, transform .15s ease;
+        background: rgba(255, 255, 255, .35);
+        backdrop-filter: blur(8px) saturate(160%);
+        -webkit-backdrop-filter: blur(8px) saturate(160%);
+        overflow: hidden;
+        transition: background-color .2s ease, border-color .2s ease, transform .15s ease;
     }
-    .nav-hamburger:hover { background: rgba(106, 44, 117, 0.1); }
+    .nav-hamburger::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 25%, rgba(255,255,255,.6) 50%, transparent 75%);
+        background-size: 250% 250%;
+        background-position: -120% -120%;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        transition: background-position .55s ease;
+    }
+    .nav-hamburger:hover { background: rgba(255, 255, 255, .55); border-color: rgba(255, 255, 255, .75); }
+    .nav-hamburger:hover::before { background-position: 120% 120%; }
     .nav-hamburger:active { transform: scale(.92); }
     .hamburger-box { position: relative; width: 16px; height: 12px; }
     .hamburger-line {
@@ -197,6 +303,7 @@
 
     /* Login button */
     .nav-btn-login {
+        position: relative;
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -209,9 +316,21 @@
         background: linear-gradient(135deg, #6A2C75, #8e3d9e);
         border-radius: 100px;
         text-decoration: none;
+        overflow: hidden;
         transition: all 0.25s ease;
         box-shadow: 0 3px 14px rgba(106, 44, 117, 0.28);
     }
+    .nav-btn-login::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 25%, rgba(255,255,255,.55) 50%, transparent 75%);
+        background-size: 250% 250%;
+        background-position: -120% -120%;
+        pointer-events: none;
+        transition: background-position .55s ease;
+    }
+    .nav-btn-login:hover::before { background-position: 120% 120%; }
     .nav-btn-login:hover {
         background: linear-gradient(135deg, #D4A018, #f0c84a);
         color: #2d1033;
@@ -235,12 +354,27 @@
         display: inline-flex; align-items: center; justify-content: center;
         width: 34px; height: 34px;
         color: #6A2C75;
-        border: 1px solid rgba(106, 44, 117, 0.12);
+        border: 1px solid rgba(255, 255, 255, .55);
         border-radius: 50%;
-        background: rgba(106, 44, 117, 0.04);
+        background: rgba(255, 255, 255, .35);
+        backdrop-filter: blur(8px) saturate(160%);
+        -webkit-backdrop-filter: blur(8px) saturate(160%);
+        overflow: hidden;
         transition: background-color .2s ease, border-color .2s ease, transform .15s ease;
     }
-    .nav-icon-btn:hover { background: rgba(106, 44, 117, 0.1); border-color: rgba(106, 44, 117, 0.28); }
+    .nav-icon-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(120deg, transparent 25%, rgba(255,255,255,.6) 50%, transparent 75%);
+        background-size: 250% 250%;
+        background-position: -120% -120%;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+        transition: background-position .55s ease;
+    }
+    .nav-icon-btn:hover { background: rgba(255, 255, 255, .55); border-color: rgba(255, 255, 255, .75); }
+    .nav-icon-btn:hover::before { background-position: 120% 120%; }
     .nav-icon-btn:active { transform: scale(.93); }
 
     /* Panel flotante compartido (búsqueda / notificaciones) */
@@ -284,9 +418,23 @@
     .nav-notif-empty { padding: 24px 14px; text-align: center; font-size: .8rem; color: #a78ab0; }
 </style>
 
+<!-- Filtro SVG del efecto "liquid glass" (distorsión sutil del contenido detrás del navbar) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="liquid-glass-distortion" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise" />
+        <feGaussianBlur in="noise" stdDeviation="2.5" result="softNoise" />
+        <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="16" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+</svg>
+
 <div class="nav-root">
-<nav x-data="{ open: false }">
-    <div class="px-4 sm:px-6">
+<nav x-data="{ open: false }" @mousemove="
+        const r = $el.getBoundingClientRect();
+        $el.style.setProperty('--mx', ((event.clientX - r.left) / r.width * 100) + '%');
+        $el.style.setProperty('--my', ((event.clientY - r.top) / r.height * 100) + '%');
+    ">
+    <div class="nav-glass-fx" aria-hidden="true"></div>
+    <div class="px-4 sm:px-6 relative z-[1]">
         <div class="flex justify-between h-14">
 
             <!-- IZQUIERDA: Logo + Links -->
@@ -536,7 +684,7 @@
 
     <!-- Mobile Menu -->
     <div :class="open ? 'max-h-[520px] opacity-100' : 'max-h-0 opacity-0'"
-        class="overflow-hidden sm:hidden nav-mobile">
+        class="overflow-hidden sm:hidden nav-mobile relative z-[1]">
         <div class="px-4 pt-3 pb-3 space-y-1">
             <a href="{{ route('dashboard') }}"
                 class="nav-mobile-link {{ request()->routeIs('dashboard') ? 'nav-mobile-link-active' : '' }}">

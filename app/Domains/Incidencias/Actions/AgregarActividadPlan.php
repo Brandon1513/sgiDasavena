@@ -25,7 +25,7 @@ class AgregarActividadPlan
                 ]);
             }
 
-            if (empty($datos['descripcion'])) {
+            if (trim((string) ($datos['descripcion'] ?? '')) === '') {
                 throw ValidationException::withMessages([
                     'descripcion' =>
                         'La descripción de la actividad es obligatoria.',

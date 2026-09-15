@@ -90,51 +90,56 @@ Route::middleware(['auth'])->group(function () {
     });
 
 
-    // ✅ Alias opcional si tú quieres /solicitudes/crear (para tu botón)
-    // OJO: el resource default es /solicitudes/create
-    Route::get('/solicitudes/crear', fn() => redirect()->route('solicitudes.create'))
-        ->name('solicitudes.crear_alias');
+    // Solicitud de cambios: restringido a los roles que participan en el flujo
+    // (se había perdido este middleware; en `main` envolvía todo este bloque).
+    Route::middleware('role:usuario|administrador|administrador_sgi|jefe')->group(function () {
 
-    // Formulario usuario/jefe para subir solicitud de actualización
-    Route::get('/solicitudes/solicitar-actualizacion', [SolicitudFormatoController::class, 'solicitarActualizacionForm'])
-        ->name('solicitudes.solicitar_actualizacion.form');
+        // ✅ Alias opcional si tú quieres /solicitudes/crear (para tu botón)
+        // OJO: el resource default es /solicitudes/create
+        Route::get('/solicitudes/crear', fn() => redirect()->route('solicitudes.create'))
+            ->name('solicitudes.crear_alias');
 
-    Route::post('/solicitudes/solicitar-actualizacion', [SolicitudFormatoController::class, 'solicitarActualizacionStore'])
-        ->name('solicitudes.solicitar_actualizacion.store');
+        // Formulario usuario/jefe para subir solicitud de actualización
+        Route::get('/solicitudes/solicitar-actualizacion', [SolicitudFormatoController::class, 'solicitarActualizacionForm'])
+            ->name('solicitudes.solicitar_actualizacion.form');
 
-    // ===============================
-    // SOLICITUDES - RESOURCE (AL FINAL)
-    // ===============================
-    // ✅ IMPORTANTE: restringimos el parámetro para que NO se coma "calendario" ni "crear"
-    Route::get('/solicitudes', [SolicitudFormatoController::class, 'index'])
-        ->name('solicitudes.index');
+        Route::post('/solicitudes/solicitar-actualizacion', [SolicitudFormatoController::class, 'solicitarActualizacionStore'])
+            ->name('solicitudes.solicitar_actualizacion.store');
 
-    Route::get('/solicitudes/create', [SolicitudFormatoController::class, 'create'])
-        ->name('solicitudes.create');
+        // ===============================
+        // SOLICITUDES - RESOURCE (AL FINAL)
+        // ===============================
+        // ✅ IMPORTANTE: restringimos el parámetro para que NO se coma "calendario" ni "crear"
+        Route::get('/solicitudes', [SolicitudFormatoController::class, 'index'])
+            ->name('solicitudes.index');
 
-    Route::post('/solicitudes', [SolicitudFormatoController::class, 'store'])
-        ->name('solicitudes.store');
+        Route::get('/solicitudes/create', [SolicitudFormatoController::class, 'create'])
+            ->name('solicitudes.create');
 
-    // ✅ ESTA SIEMPRE AL FINAL
-    Route::get('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'show'])
-        ->name('solicitudes.show');
+        Route::post('/solicitudes', [SolicitudFormatoController::class, 'store'])
+            ->name('solicitudes.store');
 
-    // Si usas estas pantallas extra:
-    Route::get('/solicitudes/{solicitud}/aprobar', [SolicitudFormatoController::class, 'approvalForm'])
-        ->whereNumber('solicitud')
-        ->name('solicitudes.approval_form');
+        // ✅ ESTA SIEMPRE AL FINAL
+        Route::get('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'show'])
+            ->name('solicitudes.show');
 
-    Route::post('/solicitudes/{solicitud}/aprobar', [SolicitudFormatoController::class, 'approveOrReject'])
-        ->whereNumber('solicitud')
-        ->name('solicitudes.approve_or_reject');
+        // Si usas estas pantallas extra:
+        Route::get('/solicitudes/{solicitud}/aprobar', [SolicitudFormatoController::class, 'approvalForm'])
+            ->whereNumber('solicitud')
+            ->name('solicitudes.approval_form');
 
-    Route::get('/solicitudes/{solicitud}/finalizar', [SolicitudFormatoController::class, 'finalizeForm'])
-        ->whereNumber('solicitud')
-        ->name('solicitudes.finalize_form');
+        Route::post('/solicitudes/{solicitud}/aprobar', [SolicitudFormatoController::class, 'approveOrReject'])
+            ->whereNumber('solicitud')
+            ->name('solicitudes.approve_or_reject');
 
-    Route::post('/solicitudes/{solicitud}/finalizar', [SolicitudFormatoController::class, 'finalize'])
-        ->whereNumber('solicitud')
-        ->name('solicitudes.finalize');
+        Route::get('/solicitudes/{solicitud}/finalizar', [SolicitudFormatoController::class, 'finalizeForm'])
+            ->whereNumber('solicitud')
+            ->name('solicitudes.finalize_form');
+
+        Route::post('/solicitudes/{solicitud}/finalizar', [SolicitudFormatoController::class, 'finalize'])
+            ->whereNumber('solicitud')
+            ->name('solicitudes.finalize');
+    });
 
 
     // ===============================
@@ -151,8 +156,7 @@ Route::middleware(['auth'])->group(function () {
     //usuarios 
 
     // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
-
-    Route::delete('/solicitudes/{solicitud}', [SolicitudFormatoController::class, 'destroy'])->name('solicitudes.destroy');
+    // (solicitudes.destroy ya está registrada arriba, protegida por role:administrador_sgi)
 
     Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
         ->name('documentos.versiones.show');
@@ -280,16 +284,7 @@ Route::middleware(['auth'])->group(function () {
 
             Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
                 ->name('cinco-porques.iniciar');
-            Route::post('/{accionCorrectiva}/analisis/cinco-porques/{cincoPorque}/pasos', [AccionCorrectivaController::class, 'agregarPorque'])
-                ->name('cinco-porques.paso');
         });
-
-
-
-    Route::post(
-        '/{accionCorrectiva}/analisis/cinco-porques/{cincoPorque}/pasos',
-        [AccionCorrectivaController::class, 'agregarPorque']
-    )->name('cinco-porques.paso');
 });
 
 require __DIR__ . '/auth.php';

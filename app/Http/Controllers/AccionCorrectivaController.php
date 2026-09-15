@@ -30,10 +30,31 @@ use App\Domains\Incidencias\Models\AcActividad;
 use App\Domains\Incidencias\Actions\RegistrarVerificacionCierre;
 use App\Domains\Incidencias\Actions\IniciarEsperaEficacia;
 use App\Domains\Incidencias\Actions\RegistrarVerificacionEficacia;
-use Illuminate\Support\Facades\DB;
+use App\Domains\Incidencias\Actions\CrearAccionCorrectiva;
 
 class AccionCorrectivaController extends Controller
 {
+    /**
+     * Solo quien es responsable de la Acción Correctiva, o un administrador
+     * (administrador / administrador_sgi), puede ejecutar acciones que
+     * modifiquen su estado o su expediente. Consultar (index/show/analisis)
+     * queda abierto a cualquier usuario autenticado.
+     */
+    private function autorizarGestion(AccionCorrectiva $accionCorrectiva): void
+    {
+        $user = auth()->user();
+
+        if (
+            $user->hasRole('administrador')
+            || $user->hasRole('administrador_sgi')
+            || $user->id === $accionCorrectiva->responsable_id
+        ) {
+            return;
+        }
+
+        abort(403, 'No tienes permiso para gestionar esta Acción Correctiva.');
+    }
+
     /**
      * Listado de acciones correctivas.
      */
@@ -107,7 +128,7 @@ class AccionCorrectivaController extends Controller
     }
 
 
-    public function store(Request $request)
+    public function store(Request $request, CrearAccionCorrectiva $crearAccionCorrectiva)
     {
         $datos = $request->validate([
             'descripcion' => [
@@ -129,44 +150,12 @@ class AccionCorrectivaController extends Controller
             ],
         ]);
 
-        $accionCorrectiva = DB::transaction(function () use ($datos) {
-
-            $prefijo = now()->format('y');
-
-            $ultimoNumero = AccionCorrectiva::query()
-                ->where('codigo', 'like', $prefijo . '-%')
-                ->pluck('codigo')
-                ->map(function ($codigo) use ($prefijo) {
-                    return (int) str_replace(
-                        $prefijo . '-',
-                        '',
-                        $codigo
-                    );
-                })
-                ->max() ?? 0;
-
-            $codigo = sprintf(
-                '%s-%03d',
-                $prefijo,
-                $ultimoNumero + 1
-            );
-
-            $estadoBorrador = EstadoModel::query()
-                ->where('codigo', EstadoAccionCorrectiva::BORRADOR->value)
-                ->where('activo', true)
-                ->firstOrFail();
-
-            return AccionCorrectiva::create([
-                'codigo' => $codigo,
-                'descripcion' => $datos['descripcion'],
-                'origen_id' => $datos['origen_id'],
-                'responsable_id' => $datos['responsable_id'],
-                'estado_id' => $estadoBorrador->id,
-                'fecha_apertura' => now()->toDateString(),
-                'ciclo_actual' => 1,
-                'porcentaje_avance' => 0,
-            ]);
-        });
+        $accionCorrectiva = $crearAccionCorrectiva->ejecutar([
+            'fecha_apertura' => now()->toDateString(),
+            'origen_id' => $datos['origen_id'],
+            'responsable_id' => $datos['responsable_id'],
+            'descripcion' => $datos['descripcion'],
+        ]);
 
         return redirect()
             ->route(
@@ -273,6 +262,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         IniciarAnalisis $iniciarAnalisis
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $iniciarAnalisis->ejecutar(
             $accionCorrectiva,
             auth()->id()
@@ -293,6 +284,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         AgregarIdeaAnalisis $agregarIdea
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $analisis = $accionCorrectiva->analisis()
             ->where(
                 'ciclo',
@@ -345,6 +338,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         IniciarCincoPorques $iniciarCincoPorques
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $analisis = $accionCorrectiva->analisis()
             ->where(
                 'ciclo',
@@ -392,6 +387,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         CambiarEstadoAccionCorrectiva $cambiarEstado
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $request->validate([
             'estado' => ['required', 'string'],
         ]);
@@ -433,6 +430,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         CrearContencion $crearContencion
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'descripcion' => ['required', 'string', 'max:2000'],
             'responsable_id' => ['required', 'integer', 'exists:users,id'],
@@ -457,6 +456,8 @@ class AccionCorrectivaController extends Controller
         AcCincoPorque $cincoPorque,
         AgregarPorque $agregarPorque
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'respuesta' => ['required', 'string', 'max:2000'],
         ]);
@@ -484,6 +485,8 @@ class AccionCorrectivaController extends Controller
         AcCincoPorque $cincoPorque,
         ProponerCausaRaiz $proponerCausaRaiz
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'descripcion' => ['required', 'string', 'max:2000'],
         ]);
@@ -517,6 +520,8 @@ class AccionCorrectivaController extends Controller
         AcCausaRaiz $causaRaiz,
         ValidarCausaRaiz $validarCausaRaiz
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'aprobada' => ['required', 'boolean'],
             'comentarios' => ['nullable', 'string', 'max:2000'],
@@ -562,6 +567,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         CrearPlanAccion $crearPlanAccion
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'observaciones' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -582,6 +589,8 @@ class AccionCorrectivaController extends Controller
         AcActividad $actividad,
         CrearEvidencia $crearEvidencia
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'archivo' => [
                 'required',
@@ -619,6 +628,8 @@ class AccionCorrectivaController extends Controller
         AcActividad $actividad,
         CompletarActividad $completarActividad
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'observaciones' => [
                 'nullable',
@@ -645,6 +656,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         AgregarActividadPlan $agregarActividadPlan
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'descripcion' => ['required', 'string', 'max:2000'],
             'responsable_id' => ['required', 'integer', 'exists:users,id'],
@@ -674,6 +687,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         RegistrarVerificacionCierre $registrarVerificacionCierre
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'acciones_implementadas' => ['required', 'boolean'],
             'evidencias_completas' => ['required', 'boolean'],
@@ -705,6 +720,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         IniciarEsperaEficacia $iniciarEsperaEficacia
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'responsable_id' => ['required', 'integer', 'exists:users,id'],
             'dias_espera' => ['required', 'integer', 'min:1'],
@@ -728,6 +745,8 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         RegistrarVerificacionEficacia $registrarVerificacionEficacia
     ) {
+        $this->autorizarGestion($accionCorrectiva);
+
         $datos = $request->validate([
             'criterios_cumplidos' => ['required', 'boolean'],
             'resultado_eficaz' => ['required', 'boolean'],
