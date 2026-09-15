@@ -13,6 +13,20 @@ export default {
         extend: {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                display: ['"Century Gothic"', '"Trebuchet MS"', ...defaultTheme.fontFamily.sans],
+            },
+            colors: {
+                dasavena: {
+                    purple: {
+                        DEFAULT: '#6A2C75',
+                        light: '#8E3D9E',
+                        dark: '#4a1f55',
+                    },
+                    gold: {
+                        DEFAULT: '#D6A644',
+                        dark: '#b38600',
+                    },
+                },
             },
         },
     },

@@ -17,6 +17,7 @@ use App\Models\DocumentoVersion;
 use Illuminate\Support\Facades\DB;
 use App\Models\DocumentoRevision;
 use App\Models\TipoDocumento;
+use App\Notifications\SolicitudNotificacion;
 
 
 
@@ -193,6 +194,7 @@ $request->validate($rules);
         if ($jefe && $jefe->email) {
             \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
         }
+        $jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una nueva solicitud que requiere tu aprobación."));
 
         return redirect()
             ->route('solicitudes.show', $solicitud->id)
@@ -236,13 +238,17 @@ $request->validate($rules);
         $solicitud->update([
             'estado' => $request->decision,
             'observaciones_jefe' => $request->observaciones_jefe,
+            'aprobado_jefe_at' => $request->decision === 'aprobado_jefe' ? now() : null,
         ]);
 
         if ($request->decision === 'aprobado_jefe') {
             $administradores = User::role('administrador_sgi')->get();
             foreach ($administradores as $admin) {
                 Mail::to($admin->email)->send(new SolicitudAprobadaSgiMailable($solicitud));
+                $admin->notify(new SolicitudNotificacion($solicitud, 'Una solicitud fue aprobada por su jefe y espera atención de SGI.'));
             }
+        } else {
+            $solicitud->usuario?->notify(new SolicitudNotificacion($solicitud, 'Tu jefe rechazó tu solicitud.'));
         }
 
         return redirect()->route('solicitudes.index')->with('success', 'Decisión registrada correctamente.');
@@ -294,6 +300,7 @@ $request->validate($rules);
                         'estado' => 'rechazado_sgi',
                         'administrador_sgi_id' => auth()->id(),
                     ]);
+                    $solicitud->usuario?->notify(new SolicitudNotificacion($solicitud, 'SGI rechazó tu solicitud.'));
                     return; // Corta la ejecución de la transacción aquí
                 }
 
@@ -318,8 +325,10 @@ $request->validate($rules);
                     $solicitud->update([
                         'documento_id' => $doc->id,
                         'estado' => $estado,
+                        'atendido_at' => now(),
                         'administrador_sgi_id' => auth()->id(),
                     ]);
+                    $solicitud->usuario?->notify(new SolicitudNotificacion($solicitud, 'SGI dio de baja el documento de tu solicitud.'));
 
                     return;
                 }
@@ -368,6 +377,7 @@ $request->validate($rules);
                 $solicitud->update([
                     'documento_id' => $doc->id,
                     'estado' => $estado,
+                    'atendido_at' => now(),
                     'revision_actual' => $revActual,
                     'revision_anterior' => $revAnterior,
                     'fecha_version' => $fechaV,
@@ -377,6 +387,7 @@ $request->validate($rules);
                     'administrador_sgi_id' => auth()->id(),
                     'liga_archivo' => $request->liga_archivo,
                 ]);
+                $solicitud->usuario?->notify(new SolicitudNotificacion($solicitud, 'SGI atendió tu solicitud y publicó el documento.'));
 
                 // 6. Crear Nueva Versión
                 $nuevaVersion = DocumentoVersion::create([
@@ -490,6 +501,8 @@ $request->validate($rules);
             'lugar_almacenamiento' => $doc->sharepoint_folder,
             'estatus_documento' => $doc->estatus,
         ]);
+
+        $user->jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una solicitud de actualización que requiere tu aprobación."));
 
         return redirect()
             ->route('solicitudes.show', $solicitud->id)

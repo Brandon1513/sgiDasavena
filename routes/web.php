@@ -12,6 +12,9 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DocumentoUsuarioController;
 use App\Http\Controllers\AccionCorrectivaController;
 use App\Http\Controllers\SoporteTicketController;
+use App\Http\Controllers\CulturaController;
+use App\Http\Controllers\BusquedaController;
+use App\Http\Controllers\NotificacionController;
 use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
 
 
@@ -24,10 +27,19 @@ Route::get('/dashboard', SgiDashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/cultura', [CulturaController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('cultura.index');
+
 Route::middleware(['auth'])->group(function () {
 
     Route::post('/soporte/ticket', [SoporteTicketController::class, 'store'])
         ->name('soporte.ticket.store');
+
+    Route::get('/buscar', [BusquedaController::class, 'index'])->name('buscar');
+
+    Route::get('/notificaciones/{id}/ir', [NotificacionController::class, 'ir'])->name('notificaciones.ir');
+    Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcar-todas');
 
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])

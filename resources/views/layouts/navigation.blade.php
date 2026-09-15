@@ -3,17 +3,23 @@
 
     .nav-root {
         font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif;
-    }
-
-    /* Navbar principal */
-    .nav-root nav {
-        background: rgba(255, 255, 255, 0.82);
-        backdrop-filter: blur(16px) saturate(160%);
-        -webkit-backdrop-filter: blur(16px) saturate(160%);
-        border-bottom: 1px solid rgba(106, 44, 117, 0.08);
         position: sticky;
         top: 0;
         z-index: 50;
+        padding: 14px 16px 0;
+    }
+
+    /* Navbar principal — flotante */
+    .nav-root nav {
+        position: relative;
+        max-width: 1240px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.82);
+        backdrop-filter: blur(16px) saturate(160%);
+        -webkit-backdrop-filter: blur(16px) saturate(160%);
+        border: 1px solid rgba(106, 44, 117, 0.1);
+        border-radius: 26px;
+        box-shadow: 0 10px 40px rgba(106, 44, 117, 0.14), 0 2px 8px rgba(0,0,0,.04);
         transition: box-shadow .25s ease;
     }
 
@@ -23,6 +29,7 @@
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 2px;
+        border-radius: 26px 26px 0 0;
         background: linear-gradient(90deg, #6A2C75, #D4A018, #6A2C75);
         background-size: 200% 100%;
         animation: nav-gleam 6s linear infinite;
@@ -221,12 +228,66 @@
         background: linear-gradient(90deg, transparent, rgba(212,160,24,0.4), transparent);
         margin: 4px 8px;
     }
+
+    /* Botón icono (búsqueda / notificaciones) */
+    .nav-icon-btn {
+        position: relative;
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 34px; height: 34px;
+        color: #6A2C75;
+        border: 1px solid rgba(106, 44, 117, 0.12);
+        border-radius: 50%;
+        background: rgba(106, 44, 117, 0.04);
+        transition: background-color .2s ease, border-color .2s ease, transform .15s ease;
+    }
+    .nav-icon-btn:hover { background: rgba(106, 44, 117, 0.1); border-color: rgba(106, 44, 117, 0.28); }
+    .nav-icon-btn:active { transform: scale(.93); }
+
+    /* Panel flotante compartido (búsqueda / notificaciones) */
+    .nav-search-panel, .nav-notif-panel {
+        position: absolute; right: 0; top: calc(100% + 10px);
+        width: 340px; max-width: calc(100vw - 32px);
+        background: rgba(255,255,255,.98);
+        border: 1px solid rgba(106,44,117,.12);
+        border-radius: 18px;
+        box-shadow: 0 16px 48px rgba(106,44,117,.2);
+        overflow: hidden;
+        z-index: 60;
+    }
+
+    /* Búsqueda */
+    .nav-search-input-wrap { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid rgba(106,44,117,.08); }
+    .nav-search-input { flex: 1; border: none; outline: none; font-size: .85rem; color: #2d1033; background: transparent; font-family: 'Century Gothic', 'CenturyGothic', 'AppleGothic', sans-serif; }
+    .nav-search-input::placeholder { color: #a78ab0; }
+    .nav-search-results { max-height: 320px; overflow-y: auto; padding: 6px; }
+    .nav-search-result { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 9px 10px; border-radius: 10px; text-decoration: none; transition: background-color .15s ease; }
+    .nav-search-result:hover { background: rgba(106,44,117,.06); }
+    .nav-search-result-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #b38600; background: rgba(212,160,24,.14); padding: 2px 7px; border-radius: 100px; }
+    .nav-search-result-title { font-size: .82rem; font-weight: 700; color: #2d1033; width: 100%; }
+    .nav-search-result-sub { font-size: .74rem; color: #8a7690; }
+    .nav-search-empty { padding: 20px 12px; text-align: center; font-size: .8rem; color: #a78ab0; }
+
+    /* Notificaciones */
+    .nav-notif-dot {
+        position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%;
+        background: #D4A018; border: 2px solid #fff;
+    }
+    .nav-notif-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid rgba(106,44,117,.08); font-size: .78rem; font-weight: 700; color: #2d1033; text-transform: uppercase; letter-spacing: .04em; }
+    .nav-notif-markall { font-size: .68rem; font-weight: 700; color: #6A2C75; text-transform: none; letter-spacing: 0; background: none; border: none; cursor: pointer; }
+    .nav-notif-markall:hover { text-decoration: underline; }
+    .nav-notif-item { display: flex; align-items: flex-start; gap: 8px; padding: 11px 14px; text-decoration: none; border-bottom: 1px solid rgba(106,44,117,.05); transition: background-color .15s ease; }
+    .nav-notif-item:hover { background: rgba(106,44,117,.05); }
+    .nav-notif-item-dot { width: 6px; height: 6px; border-radius: 50%; background: #6A2C75; flex-shrink: 0; margin-top: 6px; }
+    .nav-notif-item-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .nav-notif-item-text { font-size: .8rem; color: #2d1033; line-height: 1.4; }
+    .nav-notif-item-time { font-size: .68rem; color: #a78ab0; }
+    .nav-notif-empty { padding: 24px 14px; text-align: center; font-size: .8rem; color: #a78ab0; }
 </style>
 
 <div class="nav-root">
 <nav x-data="{ open: false }">
-    <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
+    <div class="px-4 sm:px-6">
+        <div class="flex justify-between h-14">
 
             <!-- IZQUIERDA: Logo + Links -->
             <div class="flex items-center gap-6">
@@ -330,9 +391,89 @@
                 @endif
             </div>
 
-            <!-- DERECHA: Perfil -->
-            <div class="hidden sm:flex sm:items-center gap-3">
+            <!-- DERECHA: Búsqueda + Notificaciones + Perfil -->
+            <div class="hidden sm:flex sm:items-center gap-2">
                 @if (Auth::check())
+
+                <!-- Búsqueda global -->
+                <div class="relative" x-data="{ searchOpen: false, q: '', results: [], loading: false }" @click.outside="searchOpen = false" @keydown.escape.window="searchOpen = false">
+                    <button type="button" class="nav-icon-btn" aria-label="Buscar"
+                        @click="searchOpen = !searchOpen; $nextTick(() => searchOpen && $refs.navSearchInput.focus())">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                        </svg>
+                    </button>
+
+                    <div x-show="searchOpen" x-transition.origin.top.right class="nav-search-panel" style="display:none;">
+                        <div class="nav-search-input-wrap">
+                            <svg class="w-4 h-4 opacity-50 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z"/>
+                            </svg>
+                            <input type="text" x-ref="navSearchInput" x-model="q" placeholder="Buscar solicitudes, documentos…"
+                                class="nav-search-input"
+                                @input.debounce.350ms="
+                                    if (q.trim().length < 2) { results = []; loading = false; return; }
+                                    loading = true;
+                                    fetch('{{ route('buscar') }}?q=' + encodeURIComponent(q))
+                                        .then(r => r.json())
+                                        .then(d => { results = d.resultados; loading = false; })
+                                        .catch(() => { loading = false; });
+                                ">
+                        </div>
+                        <div class="nav-search-results">
+                            <template x-if="loading">
+                                <div class="nav-search-empty">Buscando…</div>
+                            </template>
+                            <template x-if="!loading && q.trim().length >= 2 && results.length === 0">
+                                <div class="nav-search-empty">Sin resultados</div>
+                            </template>
+                            <template x-for="r in results" :key="r.url">
+                                <a :href="r.url" class="nav-search-result">
+                                    <span class="nav-search-result-tag" x-text="r.tipo"></span>
+                                    <span class="nav-search-result-title" x-text="r.titulo"></span>
+                                    <span class="nav-search-result-sub" x-text="r.subtitulo"></span>
+                                </a>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notificaciones -->
+                @php($__navNotifs = Auth::user()->unreadNotifications()->limit(6)->get())
+                <div class="relative" x-data="{ notifOpen: false }" @click.outside="notifOpen = false">
+                    <button type="button" class="nav-icon-btn" aria-label="Notificaciones" @click="notifOpen = !notifOpen">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                        </svg>
+                        @if($__navNotifs->count())
+                        <span class="nav-notif-dot"></span>
+                        @endif
+                    </button>
+
+                    <div x-show="notifOpen" x-transition.origin.top.right class="nav-notif-panel" style="display:none;">
+                        <div class="nav-notif-head">
+                            <span>Notificaciones</span>
+                            @if($__navNotifs->count())
+                            <form method="POST" action="{{ route('notificaciones.marcar-todas') }}">
+                                @csrf
+                                <button type="submit" class="nav-notif-markall">Marcar todas leídas</button>
+                            </form>
+                            @endif
+                        </div>
+                        @forelse($__navNotifs as $notif)
+                        <a href="{{ route('notificaciones.ir', $notif->id) }}" class="nav-notif-item">
+                            <span class="nav-notif-item-dot" aria-hidden="true"></span>
+                            <span class="nav-notif-item-body">
+                                <span class="nav-notif-item-text">{{ $notif->data['mensaje'] ?? '' }}</span>
+                                <span class="nav-notif-item-time">{{ $notif->created_at->diffForHumans() }}</span>
+                            </span>
+                        </a>
+                        @empty
+                        <div class="nav-notif-empty">No tienes notificaciones nuevas</div>
+                        @endforelse
+                    </div>
+                </div>
+
                 <x-dropdown align="right" width="52" contentClasses="py-1.5 bg-white">
                     <x-slot name="trigger">
                         <button class="nav-profile-btn" type="button">

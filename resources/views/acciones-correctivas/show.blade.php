@@ -377,6 +377,30 @@
 
                 @endif
 
+                {{-- Eficacia negativa → Nuevo ciclo --}}
+                @elseif(
+                $accion['accion'] === 'nuevo_ciclo' &&
+                isset($accion['estado_destino'])
+                )
+
+                <form
+                    method="POST"
+                    action="{{ route('acciones-correctivas.estado.cambiar', $accionCorrectiva) }}"
+                    class="d-inline">
+                    @csrf
+
+                    <input
+                        type="hidden"
+                        name="estado"
+                        value="{{ $accion['estado_destino'] }}">
+
+                    <button
+                        type="submit"
+                        class="btn btn-{{ $accion['tipo'] }}">
+                        {{ $accion['texto'] }}
+                    </button>
+                </form>
+
                 {{-- Verificación de eficacia → Cierre --}}
                 @elseif(
                 $accion['accion'] === 'cerrar' &&

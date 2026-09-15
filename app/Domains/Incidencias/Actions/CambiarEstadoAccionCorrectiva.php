@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use App\Domains\Incidencias\Models\AcVerificacionCierre;
 use App\Domains\Incidencias\Models\AcVerificacionEficacia;
+use App\Domains\Incidencias\Models\AcAnalisis;
 
 
 use Illuminate\Http\Request;
@@ -455,7 +456,7 @@ class CambiarEstadoAccionCorrectiva
                 }
             }
 
-            /*
+ /*
  * ============================================================
  * VERIFICACIÓN DE EFICACIA → ANÁLISIS
  *
@@ -463,96 +464,106 @@ class CambiarEstadoAccionCorrectiva
  * a análisis para iniciar un nuevo ciclo.
  * ============================================================
  */
-            if (
-                $estadoActual === EstadoAccionCorrectiva::VERIFICACION_EFICACIA->value &&
-                $nuevoEstado === EstadoAccionCorrectiva::ANALISIS
-            ) {
-                $verificacion = AcVerificacionEficacia::query()
-                    ->where(
-                        'accion_correctiva_id',
-                        $accionCorrectiva->id
-                    )
-                    ->where(
-                        'ciclo',
-                        $accionCorrectiva->ciclo_actual
-                    )
-                    ->latest('id')
-                    ->first();
+if (
+    $estadoActual === EstadoAccionCorrectiva::VERIFICACION_EFICACIA->value &&
+    $nuevoEstado === EstadoAccionCorrectiva::ANALISIS
+) {
+    $verificacion = AcVerificacionEficacia::query()
+        ->where(
+            'accion_correctiva_id',
+            $accionCorrectiva->id
+        )
+        ->where(
+            'ciclo',
+            $accionCorrectiva->ciclo_actual
+        )
+        ->latest('id')
+        ->first();
 
-                if (!$verificacion) {
-                    throw ValidationException::withMessages([
-                        'estado' =>
-                        'No es posible regresar al análisis. '
-                            . 'Debe existir una verificación de eficacia.',
-                    ]);
-                }
+    if (!$verificacion) {
+        throw ValidationException::withMessages([
+            'estado' =>
+            'No es posible regresar al análisis. '
+                . 'Debe existir una verificación de eficacia.',
+        ]);
+    }
 
-                if ($verificacion->resultado_eficaz) {
-                    throw ValidationException::withMessages([
-                        'estado' =>
-                        'La Acción Correctiva no puede regresar al análisis '
-                            . 'porque la verificación de eficacia fue aprobada.',
-                    ]);
-                }
-            }
+    if ($verificacion->resultado_eficaz) {
+        throw ValidationException::withMessages([
+            'estado' =>
+            'La Acción Correctiva no puede regresar al análisis '
+                . 'porque la verificación de eficacia fue aprobada.',
+        ]);
+    }
+}
 
-            /*
-             * ============================================================
-             * 9. Obtener estado destino
-             * ============================================================
-             */
-            $estado = EstadoModel::query()
-                ->where('codigo', $nuevoEstado->value)
-                ->where('activo', true)
-                ->first();
+/*
+ * ============================================================
+ * 9. Obtener estado destino
+ * ============================================================
+ */
 
-            if (!$estado) {
-                throw ValidationException::withMessages([
-                    'estado' => sprintf(
-                        'El estado "%s" no está disponible.',
-                        $nuevoEstado->value
-                    ),
-                ]);
-            }
+$estado = EstadoModel::query()
+    ->where('codigo', $nuevoEstado->value)
+    ->where('activo', true)
+    ->first();
 
-            /*
+if (!$estado) {
+    throw ValidationException::withMessages([
+        'estado' => sprintf(
+            'El estado "%s" no está disponible.',
+            $nuevoEstado->value
+        ),
+    ]);
+}
+
+/*
  * ============================================================
  * 10. Cambiar estado
  * ============================================================
  */
 
-            $datosActualizacion = [
-                'estado_id' => $estado->id,
-            ];
+$datosActualizacion = [
+    'estado_id' => $estado->id,
+];
 
-            /*
+/*
  * Si la eficacia fue rechazada y regresamos
  * al análisis, iniciar un nuevo ciclo.
  */
-            if (
-                $estadoActual === EstadoAccionCorrectiva::VERIFICACION_EFICACIA->value &&
-                $nuevoEstado === EstadoAccionCorrectiva::ANALISIS
-            ) {
-                $datosActualizacion['ciclo_actual'] =
-                    $accionCorrectiva->ciclo_actual + 1;
+if (
+    $estadoActual === EstadoAccionCorrectiva::VERIFICACION_EFICACIA->value &&
+    $nuevoEstado === EstadoAccionCorrectiva::ANALISIS
+) {
+    $nuevoCiclo = $accionCorrectiva->ciclo_actual + 1;
 
-                $datosActualizacion['porcentaje_avance'] = 0;
-            }
+    $datosActualizacion['ciclo_actual'] = $nuevoCiclo;
+    $datosActualizacion['porcentaje_avance'] = 0;
 
-            /*
+    AcAnalisis::create([
+        'accion_correctiva_id' => $accionCorrectiva->id,
+        'ciclo' => $nuevoCiclo,
+        'fecha_inicio' => now()->toDateString(),
+        'fecha_cierre' => null,
+        'responsable_id' => $accionCorrectiva->responsable_id,
+        'estado' => 'en_proceso',
+    ]);
+}
+
+/*
  * Si la Acción Correctiva se cierra,
  * registrar automáticamente la fecha de cierre.
  */
-            if (
-                $nuevoEstado === EstadoAccionCorrectiva::CERRADA
-            ) {
-                $datosActualizacion['fecha_cierre'] =
-                    now()->toDateString();
+if (
+    $nuevoEstado === EstadoAccionCorrectiva::CERRADA
+) {
+    $datosActualizacion['fecha_cierre'] =
+        now()->toDateString();
 
-                $datosActualizacion['porcentaje_avance'] = 100;
-            }
+    $datosActualizacion['porcentaje_avance'] = 100;
+}
 
-            $accionCorrectiva->update($datosActualizacion);
+$accionCorrectiva->update($datosActualizacion);
 
             /*
              * ============================================================
@@ -568,6 +579,4 @@ class CambiarEstadoAccionCorrectiva
             ]);
         });
     }
-
-    
 }
