@@ -17,6 +17,10 @@ class SoporteTicket extends Model
         'descripcion',
         'estado',
         'error_envio',
+        'mesa_ayuda_ticket_id',
+        'mesa_ayuda_folio',
+        'mesa_ayuda_sync_estado',
+        'mesa_ayuda_sync_error',
     ];
 
     public function usuario(): BelongsTo
