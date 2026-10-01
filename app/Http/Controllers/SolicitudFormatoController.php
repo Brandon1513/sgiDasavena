@@ -203,12 +203,37 @@ $request->validate($rules);
 
     public function show(SolicitudFormato $solicitud)
     {
+        $user = auth()->user();
+
+        $puedeVer = $solicitud->user_id === $user->id
+            || $solicitud->jefe_id === $user->id
+            || $user->hasRole('administrador_sgi')
+            || $user->hasRole('administrador');
+
+        if (!$puedeVer) {
+            abort(403, 'No tienes permiso para ver esta solicitud.');
+        }
+
         $solicitud->load(['usuario', 'jefe', 'administrador_sgi', 'documento',]);
         return view('solicitudes.show', compact('solicitud'));
     }
 
     public function approvalForm(SolicitudFormato $solicitud)
     {
+        $user = auth()->user();
+
+        if (!$user->hasRole('jefe')) {
+            abort(403, 'No tienes permiso para aprobar o rechazar esta solicitud.');
+        }
+
+        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi')) {
+            abort(403, 'No puedes aprobar o rechazar tus propias solicitudes.');
+        }
+
+        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi')) {
+            abort(403, 'No estás asignado como jefe de esta solicitud.');
+        }
+
         return view('solicitudes.approval_form', compact('solicitud'));
     }
 
@@ -227,7 +252,6 @@ $request->validate($rules);
         if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi')) {
             return redirect()->route('solicitudes.index')
                 ->withErrors('No estás asignado como jefe de esta solicitud.');
-            abort(403, 'No estás asignado como jefe de esta solicitud.');
         }
 
         $request->validate([
@@ -257,6 +281,10 @@ $request->validate($rules);
 
     public function finalizeForm(SolicitudFormato $solicitud)
     {
+        if (!auth()->user()->hasRole('administrador_sgi')) {
+            abort(403);
+        }
+
         $usuarios = User::where('activo', 1)->get();
         $solicitud->load('documento.versionVigente');
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
@@ -511,11 +539,8 @@ $request->validate($rules);
 
     public function destroy(SolicitudFormato $solicitud)
     {
-        // Seguridad: Solo el dueño puede borrarla y solo si está pendiente o rechazada por el jefe
-        if (auth()->id() !== $solicitud->user_id) {
-            abort(403, 'No tienes permiso para eliminar esta solicitud.');
-        }
-
+        // La ruta ya está protegida por role:administrador_sgi (routes/web.php);
+        // aquí solo queda la regla de negocio real: no borrar lo ya procesado.
         // No permitir borrar si ya fue procesada por SGI
         if (in_array($solicitud->estado, ['atendido', 'rechazado_sgi'])) {
             return back()->withErrors('No puedes eliminar una solicitud que ya ha sido procesada por SGI.');

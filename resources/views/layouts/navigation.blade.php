@@ -514,6 +514,15 @@
                                 </div>
                             </x-dropdown-link>
 
+                            <x-dropdown-link :href="route('acciones-correctivas.index')" class="nav-dropdown-item">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-[#D4A018]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    {{ __('Acciones Correctivas') }}
+                                </div>
+                            </x-dropdown-link>
+
                             @role('administrador_sgi')
                             <x-dropdown-link :href="route('solicitudes.calendar')" class="nav-dropdown-item">
                                 <div class="flex items-center gap-2">
@@ -699,6 +708,10 @@
             <a href="{{ route('solicitudes.index') }}"
                 class="nav-mobile-link {{ request()->routeIs('solicitudes.index') ? 'nav-mobile-link-active' : '' }}">
                 {{ __('Solicitudes') }}
+            </a>
+            <a href="{{ route('acciones-correctivas.index') }}"
+                class="nav-mobile-link {{ request()->routeIs('acciones-correctivas.*') ? 'nav-mobile-link-active' : '' }}">
+                {{ __('Acciones Correctivas') }}
             </a>
             @role('administrador_sgi')
             <a href="{{ route('solicitudes.calendar') }}"

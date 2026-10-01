@@ -2,7 +2,7 @@
 
 @php
     $user = auth()->user();
-    $roles = $user && method_exists($user, 'getRoleNames') ? $user->getRoleNames()->implode(', ') : '';
+    $roleNames = $user->getRoleNames();
 
     $formatoHoras = function ($h) {
         if ($h === null) return null;
@@ -10,25 +10,41 @@
     };
 
     $kpis = [
-        ['label' => 'Pendientes',    'val' => $pendientes,    'icon' => 'ti-hourglass-high',        'desc' => 'Esperando revisión del jefe',              'theme' => 'purple'],
-        ['label' => 'Aprobado jefe', 'val' => $aprobadoJefe,  'icon' => 'ti-rosette-discount-check', 'desc' => 'En proceso de gestión SGI',                'theme' => 'gold'],
-        ['label' => 'Atendidas',     'val' => $atendidas,     'icon' => 'ti-circle-check',           'desc' => 'Formato actualizado con éxito',            'theme' => 'green'],
-        ['label' => 'Rechazadas',    'val' => $rechazadas,    'icon' => 'ti-circle-x',               'desc' => 'Requieren revisión y reenvío',             'theme' => 'rose'],
-        ['label' => 'Por vencer',    'val' => $totalPorVencer,'icon' => 'ti-alert-triangle',         'desc' => 'Documentos con vigencia próxima a expirar','theme' => 'amber'],
+        ['label' => 'Pendientes',    'val' => $pendientes,    'icon' => 'ti-hourglass-high',        'desc' => 'Esperando revisión del jefe',              'theme' => 'purple', 'href' => route('solicitudes.index')],
+        ['label' => 'Aprobado jefe', 'val' => $aprobadoJefe,  'icon' => 'ti-rosette-discount-check', 'desc' => 'En proceso de gestión SGI',                'theme' => 'gold',   'href' => route('solicitudes.index')],
+        ['label' => 'Atendidas',     'val' => $atendidas,     'icon' => 'ti-circle-check',           'desc' => 'Formato actualizado con éxito',            'theme' => 'green',  'href' => route('solicitudes.index')],
+        ['label' => 'Rechazadas',    'val' => $rechazadas,    'icon' => 'ti-circle-x',               'desc' => 'Requieren revisión y reenvío',             'theme' => 'rose',   'href' => route('solicitudes.index')],
+        ['label' => 'Por vencer',    'val' => $totalPorVencer,'icon' => 'ti-alert-triangle',         'desc' => 'Documentos con vigencia próxima a expirar','theme' => 'amber',  'href' => route('documentos.index')],
     ];
 
-    $slaKpis = [
-        ['label' => 'Aprobación del jefe', 'val' => $formatoHoras($horasAprobacion), 'icon' => 'ti-clock-check', 'desc' => 'Tiempo promedio: solicitud creada → aprobada por el jefe', 'theme' => 'purple'],
-        ['label' => 'Atención de SGI',     'val' => $formatoHoras($horasAtencion),   'icon' => 'ti-progress-check', 'desc' => 'Tiempo promedio: aprobada por el jefe → atendida por SGI', 'theme' => 'gold'],
-        ['label' => 'Vencidas SLA',        'val' => $vencidasSla,                    'icon' => 'ti-alarm',       'desc' => 'Pendientes con más de 3 días sin movimiento',              'theme' => 'rose'],
+    $pendientesHref = match (true) {
+        $user->hasRole('jefe') => route('solicitudes.index', ['estado' => 'pendiente']),
+        $user->hasRole('administrador_sgi') => route('solicitudes.index', ['estado' => 'aprobado_jefe']),
+        default => route('solicitudes.index'),
+    };
+
+    $accionLabels = [
+        'actualizacion'   => ['label' => 'Actualización de documento', 'icon' => 'ti-refresh'],
+        'baja'            => ['label' => 'Baja de documento',          'icon' => 'ti-trash'],
+        'nuevo_documento' => ['label' => 'Alta de documento nuevo',    'icon' => 'ti-file-plus'],
     ];
 
-    $themeClasses = [
-        'purple' => ['text' => 'text-dasavena-purple',     'bg' => 'bg-dasavena-purple/10',   'ring' => 'ring-dasavena-purple/20',   'bar' => 'bg-dasavena-purple'],
-        'gold'   => ['text' => 'text-dasavena-gold-dark',   'bg' => 'bg-dasavena-gold/15',     'ring' => 'ring-dasavena-gold/30',     'bar' => 'bg-dasavena-gold'],
-        'green'  => ['text' => 'text-emerald-600',          'bg' => 'bg-emerald-50',           'ring' => 'ring-emerald-200',          'bar' => 'bg-emerald-500'],
-        'rose'   => ['text' => 'text-rose-600',             'bg' => 'bg-rose-50',              'ring' => 'ring-rose-200',             'bar' => 'bg-rose-500'],
-        'amber'  => ['text' => 'text-amber-600',            'bg' => 'bg-amber-50',             'ring' => 'ring-amber-200',            'bar' => 'bg-amber-500'],
+    $estadoBadges = [
+        'pendiente'      => ['label' => 'Pendiente',       'class' => 'bg-dasavena-purple/10 border-dasavena-purple/20 text-dasavena-purple'],
+        'aprobado_jefe'  => ['label' => 'Aprobado jefe',   'class' => 'bg-dasavena-gold/20 border-dasavena-gold/30 text-dasavena-gold-dark'],
+        'evaluando_sgi'  => ['label' => 'En revisión SGI', 'class' => 'bg-indigo-50 border-indigo-200 text-indigo-700'],
+        'atendido'       => ['label' => 'Atendida',        'class' => 'bg-emerald-50 border-emerald-200 text-emerald-700'],
+        'rechazado_jefe' => ['label' => 'Rechazada',       'class' => 'bg-rose-50 border-rose-200 text-rose-700'],
+        'rechazado_sgi'  => ['label' => 'Rechazada',       'class' => 'bg-rose-50 border-rose-200 text-rose-700'],
+    ];
+
+    $nivelActual = [
+        'pendiente'      => 'Jefatura de área',
+        'aprobado_jefe'  => 'Validación SGI',
+        'evaluando_sgi'  => 'Validación SGI',
+        'atendido'       => 'Archivo central',
+        'rechazado_jefe' => 'Revisión del solicitante',
+        'rechazado_sgi'  => 'Revisión del solicitante',
     ];
 @endphp
 
@@ -74,132 +90,275 @@
 <script>setTimeout(()=>{const b=document.getElementById('sgi-banner');if(!b)return;b.style.transition='opacity .4s';b.style.opacity='0';setTimeout(()=>b.remove(),400);},3000);</script>
 @endif
 
-{{-- ─── FONDO ─── --}}
+{{-- ─── FONDO + LUCES AMBIENTALES ─── --}}
 <div class="relative min-h-screen bg-cover bg-center bg-fixed" style="background-image:url('https://dasavenasite.domcloud.dev/images/background-pattern.png');">
     <div class="pointer-events-none fixed inset-0 z-[1] bg-[radial-gradient(ellipse_90%_55%_at_50%_-5%,rgba(255,255,255,.55)_0%,transparent_65%)]"></div>
+
+    <div class="pointer-events-none fixed -left-20 -top-24 z-[1] h-[420px] w-[420px] rounded-full bg-dasavena-purple/10 blur-3xl"></div>
+    <div class="pointer-events-none fixed -right-24 top-[22%] z-[1] h-[380px] w-[380px] rounded-full bg-dasavena-gold/10 blur-3xl"></div>
+    <div class="pointer-events-none fixed bottom-[-10%] left-[18%] z-[1] h-[320px] w-[500px] rounded-full bg-dasavena-purple-light/10 blur-3xl"></div>
+
     <img src="https://permisos.dasavena-intranet.com/images/logo.png" alt="" aria-hidden="true"
         class="pointer-events-none fixed bottom-5 right-5 z-[5] h-20 w-20 object-contain opacity-15 mix-blend-multiply select-none">
 
-    <div class="relative z-10 mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 lg:px-8">
+    <div class="relative z-10 mx-auto flex max-w-7xl flex-col gap-7 px-4 py-10 sm:px-6 lg:px-8">
 
-        {{-- ══════════════════════════════ HERO ══════════════════════════════ --}}
-        <header class="reveal relative overflow-hidden rounded-3xl border border-white/15 bg-dasavena-purple shadow-[0_4px_40px_rgba(106,44,117,.3)]">
-            <div class="gold-gleam absolute inset-x-0 top-0 h-[3px]"></div>
-            <div class="pointer-events-none absolute inset-0 opacity-[.07]" style="background-image:radial-gradient(rgba(255,255,255,.9) 1.5px, transparent 1.5px); background-size:22px 22px;"></div>
+        {{-- ══════════════════════════════ HERO LIQUID GLASS ══════════════════════════════ --}}
+        <header class="reveal relative overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-br from-dasavena-purple-dark via-dasavena-purple to-[#250a2c] p-7 shadow-[0_12px_40px_rgba(74,30,82,0.3),inset_0_1px_2px_rgba(255,255,255,0.25)] sm:p-9 lg:p-11">
+            <div class="absolute inset-x-0 top-0 h-[2px] gold-gleam"></div>
+            <div class="pointer-events-none absolute inset-0 opacity-[.06]" style="background-image:radial-gradient(rgba(255,255,255,.9) 1.5px, transparent 1.5px); background-size:22px 22px;"></div>
+            <div class="pointer-events-none absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-dasavena-gold/15 blur-3xl"></div>
+            <div class="pointer-events-none absolute -top-20 right-1/3 h-72 w-72 rounded-full bg-dasavena-purple-light/20 blur-3xl"></div>
 
-            <div class="absolute top-4 right-6 z-10 hidden items-center gap-1.5 font-mono text-[10.5px] font-semibold tracking-wide text-white/50 sm:flex">
-                <span>SGI</span><span class="text-dasavena-gold/80">//</span><span>{{ now()->format('d.m.Y') }}</span>
-                <span class="ml-1 h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_0_3px_rgba(74,222,128,.2)] animate-pulse"></span>
-            </div>
-
-            <div class="relative z-[1] grid grid-cols-1 items-center gap-8 px-6 py-10 sm:px-10 sm:py-14 md:grid-cols-[1fr_auto]">
-                <div class="flex flex-col gap-4">
-                    <div class="inline-flex w-fit items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-dasavena-gold">
-                        <span class="h-[7px] w-[7px] rounded-full bg-dasavena-gold shadow-[0_0_0_3px_rgba(214,166,68,.3)] animate-pulse"></span>
+            <div class="relative z-[1] flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
+                <div class="flex max-w-2xl flex-col gap-4">
+                    <div class="inline-flex w-fit items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-dasavena-gold shadow-[inset_0_1px_1px_rgba(255,255,255,0.3)] backdrop-blur-2xl">
+                        <span class="h-[7px] w-[7px] rounded-full bg-dasavena-gold shadow-[0_0_8px_#D6A644] animate-pulse"></span>
                         Sistema de Gestión Integral
                     </div>
-                    <h1 class="font-display text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-[1.08] tracking-tight text-white/55">
-                        Hola, <br>
-                        <em class="not-italic border-b-2 border-dasavena-gold pb-0.5 text-white">{{ $user->name }}</em>
+
+                    <h1 class="font-display text-[clamp(1.8rem,3.6vw,2.6rem)] font-extrabold leading-[1.1] tracking-tight text-white/90">
+                        Hola, <span id="hero-nombre" class="name-gradient border-b-2 border-dasavena-gold pb-0.5">{{ $user->name }}</span>
                     </h1>
-                    <p class="max-w-md text-sm leading-relaxed text-white/70">
-                        Bienvenido a <strong class="font-bold text-white">DasavenaSGI</strong>.
-                        Consulta el estado de tus solicitudes de formatos, aprobaciones y actividad reciente.
+                    <p class="max-w-xl text-sm leading-relaxed text-white/70">
+                        Bienvenido a <strong class="font-semibold text-white">DasavenaSGI</strong>.
+                        Supervisa tus solicitudes de formatos, el cumplimiento de SLA y las aprobaciones pendientes en tiempo real.
                     </p>
-                    @if($roles)
-                    <div class="inline-flex w-fit items-center gap-2 rounded-full border border-dasavena-gold/35 bg-dasavena-gold/15 px-3.5 py-1.5 text-xs font-semibold text-dasavena-gold">
-                        <span class="h-[5px] w-[5px] rounded-full bg-dasavena-gold"></span>
-                        {{ $roles }}
+
+                    @if($roleNames->isNotEmpty())
+                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                        @foreach($roleNames as $rol)
+                        @if($rol === 'administrador_sgi')
+                        <span class="inline-flex items-center gap-1.5 rounded-full border border-dasavena-gold/40 bg-dasavena-gold/25 px-3.5 py-1 text-[11px] font-semibold text-dasavena-gold shadow-[0_2px_10px_rgba(214,166,68,0.2),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                            <i class="ti ti-shield-check text-[14px]"></i> {{ $rol }}
+                        </span>
+                        @else
+                        <span class="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-medium text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)] backdrop-blur-xl">
+                            {{ $rol }}
+                        </span>
+                        @endif
+                        @endforeach
                     </div>
                     @endif
                 </div>
-                <div class="relative hidden items-center justify-center md:flex">
-                    <div class="absolute h-[210px] w-[210px] animate-[spin_22s_linear_infinite] rounded-full border border-dashed border-dasavena-gold/35"></div>
-                    <img src="/images/Valentia .png" alt="Valentia" class="relative w-[220px] object-contain mix-blend-multiply drop-shadow-[0_8px_32px_rgba(0,0,0,.15)] float-slow">
+
+                <div class="flex flex-col items-start gap-5 self-stretch lg:items-end lg:self-auto">
+                    <div class="flex items-center gap-2.5 rounded-full border border-white/15 bg-black/25 px-4 py-2 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)] backdrop-blur-2xl">
+                        <span class="font-mono text-[10.5px] tracking-widest text-dasavena-gold">SGI // {{ now()->format('d.m.Y') }}</span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse"></span>
+                        <span class="text-[11px] font-medium text-emerald-300">En línea</span>
+                    </div>
+
+                    <div class="flex w-full items-center gap-3 sm:w-auto">
+                        <a href="{{ route('solicitudes.create') }}"
+                           class="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-dasavena-gold px-5 py-2.5 text-[13px] font-bold text-dasavena-purple-dark shadow-[0_6px_20px_rgba(214,166,68,0.35),inset_0_1px_1px_rgba(255,255,255,0.6)] transition-all hover:bg-dasavena-gold/90 active:scale-95 sm:flex-initial">
+                            <i class="ti ti-plus text-[16px]"></i> Nueva solicitud
+                        </a>
+                        <a href="{{ $pendientesHref }}"
+                           class="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/30 bg-white/15 px-5 py-2.5 text-[13px] font-medium text-white shadow-[0_4px_16px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.25)] backdrop-blur-2xl transition-all hover:bg-white/25 active:scale-95 sm:flex-initial">
+                            <i class="ti ti-clipboard-list text-[16px]"></i> Ver pendientes
+                        </a>
+                    </div>
                 </div>
             </div>
         </header>
 
-        {{-- ══════════════════════════════ KPIS PRINCIPALES ══════════════════════════════ --}}
+        {{-- ══════════════════════════════ WIDGETS KPI ══════════════════════════════ --}}
         <section class="reveal grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5" aria-label="Resumen de solicitudes">
             @foreach($kpis as $k)
-            @php $t = $themeClasses[$k['theme']]; @endphp
-            <article class="group rounded-2xl border border-white/90 bg-white/70 p-5 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-dasavena-purple/10">
-                <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl {{ $t['bg'] }} {{ $t['text'] }} text-lg ring-1 {{ $t['ring'] }}">
-                    <i class="ti {{ $k['icon'] }}"></i>
-                </div>
-                <div class="font-mono text-3xl font-extrabold tracking-tight {{ $t['text'] }}" data-count="{{ $k['val'] }}">0</div>
-                <div class="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-500">{{ $k['label'] }}</div>
-                <p class="mt-2 text-[11.5px] leading-snug text-gray-400 opacity-0 max-h-0 overflow-hidden transition-all duration-300 group-hover:opacity-100 group-hover:max-h-16">{{ $k['desc'] }}</p>
-            </article>
+            <x-dashboard.kpi-widget :icon="$k['icon']" :value="$k['val']" :label="$k['label']" :desc="$k['desc']" :theme="$k['theme']" :href="$k['href']" />
             @endforeach
         </section>
 
-        {{-- ══════════════════════════════ KPIS SLA ══════════════════════════════ --}}
-        <section class="reveal">
-            <div class="mb-3 flex items-center gap-2">
-                <i class="ti ti-gauge text-dasavena-purple"></i>
-                <h2 class="font-display text-sm font-bold uppercase tracking-wide text-gray-500">Tiempos de respuesta (SLA)</h2>
-            </div>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                @foreach($slaKpis as $k)
-                @php $t = $themeClasses[$k['theme']]; @endphp
-                <div class="flex items-start gap-4 rounded-2xl border border-white/90 bg-white/70 p-5 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl">
-                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl {{ $t['bg'] }} {{ $t['text'] }} text-lg ring-1 {{ $t['ring'] }}">
-                        <i class="ti {{ $k['icon'] }}"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <div class="font-mono text-xl font-extrabold {{ $t['text'] }}">{{ $k['val'] ?? '—' }}</div>
-                        <div class="text-[11px] font-bold uppercase tracking-wide text-gray-500">{{ $k['label'] }}</div>
-                        <p class="mt-1 text-[11px] leading-snug text-gray-400">{{ $k['desc'] }}</p>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </section>
-
-        {{-- ══════════════════════════════ BENTO PRINCIPAL ══════════════════════════════ --}}
+        {{-- ══════════════════════════════ VIDEO + SLA/ACTIVIDAD ══════════════════════════════ --}}
         <div class="reveal grid grid-cols-1 gap-5 lg:grid-cols-12">
 
-            {{-- GRÁFICA --}}
-            <div class="flex min-h-[360px] flex-col rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-8">
-                <div class="flex items-start justify-between gap-3 px-6 pt-6">
-                    <div>
-                        <h2 class="font-display text-base font-bold text-indigo-950">Actividad del sistema</h2>
-                        <p class="mt-0.5 text-xs text-gray-400">Solicitudes registradas — últimos 30 días</p>
-                    </div>
-                    <div class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-800">
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        En tiempo real
-                    </div>
-                </div>
-                <div class="flex-1 px-6 pb-6 pt-5">
-                    <canvas id="mainChart" role="img" aria-label="Gráfica de solicitudes de los últimos 30 días"></canvas>
-                </div>
-            </div>
-
             {{-- CULTURA / VIDEO --}}
-            <div class="flex flex-col rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-4">
-                <div class="px-6 pt-6">
-                    <h2 class="font-display text-base font-bold text-indigo-950">Cultura Dasavena</h2>
-                    <p class="mt-0.5 text-xs text-gray-400">Nuestra identidad en movimiento</p>
+            <x-dashboard.panel title="Cultura Dasavena" subtitle="Nuestra identidad en movimiento" class="flex flex-col gap-4 p-6 lg:col-span-7">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-dasavena-purple text-dasavena-gold shadow-[0_4px_12px_rgba(74,30,82,0.25),inset_0_1px_1px_rgba(255,255,255,0.3)]">
+                        <i class="ti ti-video text-[18px]"></i>
+                    </div>
+                    <span class="rounded-full border border-dasavena-gold/30 bg-dasavena-gold/15 px-3 py-1 text-[11px] font-semibold text-dasavena-gold-dark">Oficial</span>
                 </div>
-                <div class="flex flex-1 items-center justify-center px-5 pb-3 pt-3">
-                    <video autoplay muted loop playsinline class="max-h-[260px] w-full rounded-2xl object-contain mix-blend-multiply">
+
+                <div class="relative aspect-video w-full overflow-hidden rounded-2xl border border-white/20 bg-black shadow-[0_12px_36px_rgba(0,0,0,0.15)]">
+                    <video autoplay muted loop playsinline class="h-full w-full object-cover opacity-90">
                         <source src="{{ asset('Videos/Animacion.mp4') }}" type="video/mp4">
                     </video>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10"></div>
                 </div>
-                <a href="{{ route('cultura.index') }}" class="mx-5 mb-5 flex items-center justify-center gap-1.5 rounded-xl border border-dasavena-purple/15 bg-dasavena-purple/5 py-2.5 text-xs font-bold text-dasavena-purple transition-all hover:-translate-y-0.5 hover:bg-dasavena-purple/10">
+
+                <p class="text-[13px] leading-relaxed text-gray-500">
+                    Conoce las actualizaciones de los procesos SGI y la cultura de excelencia Dasavena. Consulta nuestros valores y lineamientos institucionales.
+                </p>
+
+                <a href="{{ route('cultura.index') }}" class="mt-auto flex items-center justify-center gap-1.5 rounded-xl border border-dasavena-purple/15 bg-dasavena-purple/5 py-2.5 text-xs font-bold text-dasavena-purple transition-all hover:-translate-y-0.5 hover:bg-dasavena-purple/10">
                     Conoce nuestros valores <i class="ti ti-arrow-right" aria-hidden="true"></i>
                 </a>
+            </x-dashboard.panel>
+
+            {{-- SLA + ACTIVIDAD --}}
+            <div class="flex flex-col gap-4 lg:col-span-5">
+                <x-dashboard.panel class="flex flex-col gap-4 p-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <i class="ti ti-gauge text-[20px] text-dasavena-purple"></i>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Tiempos de respuesta (SLA)</span>
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span> En vivo
+                        </span>
+                    </div>
+
+                    <x-dashboard.sla-row icon="ti-clock-check" title="Aprobación del jefe" desc="solicitud creada → aprobada por jefe" :value="$formatoHoras($horasAprobacion) ?? '—'" theme="purple" />
+                    <x-dashboard.sla-row icon="ti-progress-check" title="Atención de SGI" desc="aprobada por jefe → atendida por SGI" :value="$formatoHoras($horasAtencion) ?? '—'" theme="gold" />
+
+                    @if($vencidasSla > 0)
+                    <div class="flex items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 shadow-[0_4px_16px_rgba(186,26,26,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-600 text-white shadow-[0_4px_12px_rgba(190,30,30,0.3)]">
+                                <i class="ti ti-alarm text-[18px]"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-baseline gap-2">
+                                    <span class="font-mono text-2xl font-extrabold text-rose-600">{{ $vencidasSla }}</span>
+                                    <span class="text-[11px] font-bold uppercase text-rose-600">Vencidas SLA</span>
+                                </div>
+                                <p class="mt-0.5 text-[11px] text-gray-400">Pendientes con más de 3 días sin movimiento</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('solicitudes.index', ['estado' => 'pendiente']) }}" class="shrink-0 whitespace-nowrap rounded-xl bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white shadow-[0_3px_10px_rgba(190,30,30,0.3)] transition-all hover:opacity-95 active:scale-95">
+                            Ver pendientes
+                        </a>
+                    </div>
+                    @else
+                    <div class="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                        <i class="ti ti-shield-check text-[20px] text-emerald-600"></i>
+                        <p class="text-[12px] text-emerald-700">Sin solicitudes fuera de SLA en este momento.</p>
+                    </div>
+                    @endif
+                </x-dashboard.panel>
+
+                <x-dashboard.panel title="Actividad del sistema" subtitle="Solicitudes registradas — últimos 30 días" class="p-6">
+                    <div class="h-24 pt-2">
+                        <canvas id="mainChart" role="img" aria-label="Gráfica de solicitudes de los últimos 30 días"></canvas>
+                    </div>
+                </x-dashboard.panel>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════ BANDEJA DE SOLICITUDES RECIENTES ══════════════════════════════ --}}
+        <x-dashboard.panel class="reveal flex flex-col gap-5 p-6">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="font-display text-lg font-bold text-indigo-950">Solicitudes recientes</h2>
+                    <p class="text-xs text-gray-400">Últimas actualizaciones de formatos institucionales</p>
+                </div>
+                @if($vencidasSla > 0)
+                <button type="button" id="toggle-urgentes" class="inline-flex w-fit items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-1.5 text-[12px] font-semibold text-rose-700 transition-all hover:bg-rose-100">
+                    <span class="h-1.5 w-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                    Urgentes SLA ({{ $vencidasSla }})
+                </button>
+                @endif
             </div>
 
-            {{-- DESGLOSE POR ÁREA --}}
-            <div class="rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-5">
-                <div class="px-6 pt-6">
-                    <h2 class="font-display text-base font-bold text-indigo-950">Solicitudes por área</h2>
-                    <p class="mt-0.5 text-xs text-gray-400">Volumen y avance por departamento</p>
+            @if($ultimasSolicitudes->isNotEmpty())
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex max-w-md flex-1 items-center gap-2 rounded-2xl border border-white/80 bg-white/60 px-3.5 py-2 text-gray-400 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl focus-within:ring-2 focus-within:ring-dasavena-purple/20">
+                    <i class="ti ti-search text-[18px]"></i>
+                    <input id="table-search" type="text" placeholder="Filtrar por solicitante o documento…" class="w-full bg-transparent text-[13px] text-gray-700 placeholder:text-gray-400 focus:outline-none">
                 </div>
+                <button type="button" id="export-csv" class="inline-flex items-center gap-1.5 rounded-xl border border-white/80 bg-white/60 px-3.5 py-2 text-[12px] font-semibold text-gray-600 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl transition-colors hover:text-gray-900">
+                    <i class="ti ti-file-export text-[16px]"></i> Exportar CSV
+                </button>
+            </div>
+
+            <div class="w-full overflow-x-auto rounded-2xl border border-white/80">
+                <table class="w-full border-collapse bg-white/60 text-left">
+                    <thead class="border-b border-black/[0.04] bg-white/40 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        <tr>
+                            <th class="px-4 py-3.5">Folio</th>
+                            <th class="px-4 py-3.5">Tipo de formato</th>
+                            <th class="px-4 py-3.5">Solicitante</th>
+                            <th class="px-4 py-3.5">Fecha reg.</th>
+                            <th class="px-4 py-3.5">Estado</th>
+                            <th class="px-4 py-3.5">Nivel actual</th>
+                            <th class="px-4 py-3.5 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="solicitudes-tbody" class="divide-y divide-black/[0.04] text-[13px] text-gray-700">
+                        @foreach($ultimasSolicitudes as $item)
+                        @php
+                            $accionInfo = $accionLabels[$item->accion] ?? ['label' => ucfirst(str_replace('_', ' ', $item->accion)), 'icon' => 'ti-file'];
+                            $badge = $estadoBadges[$item->estado] ?? ['label' => ucfirst(str_replace('_', ' ', $item->estado)), 'class' => 'bg-gray-50 border-gray-200 text-gray-600'];
+                            $esVencida = $item->estado === 'pendiente' && $item->created_at <= now()->subDays(3);
+                            $folio = $item->codigo_documento ?: ('SOL-' . str_pad($item->id, 5, '0', STR_PAD_LEFT));
+                        @endphp
+                        <tr class="row-solicitud transition-colors hover:bg-white/70" data-urgente="{{ $esVencida ? '1' : '0' }}"
+                            data-search="{{ mb_strtolower($folio.' '.($item->usuario->name ?? '').' '.$accionInfo['label'].' '.($item->nombre_documento ?? '')) }}">
+                            <td class="px-4 py-4 font-semibold {{ $esVencida ? 'text-rose-600' : 'text-dasavena-purple' }}">
+                                @if($esVencida)<i class="ti ti-alarm mr-1 text-[14px]"></i>@endif{{ $folio }}
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-dasavena-purple/10 text-dasavena-purple">
+                                        <i class="ti {{ $accionInfo['icon'] }} text-[16px]"></i>
+                                    </div>
+                                    <span class="font-medium text-indigo-950">{{ $item->nombre_documento ?: $accionInfo['label'] }}</span>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-50 text-[11px] font-bold text-indigo-700">
+                                        {{ strtoupper(mb_substr($item->usuario->name ?? 'S', 0, 1)) }}
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[13px] font-semibold text-indigo-950">{{ $item->usuario->name ?? 'Usuario' }}</span>
+                                        @if($item->usuario->area ?? null)<span class="text-[11px] text-gray-400">{{ $item->usuario->area }}</span>@endif
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-[12.5px] text-gray-400">{{ $item->created_at?->format('d/m/Y H:i') }}</td>
+                            <td class="px-4 py-4">
+                                <span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold {{ $badge['class'] }}">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-current"></span>{{ $badge['label'] }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4 text-[12.5px] text-gray-400">{{ $nivelActual[$item->estado] ?? '—' }}</td>
+                            <td class="px-4 py-4 text-right">
+                                <a href="{{ route('solicitudes.show', $item->id) }}"
+                                   class="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-[12px] font-semibold transition-all active:scale-95 {{ $esVencida ? 'bg-rose-600 text-white shadow-[0_2px_8px_rgba(190,30,30,0.3)] hover:opacity-95' : 'border border-white/80 bg-white/80 text-gray-700 shadow-sm hover:bg-white' }}">
+                                    {{ $esVencida ? 'Atender ahora' : 'Ver detalle' }}
+                                </a>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="flex flex-col items-center justify-between gap-3 pt-1 sm:flex-row">
+                <span class="text-[12.5px] text-gray-400">
+                    Mostrando <strong class="font-semibold text-gray-700">{{ $ultimasSolicitudes->count() }}</strong> más recientes de <strong class="font-semibold text-gray-700">{{ $total }}</strong> solicitudes
+                </span>
+                <a href="{{ route('solicitudes.index') }}" class="flex items-center gap-1.5 rounded-xl border border-white/80 bg-white/70 px-4 py-2 text-[12px] font-semibold text-dasavena-purple shadow-sm transition-all hover:bg-white">
+                    Ver todas <i class="ti ti-arrow-right text-[14px]"></i>
+                </a>
+            </div>
+            @else
+            <div class="py-10 text-center">
+                <span class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-xl text-gray-400"><i class="ti ti-moon-stars"></i></span>
+                <p class="text-sm text-gray-400">Sin actividad reciente</p>
+            </div>
+            @endif
+        </x-dashboard.panel>
+
+        {{-- ══════════════════════════════ ÁREA · DOCUMENTOS · ACCESOS ══════════════════════════════ --}}
+        <div class="reveal grid grid-cols-1 gap-5 lg:grid-cols-3">
+
+            {{-- DESGLOSE POR ÁREA --}}
+            <x-dashboard.panel title="Solicitudes por área" subtitle="Volumen y avance por departamento">
                 @if($porArea->count())
                 <ul class="flex flex-col gap-4 px-6 py-5">
                     @foreach($porArea as $a)
@@ -226,21 +385,19 @@
                     <p class="text-sm text-gray-400">Aún no hay solicitudes registradas</p>
                 </div>
                 @endif
-            </div>
+            </x-dashboard.panel>
 
             {{-- DOCUMENTOS POR VENCER --}}
-            <div class="rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-4">
-                <div class="flex items-start justify-between gap-3 px-6 pt-6">
-                    <div>
-                        <h2 class="font-display text-base font-bold text-indigo-950">Documentos por vencer</h2>
-                        <p class="mt-0.5 text-xs text-gray-400">Vigencia en zona de alerta</p>
-                    </div>
+            <x-dashboard.panel subtitle="Vigencia en zona de alerta">
+                <x-slot:header>
                     @if($totalPorVencer > 0)
                     <div class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700">
-                        <span class="h-1.5 w-1.5 rounded-full bg-rose-600"></span>
-                        {{ $totalPorVencer }}
+                        <span class="h-1.5 w-1.5 rounded-full bg-rose-600"></span>{{ $totalPorVencer }}
                     </div>
                     @endif
+                </x-slot:header>
+                <div class="px-6 pt-0">
+                    <h2 class="font-display text-base font-bold text-indigo-950">Documentos por vencer</h2>
                 </div>
                 @if(!empty($documentosPorVencer) && count($documentosPorVencer))
                 <ul class="flex flex-col gap-1 px-3 pb-2 pt-3">
@@ -281,49 +438,10 @@
                     <p class="text-sm text-gray-400">Nada por vencer en los próximos 60 días</p>
                 </div>
                 @endif
-            </div>
-
-            {{-- ACTIVIDAD RECIENTE --}}
-            <div class="rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-4">
-                <div class="px-6 pt-6">
-                    <h2 class="font-display text-base font-bold text-indigo-950">Actividad reciente</h2>
-                    <p class="mt-0.5 text-xs text-gray-400">Últimas acciones en el sistema</p>
-                </div>
-                @if(!empty($ultimasSolicitudes) && count($ultimasSolicitudes))
-                <ul class="flex max-h-[340px] flex-col gap-1 overflow-y-auto px-3 py-4">
-                    @foreach($ultimasSolicitudes as $item)
-                    <li class="flex items-start gap-2.5 rounded-xl px-2.5 py-2 transition-colors hover:bg-indigo-50/60">
-                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 font-display text-xs font-bold text-white">
-                            {{ strtoupper(mb_substr($item->usuario->name ?? 'S', 0, 1)) }}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-[13px] font-bold text-indigo-950">{{ $item->usuario->name ?? 'Usuario' }}</p>
-                            <div class="mt-0.5 flex flex-wrap items-center gap-1.5">
-                                <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{{ ucfirst(str_replace('_', ' ', $item->estado)) }}</span>
-                                <span class="text-[10px] text-gray-400">{{ $item->accion }}</span>
-                            </div>
-                            @if($item->comentarios)
-                            <p class="mt-1 truncate text-[11px] italic text-gray-400">"{{ \Illuminate\Support\Str::limit($item->comentarios, 55) }}"</p>
-                            @endif
-                            <time class="mt-0.5 block font-mono text-[10px] text-gray-300">{{ $item->created_at?->format('d/m/Y H:i') }}</time>
-                        </div>
-                    </li>
-                    @endforeach
-                </ul>
-                @else
-                <div class="px-6 py-10 text-center">
-                    <span class="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-xl bg-gray-50 text-xl text-gray-400"><i class="ti ti-moon-stars"></i></span>
-                    <p class="text-sm text-gray-400">Sin actividad reciente</p>
-                </div>
-                @endif
-            </div>
+            </x-dashboard.panel>
 
             {{-- ACCESOS RÁPIDOS --}}
-            <div class="rounded-3xl border border-white/90 bg-white/70 shadow-md shadow-dasavena-purple/5 backdrop-blur-xl lg:col-span-4">
-                <div class="px-6 pt-6">
-                    <h2 class="font-display text-base font-bold text-indigo-950">Accesos rápidos</h2>
-                    <p class="mt-0.5 text-xs text-gray-400">Navegación directa</p>
-                </div>
+            <x-dashboard.panel title="Accesos rápidos" subtitle="Navegación directa">
                 <nav class="flex flex-col gap-2 px-5 py-5" aria-label="Accesos rápidos">
                     <a href="{{ route('solicitudes.create') }}" class="group flex items-center gap-2.5 rounded-xl border border-dasavena-purple/25 bg-dasavena-purple/10 px-3.5 py-2.5 text-[13px] font-medium text-dasavena-purple transition-all hover:-translate-y-0.5 hover:bg-dasavena-purple/15">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-dasavena-purple-light to-dasavena-purple-dark text-sm text-white shadow"><i class="ti ti-plus"></i></span>
@@ -350,7 +468,7 @@
                     </a>
                     @endif
                 </nav>
-            </div>
+            </x-dashboard.panel>
 
         </div>
 
@@ -479,8 +597,19 @@
     animation: gold-shimmer 3.5s ease-in-out infinite;
 }
 @keyframes gold-shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
-.float-slow { animation: float 4s ease-in-out infinite; }
-@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+/* ── Nombre con degradado que sigue al cursor ── */
+.name-gradient {
+    background-image: linear-gradient(90deg, #ffffff 0%, var(--gold) 50%, #ffffff 100%);
+    background-size: 250% 100%;
+    background-position: 50% 50%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: background-position .15s ease-out;
+}
+
+.row-solicitud.is-hidden-filter { display: none; }
 
 /* ── HUD corners (chat de soporte) ── */
 .hud-corners { position: relative; }
@@ -654,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const diasData   = @json($porDia->pluck('total'));
 
     Chart.defaults.font.family = "'Century Gothic', sans-serif";
-    Chart.defaults.font.size   = 11;
+    Chart.defaults.font.size   = 10;
     Chart.defaults.color       = '#9ca3af';
 
     const chartEl = document.getElementById('mainChart');
@@ -675,11 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         g.addColorStop(1,   'rgba(106,44,117,0)');
                         return g;
                     },
-                    borderWidth: 2.5, fill: true,
-                    pointRadius: 5, pointBackgroundColor: '#fff',
-                    pointBorderColor: '#6A2C75', pointBorderWidth: 2.5,
-                    pointHoverRadius: 7, pointHoverBackgroundColor: '#6A2C75',
-                    pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
+                    borderWidth: 2, fill: true,
+                    pointRadius: 0, pointHoverRadius: 4,
+                    pointHoverBackgroundColor: '#6A2C75', pointHoverBorderColor: '#fff', pointHoverBorderWidth: 2,
                 }]
             },
             options: {
@@ -692,15 +819,78 @@ document.addEventListener('DOMContentLoaded', () => {
                         backgroundColor: 'rgba(255,255,255,.97)',
                         titleColor: '#1e1b4b', bodyColor: '#4b5563',
                         borderColor: 'rgba(106,44,117,.2)', borderWidth: 1,
-                        padding: 12, cornerRadius: 10,
+                        padding: 10, cornerRadius: 10,
                         callbacks: { label: item => ` ${item.raw} solicitudes` }
                     }
                 },
                 scales: {
-                    x: { grid: { display: false }, ticks: { maxTicksLimit: 8, color: '#d1d5db' } },
-                    y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.04)' }, ticks: { color: '#d1d5db', padding: 6 } }
+                    x: { display: false },
+                    y: { display: false, beginAtZero: true }
                 }
             }
+        });
+    }
+
+    /* ── Nombre con degradado que sigue al cursor ── */
+    const heroNombre = document.getElementById('hero-nombre');
+    if (heroNombre) {
+        const mover = (clientX) => {
+            const rect = heroNombre.getBoundingClientRect();
+            const pct = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100));
+            heroNombre.style.backgroundPosition = `${pct}% 50%`;
+        };
+        heroNombre.addEventListener('mousemove', (e) => mover(e.clientX));
+        heroNombre.addEventListener('mouseleave', () => {
+            heroNombre.style.backgroundPosition = '50% 50%';
+        });
+    }
+
+    /* ── Bandeja de solicitudes: búsqueda, export CSV y filtro de urgentes ── */
+    const filas = Array.from(document.querySelectorAll('.row-solicitud'));
+
+    const buscador = document.getElementById('table-search');
+    if (buscador) {
+        buscador.addEventListener('input', () => {
+            const q = buscador.value.trim().toLowerCase();
+            filas.forEach(fila => {
+                const coincide = !q || (fila.dataset.search ?? '').includes(q);
+                fila.classList.toggle('is-hidden-filter', !coincide);
+            });
+        });
+    }
+
+    const toggleUrgentes = document.getElementById('toggle-urgentes');
+    if (toggleUrgentes) {
+        let soloUrgentes = false;
+        toggleUrgentes.addEventListener('click', () => {
+            soloUrgentes = !soloUrgentes;
+            toggleUrgentes.classList.toggle('ring-2', soloUrgentes);
+            toggleUrgentes.classList.toggle('ring-rose-300', soloUrgentes);
+            filas.forEach(fila => {
+                const esUrgente = fila.dataset.urgente === '1';
+                fila.classList.toggle('is-hidden-filter', soloUrgentes && !esUrgente);
+            });
+        });
+    }
+
+    const exportBtn = document.getElementById('export-csv');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            const encabezados = ['Folio', 'Tipo', 'Solicitante', 'Fecha', 'Estado'];
+            const filasVisibles = filas.filter(f => !f.classList.contains('is-hidden-filter'));
+            const lineas = filasVisibles.map(fila => {
+                const celdas = fila.querySelectorAll('td');
+                const texto = i => (celdas[i]?.innerText ?? '').replace(/\s+/g, ' ').trim().replace(/"/g, '""');
+                return [texto(0), texto(1), texto(2), texto(3), texto(4)].map(v => `"${v}"`).join(',');
+            });
+            const csv = [encabezados.join(','), ...lineas].join('\n');
+            const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'solicitudes-recientes.csv';
+            a.click();
+            URL.revokeObjectURL(url);
         });
     }
 });

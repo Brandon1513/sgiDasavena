@@ -23,6 +23,7 @@ class AcActividad extends Model
         'responsable_id',
         'fecha_compromiso',
         'fecha_cumplimiento',
+        'alerta_vencimiento_enviada_para',
         'estado',
         'observaciones',
     ];
@@ -32,6 +33,7 @@ class AcActividad extends Model
         return [
             'fecha_compromiso' => 'date',
             'fecha_cumplimiento' => 'date',
+            'alerta_vencimiento_enviada_para' => 'date',
         ];
     }
 

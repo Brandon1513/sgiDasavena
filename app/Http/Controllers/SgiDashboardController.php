@@ -24,8 +24,11 @@ class SgiDashboardController extends Controller
         // Jefe ve sus solicitudes y las de su equipo
         elseif ($user->hasRole('jefe')) {
             $baseQuery->where(function ($q) use ($user) {
-                $q->where('jefe_id', $user->id)
-                    ->orWhere('user_id', $user->id);
+                // Columnas calificadas con la tabla: "Solicitudes por área" hace join con
+                // `users`, que también tiene `jefe_id`, y sin calificar el nombre se vuelve
+                // ambiguo para MySQL ("Column 'jefe_id' in where clause is ambiguous").
+                $q->where('solicitudes_formatos.jefe_id', $user->id)
+                    ->orWhere('solicitudes_formatos.user_id', $user->id);
             });
         }
         // Usuario normal ve solo las suyas

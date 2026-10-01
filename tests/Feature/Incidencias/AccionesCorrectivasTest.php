@@ -4,6 +4,7 @@ use App\Domains\Incidencias\Actions\CambiarEstadoAccionCorrectiva;
 use App\Domains\Incidencias\Actions\CrearAccionCorrectiva;
 use App\Domains\Incidencias\Actions\CrearContencion;
 use App\Domains\Incidencias\Enums\EstadoAccionCorrectiva;
+use App\Domains\Incidencias\Models\OrigenAccionCorrectiva;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
@@ -14,6 +15,11 @@ beforeEach(function () {
     ]);
 
     $this->usuario = User::factory()->create();
+
+    // No se hardcodea el id: RefreshDatabase hace rollback por transacción pero
+    // MySQL no reinicia el AUTO_INCREMENT, así que el id real del catálogo
+    // sembrado corre entre tests dentro de la misma corrida.
+    $this->origenId = OrigenAccionCorrectiva::where('nombre', 'Queja de cliente')->value('id');
 });
 
 test('una acción correctiva no puede saltarse de borrador a plan de acción', function () {
@@ -22,7 +28,7 @@ test('una acción correctiva no puede saltarse de borrador a plan de acción', f
 
     $ac = $crearAC->ejecutar([
         'fecha_apertura' => '2026-09-02',
-        'origen_id' => 3,
+        'origen_id' => $this->origenId,
         'responsable_id' => $this->usuario->id,
         'descripcion' => 'AC de prueba para test automatizado.',
     ]);
@@ -47,7 +53,7 @@ test('una acción correctiva en contención no puede pasar a análisis sin una c
 
     $ac = $crearAC->ejecutar([
         'fecha_apertura' => '2026-09-02',
-        'origen_id' => 3,
+        'origen_id' => $this->origenId,
         'responsable_id' => $this->usuario->id,
         'descripcion' => 'AC de prueba de validación de contención.',
     ]);
@@ -77,7 +83,7 @@ test('una acción correctiva en contención puede pasar a análisis cuando exist
 
     $ac = $crearAC->ejecutar([
         'fecha_apertura' => '2026-09-02',
-        'origen_id' => 3,
+        'origen_id' => $this->origenId,
         'responsable_id' => $this->usuario->id,
         'descripcion' => 'AC de prueba de transición con contención.',
     ]);

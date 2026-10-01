@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('documentos:verificar-vencimientos')
     ->dailyAt('08:00')
     ->withoutOverlapping();
+
+Schedule::command('acciones-correctivas:verificar-vencimientos')
+    ->dailyAt('08:00')
+    ->withoutOverlapping();

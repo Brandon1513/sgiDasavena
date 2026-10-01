@@ -31,9 +31,35 @@ use App\Domains\Incidencias\Actions\RegistrarVerificacionCierre;
 use App\Domains\Incidencias\Actions\IniciarEsperaEficacia;
 use App\Domains\Incidencias\Actions\RegistrarVerificacionEficacia;
 use App\Domains\Incidencias\Actions\CrearAccionCorrectiva;
+use App\Mail\AccionCorrectivaAsignadaMailable;
+use App\Mail\AccionCorrectivaEstadoCambiadoMailable;
+use App\Mail\AccionCorrectivaVerificacionMailable;
+use App\Mail\ActividadPlanAsignadaMailable;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AccionCorrectivaController extends Controller
 {
+    /**
+     * Envía un correo de notificación sin interrumpir la acción real si falla
+     * (SMTP/Graph caído, destinatario sin correo, etc.).
+     */
+    private function notificar(?string $email, \Illuminate\Mail\Mailable $mailable): void
+    {
+        if (!$email) {
+            return;
+        }
+
+        try {
+            Mail::to($email)->send($mailable);
+        } catch (\Throwable $e) {
+            Log::error('No se pudo enviar la notificación de Acción Correctiva.', [
+                'mailable' => get_class($mailable),
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     /**
      * Solo quien es responsable de la Acción Correctiva, o un administrador
      * (administrador / administrador_sgi), puede ejecutar acciones que
@@ -130,6 +156,12 @@ class AccionCorrectivaController extends Controller
 
     public function store(Request $request, CrearAccionCorrectiva $crearAccionCorrectiva)
     {
+        $user = auth()->user();
+
+        if (!$user->hasRole('administrador') && !$user->hasRole('administrador_sgi')) {
+            abort(403, 'No tienes permiso para crear una Acción Correctiva.');
+        }
+
         $datos = $request->validate([
             'descripcion' => [
                 'required',
@@ -156,6 +188,13 @@ class AccionCorrectivaController extends Controller
             'responsable_id' => $datos['responsable_id'],
             'descripcion' => $datos['descripcion'],
         ]);
+
+        $accionCorrectiva->load(['responsable', 'origen', 'estado']);
+
+        $this->notificar(
+            $accionCorrectiva->responsable->email,
+            new AccionCorrectivaAsignadaMailable($accionCorrectiva)
+        );
 
         return redirect()
             ->route(
@@ -398,9 +437,22 @@ class AccionCorrectivaController extends Controller
                 $request->input('estado')
             );
 
-            $cambiarEstado->ejecutar(
+            // Se captura antes de ejecutar(): el método actualiza el mismo
+            // objeto en memoria, así que después ya no tendríamos el estado viejo.
+            $estadoAnteriorNombre = $accionCorrectiva->loadMissing('estado')->estado->nombre;
+
+            $actualizada = $cambiarEstado->ejecutar(
                 $accionCorrectiva,
                 $nuevoEstado
+            );
+
+            $this->notificar(
+                $actualizada->responsable->email,
+                new AccionCorrectivaEstadoCambiadoMailable(
+                    $actualizada,
+                    $estadoAnteriorNombre,
+                    $actualizada->estado->nombre,
+                )
             );
 
             return redirect()
@@ -669,9 +721,16 @@ class AccionCorrectivaController extends Controller
             ->where('ciclo', $accionCorrectiva->ciclo_actual)
             ->firstOrFail();
 
-        $agregarActividadPlan->ejecutar(
+        $actividad = $agregarActividadPlan->ejecutar(
             $plan,
             $datos
+        );
+
+        $actividad->load(['responsable', 'planAccion.accionCorrectiva']);
+
+        $this->notificar(
+            $actividad->responsable->email,
+            new ActividadPlanAsignadaMailable($actividad)
         );
 
         return redirect()
@@ -697,7 +756,7 @@ class AccionCorrectivaController extends Controller
             'observaciones' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $registrarVerificacionCierre->ejecutar(
+        $verificacion = $registrarVerificacionCierre->ejecutar(
             $accionCorrectiva,
             auth()->id(),
             (bool) $datos['acciones_implementadas'],
@@ -705,6 +764,11 @@ class AccionCorrectivaController extends Controller
             (bool) $datos['implementacion_conforme'],
             $datos['resultado'] ?? null,
             $datos['observaciones'] ?? null
+        );
+
+        $this->notificar(
+            $accionCorrectiva->loadMissing('responsable')->responsable->email,
+            new AccionCorrectivaVerificacionMailable($accionCorrectiva, 'cierre', $verificacion)
         );
 
         return redirect()
@@ -754,13 +818,18 @@ class AccionCorrectivaController extends Controller
             'observaciones' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $registrarVerificacionEficacia->ejecutar(
+        $verificacion = $registrarVerificacionEficacia->ejecutar(
             $accionCorrectiva,
             auth()->id(),
             (bool) $datos['criterios_cumplidos'],
             (bool) $datos['resultado_eficaz'],
             $datos['resultado'],
             $datos['observaciones'] ?? null
+        );
+
+        $this->notificar(
+            $accionCorrectiva->loadMissing('responsable')->responsable->email,
+            new AccionCorrectivaVerificacionMailable($accionCorrectiva, 'eficacia', $verificacion)
         );
 
         return redirect()

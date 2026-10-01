@@ -109,12 +109,5 @@ public function marcarObsoleto(DocumentoRevision $revision)
         return redirect()
             ->route('documentos.show', $version->documento_id)
             ->with('success', 'Revisión agregada y calendario actualizado correctamente.');
-            
     }
-
-    public function version()
-{
-    return $this->belongsTo(DocumentoVersion::class, 'documento_version_id');
-}
- 
 }

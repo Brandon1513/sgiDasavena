@@ -87,6 +87,12 @@ Route::middleware(['auth'])->group(function () {
             '/documento-versiones/{version}/marcar-obsoleto',
             [DocumentoVersionController::class, 'marcarObsoleto']
         )->name('documento_versiones.marcar_obsoleto');
+
+        Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
+            ->name('documento_versiones.revisiones.create');
+
+        Route::post('/documento-versiones/{version}/revisiones', [DocumentoRevisionController::class, 'store'])
+            ->name('documento_versiones.revisiones.store');
     });
 
 
@@ -160,12 +166,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
         ->name('documentos.versiones.show');
-
-    Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
-        ->name('documento_versiones.revisiones.create');
-
-    Route::post('/documento-versiones/{version}/revisiones', [DocumentoRevisionController::class, 'store'])
-        ->name('documento_versiones.revisiones.store');
 
     Route::post('/documentos/{documento}/solicitar-actualizacion', [DocumentoController::class, 'createUpdateRequest'])
         ->name('documentos.solicitar_actualizacion');
