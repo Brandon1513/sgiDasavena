@@ -443,7 +443,7 @@
                 <!-- Logo -->
                 <div class="flex items-center shrink-0">
                     <a href="{{ route('dashboard') }}" class="nav-logo">
-                        <x-application-logo class="block w-auto h-9 text-[#6A2C75] fill-current" />
+                        <x-application-logo class="block w-auto h-4 text-[#6A2C75] fill-current" />
                     </a>
                 </div>
 

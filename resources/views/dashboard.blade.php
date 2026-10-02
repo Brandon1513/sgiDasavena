@@ -99,7 +99,7 @@
     <div class="pointer-events-none fixed bottom-[-10%] left-[18%] z-[1] h-[320px] w-[500px] rounded-full bg-dasavena-purple-light/10 blur-3xl"></div>
 
     <img src="https://permisos.dasavena-intranet.com/images/logo.png" alt="" aria-hidden="true"
-        class="pointer-events-none fixed bottom-5 right-5 z-[5] h-20 w-20 object-contain opacity-15 mix-blend-multiply select-none">
+        class="pointer-events-none fixed bottom-5 left-5 z-[5] h-20 w-20 object-contain opacity-15 mix-blend-multiply select-none">
 
     <div class="relative z-10 mx-auto flex max-w-7xl flex-col gap-7 px-4 py-10 sm:px-6 lg:px-8">
 
