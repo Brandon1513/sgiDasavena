@@ -104,11 +104,12 @@
     <div class="relative z-10 mx-auto flex max-w-7xl flex-col gap-7 px-4 py-10 sm:px-6 lg:px-8">
 
         {{-- ══════════════════════════════ HERO LIQUID GLASS ══════════════════════════════ --}}
-        <header class="reveal relative overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-br from-dasavena-purple-dark via-dasavena-purple to-[#250a2c] p-7 shadow-[0_12px_40px_rgba(74,30,82,0.3),inset_0_1px_2px_rgba(255,255,255,0.25)] sm:p-9 lg:p-11">
+        <header id="hero" class="reveal relative overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-br from-dasavena-purple-dark via-dasavena-purple to-[#250a2c] p-7 shadow-[0_12px_40px_rgba(74,30,82,0.3),inset_0_1px_2px_rgba(255,255,255,0.25)] sm:p-9 lg:p-11">
             <div class="absolute inset-x-0 top-0 h-[2px] gold-gleam"></div>
             <div class="pointer-events-none absolute inset-0 opacity-[.06]" style="background-image:radial-gradient(rgba(255,255,255,.9) 1.5px, transparent 1.5px); background-size:22px 22px;"></div>
             <div class="pointer-events-none absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-dasavena-gold/15 blur-3xl"></div>
             <div class="pointer-events-none absolute -top-20 right-1/3 h-72 w-72 rounded-full bg-dasavena-purple-light/20 blur-3xl"></div>
+            <div class="hero-shine pointer-events-none absolute inset-0" aria-hidden="true"></div>
 
             <div class="relative z-[1] flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-center">
                 <div class="flex max-w-2xl flex-col gap-4">
@@ -598,6 +599,15 @@
 }
 @keyframes gold-shimmer { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
 
+/* ── Hero: brillo que sigue al cursor ── */
+.hero-shine {
+    opacity: 0;
+    transition: opacity .35s ease;
+    background: radial-gradient(260px 220px at var(--hx, 50%) var(--hy, 0%), rgba(255,255,255,.22), rgba(255,255,255,.05) 45%, transparent 70%);
+}
+#hero:hover .hero-shine { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .hero-shine { display: none; } }
+
 /* ── Nombre con degradado que sigue al cursor ── */
 .name-gradient {
     background-image: linear-gradient(90deg, #ffffff 0%, var(--gold) 50%, #ffffff 100%);
@@ -828,6 +838,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: { display: false, beginAtZero: true }
                 }
             }
+        });
+    }
+
+    /* ── Hero: brillo que sigue al cursor ── */
+    const hero = document.getElementById('hero');
+    if (hero) {
+        hero.addEventListener('mousemove', (e) => {
+            const r = hero.getBoundingClientRect();
+            hero.style.setProperty('--hx', ((e.clientX - r.left) / r.width * 100) + '%');
+            hero.style.setProperty('--hy', ((e.clientY - r.top) / r.height * 100) + '%');
         });
     }
 
