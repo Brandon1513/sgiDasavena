@@ -211,6 +211,7 @@ window.addEventListener('load', () => {
                                 <th class="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Código</th>
                                 <th class="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</th>
                                 <th class="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Área / Ubicación</th>
+                                <th class="px-5 py-3.5 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">Revisiones</th>
                                 <th class="px-5 py-3.5 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">Acciones</th>
                             </tr>
                         </thead>
@@ -478,12 +479,24 @@ function renderModalDia(events) {
     });
 }
 
+function renderRevisionesBadges(revisiones) {
+    if (!revisiones || !revisiones.length) {
+        return '<span class="text-xs text-gray-300">—</span>';
+    }
+    // Sin límite ni truncado: si son muchas, el contenedor envuelve y la
+    // fila simplemente crece para mostrarlas todas.
+    return `<div class="flex flex-wrap gap-1.5 max-w-xs">${revisiones.map(r => {
+        const titulo = r.revision_actual ? `Revisión: ${r.revision_actual}` : '';
+        return `<span class="inline-flex items-center rounded-md border border-dasavena-purple/15 bg-dasavena-purple/5 px-2 py-0.5 text-[10.5px] font-bold text-dasavena-purple" title="${titulo}">${r.label}</span>`;
+    }).join('')}</div>`;
+}
+
 function renderList(list) {
     const body = document.getElementById('listBody');
     body.innerHTML = '';
 
     if (!list.length) {
-        body.innerHTML = `<tr><td colspan="6" class="py-16 text-center text-sm text-gray-400">Sin registros</td></tr>`;
+        body.innerHTML = `<tr><td colspan="7" class="py-16 text-center text-sm text-gray-400">Sin registros</td></tr>`;
         return;
     }
 
@@ -505,6 +518,7 @@ function renderList(list) {
                     <p class="text-[10px] text-gray-400 uppercase mt-0.5">${row.tipo_documento || ''}</p>
                 </td>
                 <td class="px-5 py-4 text-xs text-gray-500">${row.area || 'N/A'}</td>
+                <td class="px-5 py-4">${renderRevisionesBadges(row.revisiones)}</td>
                 <td class="px-5 py-4 text-center">
                     <a href="${row.url_documento || '#'}" target="_blank"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-dasavena-purple/5 text-dasavena-purple hover:bg-dasavena-purple/10 text-[10px] font-bold transition-colors border border-dasavena-purple/15">

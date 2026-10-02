@@ -27,7 +27,7 @@ public function data(Request $request)
     $today = now()->startOfDay();
 
     $rows = DocumentoVersion::query()
-        ->with(['documento', 'ultimaRevision'])
+        ->with(['documento.versiones.revisiones', 'ultimaRevision'])
         ->when(!$historicos, function ($qq) {
             // Sin históricos: solo versiones vigentes de documentos que no estén de baja
             $qq->where('estatus', 'vigente')
@@ -44,6 +44,7 @@ public function data(Request $request)
         ->get();
 
     $list = collect();
+    $revisionesPorDocumento = [];
 
     foreach ($rows as $ver) {
         $doc = $ver->documento;
@@ -52,6 +53,22 @@ public function data(Request $request)
         $esBaja = $doc->estatus === 'baja';
         $versionObsoleta = $ver->estatus === 'obsoleto';
         $revisionObsoleta = $versionObsoleta || optional($ver->ultimaRevision)->estatus === 'obsoleta';
+
+        // Historial completo de revisiones del documento (de todas sus
+        // versiones), en el orden en que se capturaron. Se calcula una sola
+        // vez por documento aunque genere varias filas en $list.
+        if (!array_key_exists($doc->id, $revisionesPorDocumento)) {
+            $revisionesPorDocumento[$doc->id] = $doc->versiones
+                ->flatMap->revisiones
+                ->sortBy('id')
+                ->values()
+                ->map(fn ($rev, $idx) => [
+                    'label' => 'Rev.'.$idx,
+                    'revision_actual' => $rev->revision_actual,
+                    'fecha_revision' => optional($rev->fecha_revision)->toDateString(),
+                ])
+                ->all();
+        }
 
         $base = [
             'documento_id' => $doc->id,
@@ -64,6 +81,7 @@ public function data(Request $request)
             'area' => $doc->area,
             'url_documento' => route('documentos.show', $doc->id),
             'estatus_documento' => $doc->estatus,
+            'revisiones' => $revisionesPorDocumento[$doc->id],
             ];
 
         // VERSION

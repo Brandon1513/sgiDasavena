@@ -37,6 +37,7 @@
                                 <th class="px-5 py-3.5">Nombre</th>
                                 <th class="px-5 py-3.5">Área</th>
                                 <th class="px-5 py-3.5">Tipo</th>
+                                <th class="px-5 py-3.5">Revisiones</th>
                                 <th class="px-5 py-3.5">Vigencia</th>
                                 <th class="px-5 py-3.5 text-right">Acciones</th>
                             </tr>
@@ -52,12 +53,30 @@
                                     'en_regla' => 'bg-cyan-50 text-cyan-700 border-cyan-200',
                                     default    => 'bg-slate-50 text-slate-600 border-slate-200',
                                 };
+                                // Todas las revisiones de todas las versiones del documento, en el
+                                // orden en que se capturaron (no hay límite: si son muchas, la fila
+                                // simplemente crece para mostrarlas todas).
+                                $revisionesDoc = $doc->versiones->flatMap->revisiones->sortBy('id')->values();
                             @endphp
                             <tr class="hover:bg-[#faf7fb] transition-colors">
                                 <td class="px-5 py-3.5 font-mono font-semibold text-[#6A2C75]">{{ $doc->codigo }}</td>
                                 <td class="px-5 py-3.5">{{ $doc->nombre }}</td>
                                 <td class="px-5 py-3.5 text-gray-500">{{ $doc->area ?: '—' }}</td>
                                 <td class="px-5 py-3.5 text-gray-500">{{ $doc->tipo_documento ?: '—' }}</td>
+                                <td class="px-5 py-3.5">
+                                    @if($revisionesDoc->isEmpty())
+                                    <span class="text-xs text-gray-300">—</span>
+                                    @else
+                                    <div class="flex flex-wrap gap-1.5 max-w-xs">
+                                        @foreach($revisionesDoc as $idx => $rev)
+                                        <span class="inline-flex items-center rounded-md border border-[#6A2C75]/15 bg-[#6A2C75]/5 px-2 py-0.5 text-[10.5px] font-bold text-[#6A2C75]"
+                                              title="{{ $rev->revision_actual ? 'Revisión: '.$rev->revision_actual : '' }}">
+                                            Rev.{{ $idx }}
+                                        </span>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                </td>
                                 <td class="px-5 py-3.5">
                                     <span class="px-3 py-1 rounded-lg text-xs font-bold border {{ $badgeDoc }}">
                                         {{ $doc->etiqueta_vencimiento ?? 'Sin fecha' }}

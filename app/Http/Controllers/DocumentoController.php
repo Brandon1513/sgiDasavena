@@ -27,7 +27,7 @@ class DocumentoController extends Controller
                     $q->where('area', $user->area);
                 }
             })
-            ->with('versionVigente')
+            ->with(['versionVigente', 'versiones.revisiones'])
             ->latest('id')
             ->paginate(15);
 
