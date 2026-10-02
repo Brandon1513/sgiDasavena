@@ -69,8 +69,14 @@
                                     @else
                                     <div class="flex flex-wrap gap-1.5 max-w-xs">
                                         @foreach($revisionesDoc as $idx => $rev)
-                                        <span class="inline-flex items-center rounded-md border border-[#6A2C75]/15 bg-[#6A2C75]/5 px-2 py-0.5 text-[10.5px] font-bold text-[#6A2C75]"
-                                              title="{{ $rev->revision_actual ? 'Revisión: '.$rev->revision_actual : '' }}">
+                                        @php
+                                            $esObsoleta = $rev->estatus === 'obsoleta';
+                                            $claseRev = $esObsoleta
+                                                ? 'border-red-300 bg-red-50 text-red-600'
+                                                : 'border-[#6A2C75]/15 bg-[#6A2C75]/5 text-[#6A2C75]';
+                                        @endphp
+                                        <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-bold {{ $claseRev }}"
+                                              title="{{ ($rev->revision_actual ? 'Revisión: '.$rev->revision_actual.' — ' : '').($esObsoleta ? 'Obsoleta' : 'Vigente') }}">
                                             Rev.{{ $idx }}
                                         </span>
                                         @endforeach

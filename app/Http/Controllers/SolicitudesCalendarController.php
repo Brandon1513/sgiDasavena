@@ -66,6 +66,7 @@ public function data(Request $request)
                     'label' => 'Rev.'.$idx,
                     'revision_actual' => $rev->revision_actual,
                     'fecha_revision' => optional($rev->fecha_revision)->toDateString(),
+                    'estatus' => $rev->estatus,
                 ])
                 ->all();
         }

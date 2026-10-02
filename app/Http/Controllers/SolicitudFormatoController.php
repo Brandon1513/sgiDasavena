@@ -447,7 +447,16 @@ $request->validate($rules);
                     ]);
                 }
 
-                $doc->versiones()->where('id', '!=', $nuevaVersion->id)->update(['estatus' => 'obsoleto']);
+                $versionesViejasIds = $doc->versiones()->where('id', '!=', $nuevaVersion->id)->pluck('id');
+
+                $doc->versiones()->whereIn('id', $versionesViejasIds)->update(['estatus' => 'obsoleto']);
+
+                // Las revisiones de las versiones que acaban de quedar obsoletas
+                // también se marcan como obsoletas: antes se quedaban "vigente"
+                // colgando de una versión ya retirada.
+                DocumentoRevision::whereIn('documento_version_id', $versionesViejasIds)
+                    ->update(['estatus' => 'obsoleta']);
+
                 $doc->update([
                     'version_vigente_id' => $nuevaVersion->id,
                     'estatus' => 'vigente',

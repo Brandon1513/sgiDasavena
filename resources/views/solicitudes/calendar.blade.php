@@ -486,8 +486,12 @@ function renderRevisionesBadges(revisiones) {
     // Sin límite ni truncado: si son muchas, el contenedor envuelve y la
     // fila simplemente crece para mostrarlas todas.
     return `<div class="flex flex-wrap gap-1.5 max-w-xs">${revisiones.map(r => {
-        const titulo = r.revision_actual ? `Revisión: ${r.revision_actual}` : '';
-        return `<span class="inline-flex items-center rounded-md border border-dasavena-purple/15 bg-dasavena-purple/5 px-2 py-0.5 text-[10.5px] font-bold text-dasavena-purple" title="${titulo}">${r.label}</span>`;
+        const esObsoleta = r.estatus === 'obsoleta';
+        const clase = esObsoleta
+            ? 'border-red-300 bg-red-50 text-red-600'
+            : 'border-dasavena-purple/15 bg-dasavena-purple/5 text-dasavena-purple';
+        const titulo = (r.revision_actual ? `Revisión: ${r.revision_actual} — ` : '') + (esObsoleta ? 'Obsoleta' : 'Vigente');
+        return `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-bold ${clase}" title="${titulo}">${r.label}</span>`;
     }).join('')}</div>`;
 }
 
