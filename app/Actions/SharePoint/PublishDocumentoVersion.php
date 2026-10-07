@@ -16,12 +16,59 @@ class PublishDocumentoVersion
     }
 
     /**
-     * Sube el archivo oficial de $newVer a la carpeta que ya quedó decidida
-     * en $newVer->sp_folder_path (sugerida automáticamente por tipo de
-     * documento, o elegida a mano por el administrador_sgi con el selector
-     * de carpetas — en ambos casos ya resuelta ANTES de llegar aquí). Si
-     * había una versión vigente anterior distinta, intenta moverla a
-     * Obsoletos automáticamente (nunca es una elección manual).
+     * Calcula la carpeta BASE sugerida para un vigente nuevo:
+     * "{root_folder}/{Área real}/{Tipo real}" (sin la subcarpeta de Código,
+     * que el sistema siempre gestiona aparte). Requiere resolver el Área y
+     * el tipo con confianza; si cualquiera de los dos falla, regresa null a
+     * propósito — es preferible exigir selección manual que archivar en el
+     * lugar equivocado o duplicar una carpeta.
+     */
+    public function sugerirCarpetaVigente(?string $area, ?string $tipoDocumento): ?string
+    {
+        $tipoCanonico = Clasificador::normalizarTipo($tipoDocumento);
+
+        if (!$tipoCanonico) {
+            return null;
+        }
+
+        $siteId = $this->sp->getSiteId();
+        $driveId = $this->sp->getDriveId($siteId);
+
+        $root = trim(config('sharepoint.root_folder'), '/');
+        $raiz = $this->sp->buscarCarpeta($driveId, $root);
+
+        if (!$raiz) {
+            Log::warning('No se encontró la carpeta raíz de vigentes configurada.', ['root_folder' => $root]);
+
+            return null;
+        }
+
+        $carpetasArea = $this->sp->listarHijos($driveId, $raiz['id']);
+        $nombresArea = collect($carpetasArea)->filter(fn ($i) => isset($i['folder']))->pluck('name')->all();
+        $nombreArea = Clasificador::buscarNombreAreaExistente($nombresArea, $area);
+
+        if (!$nombreArea) {
+            return null;
+        }
+
+        $carpetaArea = collect($carpetasArea)->first(fn ($i) => $i['name'] === $nombreArea);
+        $hijosArea = $this->sp->listarHijos($driveId, $carpetaArea['id']);
+        $nombresTipo = collect($hijosArea)->filter(fn ($i) => isset($i['folder']))->pluck('name')->all();
+
+        $nombreTipo = Clasificador::buscarNombreTipoExistente($nombresTipo, $tipoCanonico)
+            ?? Clasificador::carpetaVigente($tipoCanonico);
+
+        return "{$root}/{$nombreArea}/{$nombreTipo}";
+    }
+
+    /**
+     * Sube el archivo oficial de $newVer dentro de la carpeta de Código que
+     * cuelga de la base ya decidida en $newVer->sp_folder_path (sugerida
+     * automáticamente como {Raíz}/{Área}/{Tipo}, o elegida a mano por el
+     * administrador_sgi con el selector de carpetas). El administrador nunca
+     * ve ni elige la subcarpeta de Código: siempre la gestiona el sistema.
+     * Si había una versión vigente anterior distinta, intenta moverla a
+     * Obsoletos automáticamente (tampoco es una elección manual).
      */
     public function handle(Documento $doc, DocumentoVersion $newVer, string $filePathPublic, ?DocumentoVersion $versionAnterior = null): DocumentoVersion
     {
@@ -32,7 +79,9 @@ class PublishDocumentoVersion
         $siteId = $this->sp->getSiteId();
         $driveId = $this->sp->getDriveId($siteId);
 
-        $vigFolderId = $this->sp->ensureFolderPath($driveId, $newVer->sp_folder_path);
+        $carpetaBase = $newVer->sp_folder_path;
+        $carpetaCompleta = "{$carpetaBase}/{$doc->codigo}";
+        $vigFolderId = $this->sp->ensureFolderPath($driveId, $carpetaCompleta);
 
         // 1) La vigente anterior se mueve a Obsoletos automáticamente (el
         // administrador nunca elige esto a mano). Si no se puede resolver
@@ -51,6 +100,7 @@ class PublishDocumentoVersion
         $newVer->sp_drive_id = $driveId;
         $newVer->sp_item_id = $item['id'] ?? null;
         $newVer->sp_web_url = $item['webUrl'] ?? null;
+        $newVer->sp_folder_path = $carpetaCompleta;
         $newVer->sp_estado = 'publicado';
         $newVer->sp_error = null;
         $newVer->save();
@@ -74,14 +124,17 @@ class PublishDocumentoVersion
 
         $driveId ??= $this->sp->getDriveId($this->sp->getSiteId());
 
-        $root = config('sharepoint.root_folder');
-        $obsoletoRootPath = trim(($root ? "{$root}/" : '') . 'Sistema de Gestión Obsoleto', '/');
+        // Ruta fija e independiente de la raíz de vigentes: "Sistema de
+        // Gestión Obsoleto" vive en una rama aparte que no se mueve si
+        // cambia sharepoint.root_folder.
+        $obsoletoRootPath = trim(config('sharepoint.obsoleto_root_folder'), '/');
 
         $obsoletoRoot = $this->sp->buscarCarpeta($driveId, $obsoletoRootPath);
 
         if (!$obsoletoRoot) {
-            Log::warning('No se encontró la carpeta "Sistema de Gestión Obsoleto": no se movió el archivo.', [
+            Log::warning('No se encontró la carpeta de Obsoletos configurada: no se movió el archivo.', [
                 'documento_version_id' => $version->id,
+                'obsoleto_root_folder' => $obsoletoRootPath,
             ]);
 
             return;

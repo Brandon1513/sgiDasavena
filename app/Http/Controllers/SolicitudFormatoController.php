@@ -294,16 +294,20 @@ $request->validate($rules);
         }
 
         $usuarios = User::where('activo', 1)->get();
-        $solicitud->load('documento.versionVigente');
+        $solicitud->load('documento.versionVigente', 'usuario');
 
         $tipoDocumento = $solicitud->tipo_documento ?? $solicitud->documento?->tipo_documento;
-        $tipoCanonico = \App\Services\SharePoint\ClasificadorDocumentoSharePoint::normalizarTipo($tipoDocumento);
+        $area = $solicitud->documento?->area ?? $solicitud->usuario?->area;
         $carpetaSugerida = null;
 
-        if ($tipoCanonico) {
-            $carpetaTipo = \App\Services\SharePoint\ClasificadorDocumentoSharePoint::carpetaVigente($tipoCanonico);
-            $root = config('sharepoint.root_folder');
-            $carpetaSugerida = trim(($root ? "{$root}/" : '') . $carpetaTipo, '/');
+        try {
+            $carpetaSugerida = app(\App\Actions\SharePoint\PublishDocumentoVersion::class)
+                ->sugerirCarpetaVigente($area, $tipoDocumento);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('No se pudo calcular la ubicación sugerida en SharePoint.', [
+                'solicitud_id' => $solicitud->id,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios', 'carpetaSugerida'));
