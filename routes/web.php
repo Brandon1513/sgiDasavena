@@ -16,6 +16,7 @@ use App\Http\Controllers\CulturaController;
 use App\Http\Controllers\BusquedaController;
 use App\Http\Controllers\NotificacionController;
 use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
+use App\Http\Controllers\Auth\MicrosoftLoginController;
 
 
 
@@ -34,6 +35,7 @@ Route::get('/cultura', [CulturaController::class, 'index'])
 Route::middleware(['auth'])->group(function () {
 
     Route::post('/soporte/ticket', [SoporteTicketController::class, 'store'])
+        ->middleware('throttle:10,1')
         ->name('soporte.ticket.store');
 
     Route::get('/buscar', [BusquedaController::class, 'index'])->name('buscar');
@@ -154,18 +156,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/documentos', [DocumentoController::class, 'index'])->name('documentos.index');
     Route::get('/documentos/{documento}', [DocumentoController::class, 'show'])->name('documentos.show');
 
-    Route::get('/documentos/{documento}/historico', [DocumentoController::class, 'historico'])
-        ->name('documentos.historico');
     Route::get('/dashboard-user', [DocumentoUsuarioController::class, 'index'])
         ->name('dashboard.user')
         ->middleware('auth');
-    //usuarios 
-
-    // ✅ Compat con tu calendario: route('documentos.versiones.show', $ver->id)
-    // (solicitudes.destroy ya está registrada arriba, protegida por role:administrador_sgi)
-
-    Route::get('/documentos/versiones/{version}', [DocumentoVersionController::class, 'show'])
-        ->name('documentos.versiones.show');
+    //usuarios
 
     Route::post('/documentos/{documento}/solicitar-actualizacion', [DocumentoController::class, 'createUpdateRequest'])
         ->name('documentos.solicitar_actualizacion');
@@ -202,30 +196,30 @@ Route::middleware(['auth'])->group(function () {
     // ===============================
     // ACCIONES CORRECTIVAS
     // ===============================
- Route::prefix('acciones-correctivas')
-    ->name('acciones-correctivas.')
-    ->group(function () {
+    Route::prefix('acciones-correctivas')
+        ->name('acciones-correctivas.')
+        ->group(function () {
 
-        Route::get('/', [AccionCorrectivaController::class, 'index'])
-            ->name('index');
+            Route::get('/', [AccionCorrectivaController::class, 'index'])
+                ->name('index');
 
-        Route::get('/crear', [AccionCorrectivaController::class, 'create'])
-            ->name('create');
+            Route::get('/crear', [AccionCorrectivaController::class, 'create'])
+                ->name('create');
 
-        Route::post('/', [AccionCorrectivaController::class, 'store'])
-            ->name('store');
+            Route::post('/', [AccionCorrectivaController::class, 'store'])
+                ->name('store');
 
-        Route::get('/{accionCorrectiva}', [AccionCorrectivaController::class, 'show'])
-            ->name('show');
+            Route::get('/{accionCorrectiva}', [AccionCorrectivaController::class, 'show'])
+                ->name('show');
 
-        Route::post('/{accionCorrectiva}/estado', [AccionCorrectivaController::class, 'cambiarEstado'])
-            ->name('estado.cambiar');
+            Route::post('/{accionCorrectiva}/estado', [AccionCorrectivaController::class, 'cambiarEstado'])
+                ->name('estado.cambiar');
 
-        Route::post('/{accionCorrectiva}/contenciones', [AccionCorrectivaController::class, 'crearContencion'])
-            ->name('contenciones.crear');
+            Route::post('/{accionCorrectiva}/contenciones', [AccionCorrectivaController::class, 'crearContencion'])
+                ->name('contenciones.crear');
 
-        Route::get('/{accionCorrectiva}/analisis', [AccionCorrectivaController::class, 'analisis'])
-            ->name('analisis');
+            Route::get('/{accionCorrectiva}/analisis', [AccionCorrectivaController::class, 'analisis'])
+                ->name('analisis');
 
 
 
@@ -285,6 +279,15 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
                 ->name('cinco-porques.iniciar');
         });
+    Route::get('/auth/microsoft/redirect', [
+        MicrosoftLoginController::class,
+        'redirect'
+    ])->name('microsoft.redirect');
+
+    Route::get('/auth/microsoft/callback', [
+        MicrosoftLoginController::class,
+        'callback'
+    ])->name('microsoft.callback');
 });
 
 require __DIR__ . '/auth.php';

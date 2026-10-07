@@ -15,9 +15,16 @@ class SolicitudesCalendarController extends Controller
 public function data(Request $request)
 {
     $month = $request->get('month', now()->format('Y-m'));
+
+    // Un "month" con formato inválido tronaba createFromFormat() con un 500;
+    // si no cumple Y-m, se cae de vuelta al mes actual.
+    if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $month)) {
+        $month = now()->format('Y-m');
+    }
+
     $q = trim((string) $request->get('q', ''));
-    $tipo = $request->get('tipo', 'both'); 
-    $estado = $request->get('estado', 'all'); 
+    $tipo = $request->get('tipo', 'both');
+    $estado = $request->get('estado', 'all');
     $historicos = $request->boolean('historicos', false);
     $area = $request->get('area','all');
 

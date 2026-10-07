@@ -6,6 +6,7 @@ use App\Domains\Incidencias\Models\AcActividad;
 use App\Mail\ActividadPlanPorVencerMailable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class VerificarVencimientosAccionesCorrectivas extends Command
@@ -54,9 +55,16 @@ class VerificarVencimientosAccionesCorrectivas extends Command
 
         $this->info("{$actividad->planAccion->accionCorrectiva->codigo} / actividad #{$actividad->id}: {$dias} días");
 
-        Mail::to($actividad->responsable->email)->send(
-            new ActividadPlanPorVencerMailable($actividad, $dias)
-        );
+        try {
+            Mail::to($actividad->responsable->email)->send(
+                new ActividadPlanPorVencerMailable($actividad, $dias)
+            );
+        } catch (\Throwable $e) {
+            Log::error('No se pudo enviar la alerta de vencimiento de actividad.', [
+                'actividad_id' => $actividad->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $actividad->update([
             'alerta_vencimiento_enviada_para' => $fechaCompromiso->toDateString(),

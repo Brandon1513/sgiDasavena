@@ -22,10 +22,10 @@ class DocumentoController extends Controller
 
         $docs = Documento::query()
             ->when($user->hasRole('usuario') || $user->hasRole('jefe'), function ($q) use ($user) {
-                // Si tu usuario tiene "area"
-                if (!empty($user->area)) {
-                    $q->where('area', $user->area);
-                }
+                // Sin área asignada no se le muestra ningún documento: antes,
+                // si el usuario no tenía área (p. ej. recién creado por
+                // Microsoft), el filtro se omitía por completo y veía todo.
+                $q->where('area', $user->area);
             })
             ->with(['versionVigente', 'versiones.revisiones'])
             ->latest('id')
@@ -36,6 +36,12 @@ class DocumentoController extends Controller
 
     public function show(Documento $documento)
     {
+        $user = auth()->user();
+
+        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $documento->area !== $user->area) {
+            abort(403, 'No tienes permiso para ver documentos de otra área.');
+        }
+
         $documento->load([
             'versionVigente',
             'versiones' => fn($q) => $q->orderByDesc('id'),
@@ -75,11 +81,10 @@ class DocumentoController extends Controller
     {
         $user = auth()->user();
 
-        // Regla sugerida: solo del mismo "area"
-        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && !empty($user->area)) {
-            if ($documento->area !== $user->area) {
-                abort(403, 'No puedes solicitar actualización de documentos de otra área.');
-            }
+        // Regla sugerida: solo del mismo "area" (sin área asignada, no puede
+        // solicitar sobre ningún documento).
+        if (($user->hasRole('usuario') || $user->hasRole('jefe')) && $documento->area !== $user->area) {
+            abort(403, 'No puedes solicitar actualización de documentos de otra área.');
         }
 
         // Validación mínima: comentarios obligatorios
@@ -164,13 +169,21 @@ class DocumentoController extends Controller
         }
 
         foreach ($emails as $email) {
-            Mail::to($email)->send(
-                new DocumentoNecesitaActualizacionMailable(
-                    $documento,
-                    $mensaje,
-                    $user->name
-                )
-            );
+            try {
+                Mail::to($email)->send(
+                    new DocumentoNecesitaActualizacionMailable(
+                        $documento,
+                        $mensaje,
+                        $user->name
+                    )
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('No se pudo enviar la notificación de actualización de documento.', [
+                    'documento_id' => $documento->id,
+                    'email' => $email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return back()->with('success', 'Notificación enviada correctamente.');

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'puesto',
         'jefe_id',
         'microsoft_id',
+        'activo',
     ];
 
     /**
@@ -48,6 +49,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean',
         ];
     }
     // Relación: un usuario tiene un jefe

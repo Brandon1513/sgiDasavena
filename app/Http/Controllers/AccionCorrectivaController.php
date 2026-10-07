@@ -82,6 +82,51 @@ class AccionCorrectivaController extends Controller
     }
 
     /**
+     * Separación de funciones: la verificación de cierre y de eficacia son el
+     * paso de auditoría del ciclo PHVA, así que no puede registrarlas quien
+     * ejecutó/es responsable de la propia Acción Correctiva — solo un
+     * administrador (administrador / administrador_sgi).
+     */
+    private function autorizarVerificacion(AccionCorrectiva $accionCorrectiva): void
+    {
+        $user = auth()->user();
+
+        if ($user->hasRole('administrador') || $user->hasRole('administrador_sgi')) {
+            return;
+        }
+
+        abort(403, 'Solo un administrador puede registrar esta verificación.');
+    }
+
+    /**
+     * Para trabajar una actividad del plan de acción (subir evidencia,
+     * completarla) basta con ser el responsable de ESA actividad (a quien
+     * se le notificó por correo al asignársela), el responsable general de
+     * la AC, o un administrador.
+     */
+    private function autorizarActividad(AccionCorrectiva $accionCorrectiva, AcActividad $actividad): void
+    {
+        $actividad->loadMissing('planAccion');
+
+        if (!$actividad->planAccion || $actividad->planAccion->accion_correctiva_id !== $accionCorrectiva->id) {
+            abort(404);
+        }
+
+        $user = auth()->user();
+
+        if (
+            $user->hasRole('administrador')
+            || $user->hasRole('administrador_sgi')
+            || $user->id === $accionCorrectiva->responsable_id
+            || $user->id === $actividad->responsable_id
+        ) {
+            return;
+        }
+
+        abort(403, 'No tienes permiso para gestionar esta actividad.');
+    }
+
+    /**
      * Listado de acciones correctivas.
      */
     public function index(Request $request)
@@ -587,6 +632,12 @@ class AccionCorrectivaController extends Controller
             abort(404);
         }
 
+        // Separación de funciones: quien propuso la causa raíz no puede
+        // validarla él mismo.
+        if ($causaRaiz->propuesta_por_id === auth()->id()) {
+            abort(403, 'Quien propone la causa raíz no puede validarla.');
+        }
+
         $aprobada = (bool) $datos['aprobada'];
 
         if (!$aprobada && blank($datos['comentarios'] ?? null)) {
@@ -641,7 +692,7 @@ class AccionCorrectivaController extends Controller
         AcActividad $actividad,
         CrearEvidencia $crearEvidencia
     ) {
-        $this->autorizarGestion($accionCorrectiva);
+        $this->autorizarActividad($accionCorrectiva, $actividad);
 
         $datos = $request->validate([
             'archivo' => [
@@ -680,7 +731,7 @@ class AccionCorrectivaController extends Controller
         AcActividad $actividad,
         CompletarActividad $completarActividad
     ) {
-        $this->autorizarGestion($accionCorrectiva);
+        $this->autorizarActividad($accionCorrectiva, $actividad);
 
         $datos = $request->validate([
             'observaciones' => [
@@ -746,7 +797,7 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         RegistrarVerificacionCierre $registrarVerificacionCierre
     ) {
-        $this->autorizarGestion($accionCorrectiva);
+        $this->autorizarVerificacion($accionCorrectiva);
 
         $datos = $request->validate([
             'acciones_implementadas' => ['required', 'boolean'],
@@ -809,7 +860,7 @@ class AccionCorrectivaController extends Controller
         AccionCorrectiva $accionCorrectiva,
         RegistrarVerificacionEficacia $registrarVerificacionEficacia
     ) {
-        $this->autorizarGestion($accionCorrectiva);
+        $this->autorizarVerificacion($accionCorrectiva);
 
         $datos = $request->validate([
             'criterios_cumplidos' => ['required', 'boolean'],

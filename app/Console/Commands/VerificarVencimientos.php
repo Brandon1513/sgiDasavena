@@ -7,6 +7,7 @@ use App\Models\Documento;
 use App\Models\DocumentoVersion;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\DocumentoNecesitaActualizacionMailable;
 
@@ -63,23 +64,43 @@ class VerificarVencimientos extends Command
         $admins = User::role('administrador_sgi')->get();
         foreach ($admins as $admin) {
             if ($admin->email) {
-                Mail::to($admin->email)->send(
-                    new DocumentoNecesitaActualizacionMailable($doc, $asunto, 'Sistema SGI')
-                );
+                $this->enviar($admin->email, $doc, $asunto);
             }
         }
 
-        $usuarios = User::where('area', $doc->area)->get();
-        foreach ($usuarios as $usuario) {
-            if ($usuario->email) {
-                Mail::to($usuario->email)->send(
-                    new DocumentoNecesitaActualizacionMailable($doc, $asunto, 'Sistema SGI')
-                );
+        // Sin área en el documento no se notifica a "usuarios del área": de
+        // lo contrario where('area', null) termina avisando a cualquier
+        // usuario que tampoco tenga área asignada (ajeno al documento).
+        if ($doc->area) {
+            $usuarios = User::where('area', $doc->area)->get();
+            foreach ($usuarios as $usuario) {
+                if ($usuario->email) {
+                    $this->enviar($usuario->email, $doc, $asunto);
+                }
             }
         }
 
         $version->update([
             "alerta_{$tipo}_enviada_para" => $fechaVenc->toDateString(),
         ]);
+    }
+
+    /**
+     * Un fallo de SMTP/Graph en un destinatario no debe tumbar el resto de
+     * la corrida (otros documentos quedarían sin revisar ese día).
+     */
+    private function enviar(string $email, Documento $doc, string $asunto): void
+    {
+        try {
+            Mail::to($email)->send(
+                new DocumentoNecesitaActualizacionMailable($doc, $asunto, 'Sistema SGI')
+            );
+        } catch (\Throwable $e) {
+            Log::error('No se pudo enviar la alerta de vencimiento de documento.', [
+                'documento_id' => $doc->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

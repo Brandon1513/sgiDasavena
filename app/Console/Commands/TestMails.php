@@ -36,7 +36,7 @@ class TestMails extends Command
             return;
         }
 
-        $correo = 'aux.sistemas@dasavena.com';
+        $correo = config('graph.mail_to_soporte');
 
         try {
             Mail::to($correo)->send(new NuevaSolicitudMailable($solicitud));

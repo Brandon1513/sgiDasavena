@@ -106,10 +106,8 @@ class SolicitudFormatoController extends Controller
             return view('solicitudes.create', compact('documentos'));
         }
 
-        // ✅ Usuario/Jefe: filtra por área
-        if (!empty($user->area)) {
-            $q->where('area', $user->area);
-        }
+        // ✅ Usuario/Jefe: filtra por área (sin área asignada no ve ninguno)
+        $q->where('area', $user->area);
 
         $documentos = $q->get(['id', 'codigo', 'nombre', 'tipo_documento', 'formato_el_pa', 'area']);
 
@@ -254,6 +252,11 @@ $request->validate($rules);
                 ->withErrors('No estás asignado como jefe de esta solicitud.');
         }
 
+        if ($solicitud->estado !== 'pendiente') {
+            return redirect()->route('solicitudes.index')
+                ->withErrors('Esta solicitud ya fue atendida y no puede volver a aprobarse o rechazarse.');
+        }
+
         $request->validate([
             'decision' => 'required|in:aprobado_jefe,rechazado_jefe',
             'observaciones_jefe' => 'nullable|string|max:1000',
@@ -285,6 +288,11 @@ $request->validate($rules);
             abort(403);
         }
 
+        if ($solicitud->estado !== 'aprobado_jefe') {
+            return redirect()->route('solicitudes.index')
+                ->withErrors('Esta solicitud ya fue procesada por SGI.');
+        }
+
         $usuarios = User::where('activo', 1)->get();
         $solicitud->load('documento.versionVigente');
         return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
@@ -294,6 +302,10 @@ $request->validate($rules);
     {
         if (!auth()->user()->hasRole('administrador_sgi')) {
             abort(403);
+        }
+
+        if ($solicitud->estado !== 'aprobado_jefe') {
+            return back()->withErrors('Esta solicitud ya fue procesada por SGI y no puede volver a finalizarse.');
         }
 
         $tipoCambio = $request->input('tipo_cambio', 'revision');

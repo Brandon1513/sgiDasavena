@@ -11,18 +11,15 @@ use App\Models\User;
 
 class DocumentoVersionController extends Controller
 {
-    public function show(Documento $documento, DocumentoVersion $version)
+    public function show(DocumentoVersion $version)
     {
-        // Evita que abran una versión que no pertenece a este documento
-        if ($version->documento_id !== $documento->id) {
-            abort(404);
-        }
-
         $version->load([
             'documento',
             // si tienes revisiones
             // 'revisiones' => fn($q) => $q->orderByDesc('id'),
         ]);
+
+        $documento = $version->documento;
 
         return view('documentos.versiones.show', compact('documento', 'version'));
     }
@@ -45,7 +42,15 @@ public function marcarObsoleto(DocumentoVersion $version)
 
     foreach ($admins as $admin) {
         if ($admin->email) {
-            Mail::to($admin->email)->send(new DocumentoBajaMailable($documento));
+            try {
+                Mail::to($admin->email)->send(new DocumentoBajaMailable($documento));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('No se pudo enviar la notificación de versión obsoleta.', [
+                    'documento_id' => $documento->id,
+                    'email' => $admin->email,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

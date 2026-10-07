@@ -350,6 +350,16 @@ function estadoBadge(severity, days) {
     return { badge: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500', label: days + ' días' };
 }
 
+function escapeHtml(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[c]));
+}
+
 function formatearFechaLarga(key) {
     const [y, m, d] = key.split('-').map(Number);
     return new Date(y, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -422,8 +432,8 @@ function renderCalendar(data) {
 
             html += `
                 <div class="border-l-[3px] ${color} px-2 py-1 rounded-r-lg text-[10px] leading-tight hover:scale-[1.02] transition-transform">
-                    <div class="font-bold truncate">${e.codigo || 'S/C'}</div>
-                    <div class="truncate opacity-75">${e.nombre || ''}</div>
+                    <div class="font-bold truncate">${escapeHtml(e.codigo) || 'S/C'}</div>
+                    <div class="truncate opacity-75">${escapeHtml(e.nombre)}</div>
                 </div>
             `;
         });
@@ -464,12 +474,12 @@ function renderModalDia(events) {
                         ${label}
                     </span>
                 </td>
-                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${e.tipo || ''}</td>
-                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${e.codigo || ''}</td>
-                <td class="px-5 py-4 text-xs font-semibold text-indigo-950">${e.nombre || ''}</td>
-                <td class="px-5 py-4 text-xs text-gray-500">${e.area || 'N/A'}</td>
+                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${escapeHtml(e.tipo)}</td>
+                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${escapeHtml(e.codigo)}</td>
+                <td class="px-5 py-4 text-xs font-semibold text-indigo-950">${escapeHtml(e.nombre)}</td>
+                <td class="px-5 py-4 text-xs text-gray-500">${escapeHtml(e.area) || 'N/A'}</td>
                 <td class="px-5 py-4 text-center">
-                    <a href="${e.url || '#'}" target="_blank"
+                    <a href="${encodeURI(e.url || '#')}" target="_blank"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-dasavena-purple/5 text-dasavena-purple hover:bg-dasavena-purple/10 text-[10px] font-bold transition-colors border border-dasavena-purple/15">
                         Ver
                     </a>
@@ -491,7 +501,7 @@ function renderRevisionesBadges(revisiones) {
             ? 'border-red-300 bg-red-50 text-red-600'
             : 'border-dasavena-purple/15 bg-dasavena-purple/5 text-dasavena-purple';
         const titulo = (r.revision_actual ? `Revisión: ${r.revision_actual} — ` : '') + (esObsoleta ? 'Obsoleta' : 'Vigente');
-        return `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-bold ${clase}" title="${titulo}">${r.label}</span>`;
+        return `<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-bold ${clase}" title="${escapeHtml(titulo)}">${escapeHtml(r.label)}</span>`;
     }).join('')}</div>`;
 }
 
@@ -515,16 +525,16 @@ function renderList(list) {
                         ${label}
                     </span>
                 </td>
-                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${row.vencimiento_tipo || ''}</td>
-                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${row.codigo_documento || ''}</td>
+                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${escapeHtml(row.vencimiento_tipo)}</td>
+                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${escapeHtml(row.codigo_documento)}</td>
                 <td class="px-5 py-4">
-                    <p class="text-xs font-semibold text-indigo-950">${row.nombre_documento || ''}</p>
-                    <p class="text-[10px] text-gray-400 uppercase mt-0.5">${row.tipo_documento || ''}</p>
+                    <p class="text-xs font-semibold text-indigo-950">${escapeHtml(row.nombre_documento)}</p>
+                    <p class="text-[10px] text-gray-400 uppercase mt-0.5">${escapeHtml(row.tipo_documento)}</p>
                 </td>
-                <td class="px-5 py-4 text-xs text-gray-500">${row.area || 'N/A'}</td>
+                <td class="px-5 py-4 text-xs text-gray-500">${escapeHtml(row.area) || 'N/A'}</td>
                 <td class="px-5 py-4">${renderRevisionesBadges(row.revisiones)}</td>
                 <td class="px-5 py-4 text-center">
-                    <a href="${row.url_documento || '#'}" target="_blank"
+                    <a href="${encodeURI(row.url_documento || '#')}" target="_blank"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-dasavena-purple/5 text-dasavena-purple hover:bg-dasavena-purple/10 text-[10px] font-bold transition-colors border border-dasavena-purple/15">
                         Ver
                     </a>
@@ -564,15 +574,15 @@ function renderObsoletos(list) {
     list.forEach(row => {
         body.insertAdjacentHTML('beforeend', `
             <tr class="hover:bg-white/60 transition-colors">
-                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${row.vencimiento_tipo || ''}</td>
-                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${row.codigo_documento || ''}</td>
+                <td class="px-5 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">${escapeHtml(row.vencimiento_tipo)}</td>
+                <td class="px-5 py-4 text-xs font-bold text-indigo-950">${escapeHtml(row.codigo_documento)}</td>
                 <td class="px-5 py-4">
-                    <p class="text-xs font-semibold text-indigo-950">${row.nombre_documento || ''}</p>
-                    <p class="text-[10px] text-gray-400 uppercase mt-0.5">${row.tipo_documento || ''}</p>
+                    <p class="text-xs font-semibold text-indigo-950">${escapeHtml(row.nombre_documento)}</p>
+                    <p class="text-[10px] text-gray-400 uppercase mt-0.5">${escapeHtml(row.tipo_documento)}</p>
                 </td>
-                <td class="px-5 py-4 text-xs text-gray-500">${row.area || 'N/A'}</td>
+                <td class="px-5 py-4 text-xs text-gray-500">${escapeHtml(row.area) || 'N/A'}</td>
                 <td class="px-5 py-4 text-center">
-                    <a href="${row.url_documento || '#'}" target="_blank"
+                    <a href="${encodeURI(row.url_documento || '#')}" target="_blank"
                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 text-[10px] font-bold transition-colors border border-gray-200">
                         Ver
                     </a>

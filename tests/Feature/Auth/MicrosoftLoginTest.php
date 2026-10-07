@@ -9,15 +9,18 @@ beforeEach(function () {
     $this->seed(\Database\Seeders\RolesSeeder::class);
 });
 
-function mockearCuentaMicrosoft(string $id, string $email, string $name): void
+function mockearCuentaMicrosoft(string $id, string $email, string $name, ?string $tid = null): void
 {
     $cuenta = Mockery::mock(SocialiteUserContract::class);
     $cuenta->shouldReceive('getId')->andReturn($id);
     $cuenta->shouldReceive('getEmail')->andReturn($email);
     $cuenta->shouldReceive('getName')->andReturn($name);
 
+    $claims = (object) ['tid' => $tid ?? config('services.microsoft.tenant')];
+
     $provider = Mockery::mock(SocialiteProviderContract::class);
     $provider->shouldReceive('user')->andReturn($cuenta);
+    $provider->shouldReceive('getClaims')->andReturn($claims);
 
     Socialite::shouldReceive('driver')->with('microsoft')->andReturn($provider);
 }
@@ -70,4 +73,34 @@ test('un usuario desactivado no puede iniciar sesión con Microsoft', function (
         ->assertSessionHasErrors('email');
 
     $this->assertGuest();
+});
+
+test('un token de un tenant distinto al configurado es rechazado', function () {
+    mockearCuentaMicrosoft('ms-999', 'intruso@otraempresa.com', 'Cuenta Ajena', tid: 'tenant-ajeno');
+
+    $this->get(route('login.microsoft.callback'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+    expect(User::where('email', 'intruso@otraempresa.com')->exists())->toBeFalse();
+});
+
+test('un correo que no es del dominio corporativo no se usa para enlazar cuentas', function () {
+    $cuentaExistente = User::factory()->create([
+        'email' => 'cliente@proveedor.com',
+        'microsoft_id' => 'ms-original',
+    ]);
+    $cuentaExistente->assignRole('usuario');
+
+    // Mismo microsoft_id: debe entrar a la MISMA cuenta sin depender del
+    // correo (el enlace por correo solo aplica a dominios @dasavena.com).
+    mockearCuentaMicrosoft('ms-original', 'cliente@proveedor.com', 'Cliente');
+
+    $this->get(route('login.microsoft.callback'))
+        ->assertRedirect(route('dashboard'));
+
+    $cuentaExistente->refresh();
+    expect(User::where('email', 'cliente@proveedor.com')->count())->toBe(1)
+        ->and($cuentaExistente->microsoft_id)->toBe('ms-original');
 });

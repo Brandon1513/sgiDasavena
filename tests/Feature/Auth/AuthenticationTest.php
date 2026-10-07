@@ -31,6 +31,17 @@ test('users can not authenticate with invalid password', function () {
     $this->assertGuest();
 });
 
+test('un usuario desactivado no puede iniciar sesión con su contraseña local', function () {
+    $user = User::factory()->create(['activo' => false]);
+
+    $this->post('/login', [
+        'email' => $user->email,
+        'password' => 'password',
+    ]);
+
+    $this->assertGuest();
+});
+
 test('users can logout', function () {
     $user = User::factory()->create();
 
