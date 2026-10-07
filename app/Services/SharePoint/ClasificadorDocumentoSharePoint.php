@@ -93,13 +93,32 @@ class ClasificadorDocumentoSharePoint
      */
     public static function buscarNombreObsoletosExistente(array $nombresCarpetas, string $tipoCanonico): ?string
     {
+        return self::buscarPorTipo($nombresCarpetas, $tipoCanonico, requiereObsoleto: true);
+    }
+
+    /**
+     * Igual que buscarNombreObsoletosExistente, pero para la carpeta de
+     * VIGENTES de un tipo dentro de una carpeta de Área (p. ej. hijos de
+     * "Calidad"): acepta "Formato"/"Formatos", "Manual"/"Manuales", etc.
+     */
+    public static function buscarNombreTipoExistente(array $nombresCarpetas, string $tipoCanonico): ?string
+    {
+        return self::buscarPorTipo($nombresCarpetas, $tipoCanonico, requiereObsoleto: false);
+    }
+
+    private static function buscarPorTipo(array $nombresCarpetas, string $tipoCanonico, bool $requiereObsoleto): ?string
+    {
         $singular = self::normalizar($tipoCanonico);
         $plural = self::normalizar(self::carpetaVigente($tipoCanonico) ?? $tipoCanonico);
 
         foreach ($nombresCarpetas as $nombre) {
             $normalizado = self::normalizar($nombre);
 
-            if (!str_contains($normalizado, 'obsolet')) {
+            if ($requiereObsoleto && !str_contains($normalizado, 'obsolet')) {
+                continue;
+            }
+
+            if (!$requiereObsoleto && str_contains($normalizado, 'obsolet')) {
                 continue;
             }
 

@@ -32,16 +32,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Carpeta raíz
+    | Carpeta raíz de VIGENTES
     |--------------------------------------------------------------------------
     |
-    | Ruta dentro de la biblioteca donde se crean las carpetas
-    | "{root}/{Área}/Vigentes/{Código}" y "{root}/{Área}/Obsoletos/{Código}".
-    | Vacío = raíz de la biblioteca.
+    | Ruta real donde cada Área tiene su propia carpeta, y dentro de ella una
+    | por Tipo de documento: "{root}/{Área}/{Tipo}/{Código}". Vacío = raíz de
+    | la biblioteca.
     |
     */
 
     'root_folder' => env('SP_ROOT_FOLDER', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Carpeta raíz de OBSOLETOS
+    |--------------------------------------------------------------------------
+    |
+    | Ruta real y fija de "Sistema de Gestión Obsoleto" — vive en una rama
+    | aparte de la de vigentes (no se mueve si cambia root_folder). Dentro:
+    | "{obsoleto_root_folder}/{Área}/{Tipo} obsoletos".
+    |
+    */
+
+    'obsoleto_root_folder' => env('SP_OBSOLETO_ROOT_FOLDER', ''),
 
     /*
     |--------------------------------------------------------------------------
