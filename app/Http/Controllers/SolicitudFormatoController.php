@@ -295,7 +295,18 @@ $request->validate($rules);
 
         $usuarios = User::where('activo', 1)->get();
         $solicitud->load('documento.versionVigente');
-        return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
+
+        $tipoDocumento = $solicitud->tipo_documento ?? $solicitud->documento?->tipo_documento;
+        $tipoCanonico = \App\Services\SharePoint\ClasificadorDocumentoSharePoint::normalizarTipo($tipoDocumento);
+        $carpetaSugerida = null;
+
+        if ($tipoCanonico) {
+            $carpetaTipo = \App\Services\SharePoint\ClasificadorDocumentoSharePoint::carpetaVigente($tipoCanonico);
+            $root = config('sharepoint.root_folder');
+            $carpetaSugerida = trim(($root ? "{$root}/" : '') . $carpetaTipo, '/');
+        }
+
+        return view('solicitudes.finalize_form', compact('solicitud', 'usuarios', 'carpetaSugerida'));
     }
 
     public function finalize(Request $request, SolicitudFormato $solicitud)
@@ -345,6 +356,18 @@ $request->validate($rules);
             } elseif ($solicitud->archivo_adjunto) {
                 $archivoOficialPublic = $solicitud->archivo_adjunto;
             }
+        }
+
+        // Carpeta de SharePoint donde se publica: la sugerida automáticamente
+        // por tipo de documento (precargada en el form), o la que el
+        // administrador_sgi haya elegido a mano con el selector/navegador de
+        // carpetas reales. Nunca es texto libre: siempre viene de ahí.
+        $carpetaVigentePath = trim((string) $request->input('sp_carpeta_vigente_path'));
+
+        if ($archivoOficialPublic && $carpetaVigentePath === '') {
+            return back()
+                ->withErrors(['sp_carpeta_vigente_path' => 'No se pudo sugerir una ubicación automática para este tipo de documento: selecciona una carpeta de SharePoint.'])
+                ->withInput();
         }
 
         $nuevaVersionParaPublicar = null;
@@ -502,8 +525,11 @@ $request->validate($rules);
             if ($archivoOficialPublic && $nuevaVersionParaPublicar && $documentoParaPublicar) {
                 // archivo_storage queda como referencia del archivo local
                 // usado para publicar, por si hay que reintentar más tarde.
+                // sp_folder_path ya trae la carpeta decidida (sugerida o
+                // elegida a mano): el job/la acción ya no la calculan.
                 $nuevaVersionParaPublicar->update([
                     'sp_estado' => 'pendiente',
+                    'sp_folder_path' => $carpetaVigentePath,
                     'archivo_storage' => $archivoOficialPublic,
                 ]);
 

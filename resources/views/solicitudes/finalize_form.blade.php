@@ -233,6 +233,55 @@
                                 @endif
                             </p>
                         </div>
+
+                        <div x-data="carpetaSharePoint({{ json_encode($carpetaSugerida, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }})" x-init="init()">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación en SharePoint</label>
+
+                            <input type="hidden" name="sp_carpeta_vigente_path" x-model="rutaSeleccionada">
+
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <span class="px-3 py-2 bg-slate-50 border border-gray-300 rounded-lg text-sm text-gray-700 font-mono" x-text="rutaSeleccionada || 'No se pudo sugerir una ubicación automática'"></span>
+                                <button type="button" @click="abrir()" class="px-3 py-2 text-xs font-bold text-[#6A2C75] bg-[#6A2C75]/10 hover:bg-[#6A2C75]/20 rounded-lg transition">
+                                    Cambiar ubicación
+                                </button>
+                            </div>
+
+                            <p class="mt-1 text-xs" :class="rutaSeleccionada ? 'text-gray-500' : 'text-red-600 font-semibold'" x-text="rutaSeleccionada ? 'Sugerida automáticamente según el tipo de documento. Puedes cambiarla.' : 'No se identificó el tipo de documento: debes seleccionar la carpeta manualmente.'"></p>
+                            @error('sp_carpeta_vigente_path')
+                                <p class="mt-1 text-xs text-red-600 font-semibold">{{ $message }}</p>
+                            @enderror
+
+                            {{-- Modal selector de carpetas reales de SharePoint --}}
+                            <div x-show="modalAbierto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style="display:none;">
+                                <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" @click.outside="modalAbierto = false">
+                                    <div class="px-5 py-4 border-b border-gray-200">
+                                        <h4 class="font-bold text-gray-900">Seleccionar carpeta de SharePoint</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-mono" x-text="breadcrumbTexto()"></p>
+                                    </div>
+                                    <div class="flex-1 overflow-y-auto px-5 py-3">
+                                        <button type="button" x-show="breadcrumb.length > 0" @click="subirNivel()" class="w-full text-left px-3 py-2 mb-2 text-sm text-[#6A2C75] hover:bg-slate-50 rounded-lg font-semibold">
+                                            ← Subir un nivel
+                                        </button>
+                                        <template x-if="cargando">
+                                            <p class="text-sm text-gray-400 px-3 py-2">Cargando…</p>
+                                        </template>
+                                        <template x-if="!cargando && carpetas.length === 0">
+                                            <p class="text-sm text-gray-400 px-3 py-2">Esta carpeta no tiene subcarpetas.</p>
+                                        </template>
+                                        <template x-for="carpeta in carpetas" :key="carpeta.id">
+                                            <button type="button" @click="entrar(carpeta)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 text-sm text-gray-700 hover:bg-slate-50 rounded-lg">
+                                                <span class="flex items-center gap-2">📁 <span x-text="carpeta.name"></span></span>
+                                                <span class="text-gray-300" x-show="carpeta.has_children">›</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                    <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
+                                        <button type="button" @click="modalAbierto = false" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                                        <button type="button" @click="elegirCarpetaActual()" class="px-4 py-2 text-sm font-bold text-white bg-[#6A2C75] hover:bg-[#53225c] rounded-lg">Usar esta carpeta</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @endif
@@ -277,6 +326,59 @@
 </x-app-layout>
 
 <script>
+    function carpetaSharePoint(sugerida) {
+        return {
+            rutaRaiz: @json(config('sharepoint.root_folder')),
+            rutaSeleccionada: sugerida || '',
+            modalAbierto: false,
+            cargando: false,
+            carpetas: [],
+            breadcrumb: [], // [{id, name}]
+            urlBase: '{{ route('sharepoint.carpetas') }}',
+
+            init() {},
+
+            abrir() {
+                this.breadcrumb = [];
+                this.modalAbierto = true;
+                this.cargar(null);
+            },
+
+            cargar(folderId) {
+                this.cargando = true;
+                const url = folderId ? `${this.urlBase}?folder_id=${encodeURIComponent(folderId)}` : this.urlBase;
+
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then(r => r.json())
+                    .then(data => {
+                        this.carpetas = data.folders || [];
+                        this.cargando = false;
+                    })
+                    .catch(() => { this.cargando = false; this.carpetas = []; });
+            },
+
+            entrar(carpeta) {
+                this.breadcrumb.push({ id: carpeta.id, name: carpeta.name });
+                this.cargar(carpeta.id);
+            },
+
+            subirNivel() {
+                this.breadcrumb.pop();
+                const anterior = this.breadcrumb.length ? this.breadcrumb[this.breadcrumb.length - 1].id : null;
+                this.cargar(anterior);
+            },
+
+            breadcrumbTexto() {
+                return [this.rutaRaiz, ...this.breadcrumb.map(b => b.name)].join('/');
+            },
+
+            elegirCarpetaActual() {
+                this.rutaSeleccionada = this.breadcrumbTexto();
+                this.modalAbierto = false;
+            },
+        };
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const busqueda = document.getElementById('busqueda-usuario');
         busqueda?.addEventListener('input', function() {
