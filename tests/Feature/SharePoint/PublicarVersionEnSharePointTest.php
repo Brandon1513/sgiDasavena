@@ -72,7 +72,8 @@ function fakeGraphGenerico(): void
 function fakeArbolRealObsoletos(): void
 {
     $ids = [
-        'raiz' => 'id-raiz',
+        'raiz-inocuidad' => 'id-raiz-inocuidad',
+        'sgi' => 'id-sgi',
         'obsoleto-root' => 'id-obsoleto-root',
         'area-calidad' => 'id-area-calidad',
         'area-produccion' => 'id-area-produccion',
@@ -84,25 +85,23 @@ function fakeArbolRealObsoletos(): void
         $url = $request->url();
         $method = $request->method();
 
-        // Listar hijos de la RAÍZ configurada (buscarCarpeta la resuelve
-        // caminando "Sistema de Gestión de Inocuidad" -> "SGI").
+        // obsoleto_root_folder = "Sistema de Gestión de Inocuidad/SGI/Sistema
+        // de Gestión Obsoleto": tres saltos desde la raíz del drive.
         if (preg_match('#/items/root/children#', $url) && $method === 'GET') {
             return Http::response(['value' => [
-                ['id' => 'id-sgi-parent', 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
+                ['id' => $ids['raiz-inocuidad'], 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
             ]], 200);
         }
 
-        if (str_contains($url, '/items/id-sgi-parent/children') && $method === 'GET') {
+        if (str_contains($url, "/items/{$ids['raiz-inocuidad']}/children") && $method === 'GET') {
             return Http::response(['value' => [
-                ['id' => $ids['raiz'], 'name' => 'SGI', 'folder' => ['childCount' => 2]],
+                ['id' => $ids['sgi'], 'name' => 'SGI', 'folder' => ['childCount' => 1]],
             ]], 200);
         }
 
-        if (str_contains($url, "/items/{$ids['raiz']}/children") && $method === 'GET') {
+        if (str_contains($url, "/items/{$ids['sgi']}/children") && $method === 'GET') {
             return Http::response(['value' => [
                 ['id' => $ids['obsoleto-root'], 'name' => 'Sistema de Gestión Obsoleto', 'folder' => ['childCount' => 2]],
-                ['id' => 'id-procedimientos', 'name' => 'Procedimientos', 'folder' => ['childCount' => 0]],
-                ['id' => 'id-formatos', 'name' => 'Formatos', 'folder' => ['childCount' => 0]],
             ]], 200);
         }
 
@@ -137,12 +136,54 @@ function fakeArbolRealObsoletos(): void
             return Http::response(['id' => 'item-nuevo', 'webUrl' => 'https://sharepoint.example/archivo.pdf'], 200);
         }
 
+        // Cualquier otra carpeta no modelada aquí (p. ej. la carpeta de
+        // vigentes + Código, que en estos tests no forma parte del árbol de
+        // Obsoletos que se está probando) se resuelve como "no existe
+        // todavía" para que ensureFolderPath la cree sin tronar.
+        if (str_contains($url, '/children') && $method === 'GET') {
+            return Http::response(['value' => []], 200);
+        }
+
         return Http::response(['error' => 'unhandled: ' . $method . ' ' . $url], 404);
     });
 }
 
-test('finalize_form muestra la ubicación sugerida cuando el tipo de documento es identificable', function () {
-    $solicitante = User::factory()->create();
+/**
+ * Simula "Sistema de Gestión de Inocuidad/Calidad/Procedimientos" para
+ * probar el cálculo de la ubicación sugerida de vigentes (Área + Tipo).
+ */
+function fakeArbolVigentePorArea(): void
+{
+    Http::fake(function ($request) {
+        $url = $request->url();
+        $method = $request->method();
+
+        if (preg_match('#/items/root/children#', $url) && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => 'id-raiz-inocuidad', 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        if (str_contains($url, '/items/id-raiz-inocuidad/children') && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => 'id-area-calidad', 'name' => 'Calidad', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        if (str_contains($url, '/items/id-area-calidad/children') && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => 'id-procedimientos-calidad', 'name' => 'Procedimientos', 'folder' => ['childCount' => 0]],
+            ]], 200);
+        }
+
+        return Http::response(['error' => 'unhandled: ' . $method . ' ' . $url], 404);
+    });
+}
+
+test('finalize_form muestra la ubicación sugerida cuando el área y el tipo son identificables', function () {
+    fakeArbolVigentePorArea();
+
+    $solicitante = User::factory()->create(['area' => 'Calidad']);
     $solicitud = SolicitudFormato::create([
         'user_id' => $solicitante->id,
         'accion' => 'nuevo_documento',
@@ -154,17 +195,19 @@ test('finalize_form muestra la ubicación sugerida cuando el tipo de documento e
     $this->actingAs($this->adminSgi)
         ->get(route('solicitudes.finalize_form', $solicitud))
         ->assertOk()
-        ->assertSee(RAIZ . '/Procedimientos', false);
+        ->assertSee('Sistema de Gestión de Inocuidad/Calidad/Procedimientos', false);
 });
 
-test('finalize_form no sugiere nada cuando el tipo de documento es ambiguo', function () {
-    $solicitante = User::factory()->create();
+test('finalize_form no sugiere nada cuando el área del solicitante no tiene match confiable', function () {
+    fakeArbolVigentePorArea();
+
+    $solicitante = User::factory()->create(['area' => 'Gerencia de Talento y Cultura']);
     $solicitud = SolicitudFormato::create([
         'user_id' => $solicitante->id,
         'accion' => 'nuevo_documento',
         'estado' => 'aprobado_jefe',
         'nombre_documento' => 'Documento ambiguo',
-        'tipo_documento' => 'Anexo',
+        'tipo_documento' => 'Procedimiento',
     ]);
 
     $this->actingAs($this->adminSgi)
@@ -314,7 +357,9 @@ test('al publicar, la vigente anterior se mueve a la carpeta de Obsoletos que ya
     expect($anterior->sp_folder_path)->toBe(RAIZ . '/Sistema de Gestión Obsoleto/Calidad/Formatos obsoletos');
 
     Http::assertSent(fn ($request) => $request->method() === 'PATCH');
-    Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_contains($request->url(), '/children'));
+    // No se crea ninguna carpeta dentro del Área de Obsoletos: se reutilizó
+    // la que ya existía ("Formatos obsoletos").
+    Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_contains($request->url(), '/items/id-area-calidad/children'));
 });
 
 test('respeta una carpeta de obsoletos ya existente aunque esté en singular, sin crear una nueva', function () {
