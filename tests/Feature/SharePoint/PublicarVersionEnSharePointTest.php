@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+const RAIZ = 'Sistema de Gestión de Inocuidad/SGI';
+
 beforeEach(function () {
     $this->seed(\Database\Seeders\RolesSeeder::class);
 
@@ -28,7 +30,7 @@ beforeEach(function () {
     $this->adminSgi->assignRole('administrador_sgi');
 });
 
-function fakeGraphParaPublicar(): void
+function fakeGraphGenerico(): void
 {
     Http::fake(function ($request) {
         $url = $request->url();
@@ -62,6 +64,115 @@ function fakeGraphParaPublicar(): void
     });
 }
 
+/**
+ * Simula el árbol real observado en SharePoint: raíz con carpetas por tipo
+ * (vigentes) + "Sistema de Gestión Obsoleto" con carpetas por Área, cada una
+ * con subcarpetas "{Tipo} obsoletos" (algunas en singular, como la realidad).
+ */
+function fakeArbolRealObsoletos(): void
+{
+    $ids = [
+        'raiz' => 'id-raiz',
+        'obsoleto-root' => 'id-obsoleto-root',
+        'area-calidad' => 'id-area-calidad',
+        'area-produccion' => 'id-area-produccion',
+        'formatos-obsoletos-calidad' => 'id-formatos-obsoletos-calidad',
+        'manual-obsoletos-produccion' => 'id-manual-obsoletos-produccion',
+    ];
+
+    Http::fake(function ($request) use ($ids) {
+        $url = $request->url();
+        $method = $request->method();
+
+        // Listar hijos de la RAÍZ configurada (buscarCarpeta la resuelve
+        // caminando "Sistema de Gestión de Inocuidad" -> "SGI").
+        if (preg_match('#/items/root/children#', $url) && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => 'id-sgi-parent', 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        if (str_contains($url, '/items/id-sgi-parent/children') && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => $ids['raiz'], 'name' => 'SGI', 'folder' => ['childCount' => 2]],
+            ]], 200);
+        }
+
+        if (str_contains($url, "/items/{$ids['raiz']}/children") && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => $ids['obsoleto-root'], 'name' => 'Sistema de Gestión Obsoleto', 'folder' => ['childCount' => 2]],
+                ['id' => 'id-procedimientos', 'name' => 'Procedimientos', 'folder' => ['childCount' => 0]],
+                ['id' => 'id-formatos', 'name' => 'Formatos', 'folder' => ['childCount' => 0]],
+            ]], 200);
+        }
+
+        if (str_contains($url, "/items/{$ids['obsoleto-root']}/children") && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => $ids['area-calidad'], 'name' => 'Calidad', 'folder' => ['childCount' => 1]],
+                ['id' => $ids['area-produccion'], 'name' => 'Producción', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        if (str_contains($url, "/items/{$ids['area-calidad']}/children") && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => $ids['formatos-obsoletos-calidad'], 'name' => 'Formatos obsoletos', 'folder' => ['childCount' => 0]],
+            ]], 200);
+        }
+
+        if (str_contains($url, "/items/{$ids['area-produccion']}/children") && $method === 'GET') {
+            return Http::response(['value' => [
+                ['id' => $ids['manual-obsoletos-produccion'], 'name' => 'Manual obsoletos', 'folder' => ['childCount' => 0]],
+            ]], 200);
+        }
+
+        if (str_contains($url, '/children') && $method === 'POST') {
+            return Http::response(['id' => 'folder-nueva-' . Str::random(6), 'name' => 'nueva'], 201);
+        }
+
+        if ($method === 'PATCH') {
+            return Http::response(['id' => 'item-movido'], 200);
+        }
+
+        if (str_contains($url, ':/content') && $method === 'PUT') {
+            return Http::response(['id' => 'item-nuevo', 'webUrl' => 'https://sharepoint.example/archivo.pdf'], 200);
+        }
+
+        return Http::response(['error' => 'unhandled: ' . $method . ' ' . $url], 404);
+    });
+}
+
+test('finalize_form muestra la ubicación sugerida cuando el tipo de documento es identificable', function () {
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Procedimiento de prueba',
+        'tipo_documento' => 'Anexo Procedimiento',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->get(route('solicitudes.finalize_form', $solicitud))
+        ->assertOk()
+        ->assertSee(RAIZ . '/Procedimientos', false);
+});
+
+test('finalize_form no sugiere nada cuando el tipo de documento es ambiguo', function () {
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Documento ambiguo',
+        'tipo_documento' => 'Anexo',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->get(route('solicitudes.finalize_form', $solicitud))
+        ->assertOk()
+        ->assertSee('No se pudo sugerir una ubicación automática');
+});
+
 test('finalizar una solicitud con archivo oficial despacha el job y deja la versión en pendiente', function () {
     Queue::fake();
 
@@ -71,6 +182,7 @@ test('finalizar una solicitud con archivo oficial despacha el job y deja la vers
         'accion' => 'nuevo_documento',
         'estado' => 'aprobado_jefe',
         'nombre_documento' => 'Procedimiento de prueba',
+        'tipo_documento' => 'Procedimiento',
     ]);
 
     $this->actingAs($this->adminSgi)
@@ -83,6 +195,7 @@ test('finalizar una solicitud con archivo oficial despacha el job y deja la vers
             'fecha_version' => now()->toDateString(),
             'vigencia_version_dias' => 365,
             'archivo_oficial' => UploadedFile::fake()->create('oficial.pdf', 500, 'application/pdf'),
+            'sp_carpeta_vigente_path' => RAIZ . '/Procedimientos',
         ])
         ->assertRedirect(route('solicitudes.index'));
 
@@ -90,18 +203,84 @@ test('finalizar una solicitud con archivo oficial despacha el job y deja la vers
     $version = $doc->fresh()->versionVigente;
 
     expect($version->sp_estado)->toBe('pendiente')
+        ->and($version->sp_folder_path)->toBe(RAIZ . '/Procedimientos')
         ->and($version->archivo_storage)->not->toBeNull();
 
     Queue::assertPushed(PublicarVersionEnSharePoint::class);
 });
 
-test('el job sube el archivo, guarda sp_item_id/sp_web_url y mueve la vigente anterior a Obsoletos', function () {
-    fakeGraphParaPublicar();
+test('finalizar sin elegir ubicación cuando no hay sugerencia automática falla con un error claro', function () {
+    Queue::fake();
+
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Documento sin tipo claro',
+        'tipo_documento' => 'Anexo',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->post(route('solicitudes.finalize', $solicitud), [
+            'accion' => 'atender',
+            'tipo_cambio' => 'version',
+            'liga_archivo' => 'https://example.com/referencia-externa.pdf',
+            'fecha_alta_sgi' => now()->toDateString(),
+            'codigo_documento' => 'DOC-SP-010',
+            'fecha_version' => now()->toDateString(),
+            'vigencia_version_dias' => 365,
+            'archivo_oficial' => UploadedFile::fake()->create('oficial.pdf', 500, 'application/pdf'),
+            // sin sp_carpeta_vigente_path: no hubo sugerencia y no se eligió a mano
+        ])
+        ->assertSessionHasErrors('sp_carpeta_vigente_path');
+
+    expect(Documento::where('codigo', 'DOC-SP-010')->exists())->toBeFalse();
+    Queue::assertNotPushed(PublicarVersionEnSharePoint::class);
+});
+
+test('el job sube el archivo a la carpeta ya decidida y guarda sp_item_id/sp_web_url', function () {
+    fakeGraphGenerico();
 
     $doc = Documento::create([
         'codigo' => 'DOC-SP-002',
+        'nombre' => 'Documento de prueba',
+        'area' => 'Calidad',
+        'tipo_documento' => 'Procedimiento',
+        'estatus' => 'vigente',
+    ]);
+
+    $nueva = DocumentoVersion::create([
+        'documento_id' => $doc->id,
+        'version' => 'VER-NEW',
+        'estatus' => 'vigente',
+        'revision_actual' => '0',
+        'sp_folder_path' => RAIZ . '/Procedimientos',
+    ]);
+
+    $doc->update(['version_vigente_id' => $nueva->id]);
+
+    $archivo = UploadedFile::fake()->create('oficial.pdf', 500, 'application/pdf');
+    $path = $archivo->store('documentos-oficiales', 'public');
+
+    (new PublicarVersionEnSharePoint($doc->id, $nueva->id, $path))
+        ->handle(app(\App\Actions\SharePoint\PublishDocumentoVersion::class));
+
+    $nueva->refresh();
+
+    expect($nueva->sp_estado)->toBe('publicado')
+        ->and($nueva->sp_item_id)->toBe('item-nuevo')
+        ->and($nueva->sp_web_url)->toBe('https://sharepoint.example/archivo.pdf');
+});
+
+test('al publicar, la vigente anterior se mueve a la carpeta de Obsoletos que ya existe para su Área y tipo', function () {
+    fakeArbolRealObsoletos();
+
+    $doc = Documento::create([
+        'codigo' => 'DOC-SP-011',
         'nombre' => 'Documento con versión previa',
         'area' => 'Calidad',
+        'tipo_documento' => 'Formato',
         'estatus' => 'vigente',
     ]);
 
@@ -111,7 +290,6 @@ test('el job sube el archivo, guarda sp_item_id/sp_web_url y mueve la vigente an
         'estatus' => 'obsoleto',
         'revision_actual' => '0',
         'sp_item_id' => 'item-anterior',
-        'sp_drive_id' => 'drive-1',
     ]);
 
     $nueva = DocumentoVersion::create([
@@ -119,6 +297,7 @@ test('el job sube el archivo, guarda sp_item_id/sp_web_url y mueve la vigente an
         'version' => 'VER-NEW',
         'estatus' => 'vigente',
         'revision_actual' => '0',
+        'sp_folder_path' => RAIZ . '/Formatos',
     ]);
 
     $doc->update(['version_vigente_id' => $nueva->id]);
@@ -129,22 +308,109 @@ test('el job sube el archivo, guarda sp_item_id/sp_web_url y mueve la vigente an
     (new PublicarVersionEnSharePoint($doc->id, $nueva->id, $path, $anterior->id))
         ->handle(app(\App\Actions\SharePoint\PublishDocumentoVersion::class));
 
-    $nueva->refresh();
+    $anterior->refresh();
 
-    expect($nueva->sp_estado)->toBe('publicado')
-        ->and($nueva->sp_item_id)->toBe('item-nuevo')
-        ->and($nueva->sp_web_url)->toBe('https://sharepoint.example/archivo.pdf');
+    // "Calidad" -> Área real "Calidad"; "Formato" -> ya existe "Formatos obsoletos" ahí: se reutiliza, no se crea.
+    expect($anterior->sp_folder_path)->toBe(RAIZ . '/Sistema de Gestión Obsoleto/Calidad/Formatos obsoletos');
 
     Http::assertSent(fn ($request) => $request->method() === 'PATCH');
+    Http::assertNotSent(fn ($request) => $request->method() === 'POST' && str_contains($request->url(), '/children'));
+});
+
+test('respeta una carpeta de obsoletos ya existente aunque esté en singular, sin crear una nueva', function () {
+    fakeArbolRealObsoletos();
+
+    $doc = Documento::create([
+        'codigo' => 'DOC-SP-012',
+        'nombre' => 'Documento de Producción',
+        'area' => 'Producción',
+        'tipo_documento' => 'Manual',
+        'estatus' => 'vigente',
+    ]);
+
+    $version = DocumentoVersion::create([
+        'documento_id' => $doc->id,
+        'version' => 'VER-1',
+        'estatus' => 'obsoleto',
+        'revision_actual' => '0',
+        'sp_item_id' => 'item-manual-produccion',
+    ]);
+
+    app(\App\Actions\SharePoint\PublishDocumentoVersion::class)->moverAObsoletos($doc, $version);
+
+    $version->refresh();
+
+    expect($version->sp_folder_path)->toBe(RAIZ . '/Sistema de Gestión Obsoleto/Producción/Manual obsoletos');
+});
+
+test('crea la carpeta de obsoletos solo cuando esa combinación Área+Tipo nunca existió', function () {
+    fakeArbolRealObsoletos();
+
+    $doc = Documento::create([
+        'codigo' => 'DOC-SP-013',
+        'nombre' => 'Documento de Calidad sin manuales obsoletos aún',
+        'area' => 'Calidad',
+        'tipo_documento' => 'Manual',
+        'estatus' => 'vigente',
+    ]);
+
+    $version = DocumentoVersion::create([
+        'documento_id' => $doc->id,
+        'version' => 'VER-1',
+        'estatus' => 'obsoleto',
+        'revision_actual' => '0',
+        'sp_item_id' => 'item-manual-calidad',
+    ]);
+
+    app(\App\Actions\SharePoint\PublishDocumentoVersion::class)->moverAObsoletos($doc, $version);
+
+    $version->refresh();
+
+    // "Calidad" solo tiene "Formatos obsoletos" en el árbol simulado: para
+    // Manual nunca existió, así que se crea siguiendo el patrón plural.
+    expect($version->sp_folder_path)->toBe(RAIZ . '/Sistema de Gestión Obsoleto/Calidad/Manuales obsoletos');
+
+    Http::assertSent(fn ($request) => $request->method() === 'POST' && str_contains($request->url(), '/children'));
+});
+
+test('si el Área no tiene match confiable, no mueve nada y lo deja registrado en el log', function () {
+    fakeArbolRealObsoletos();
+
+    $doc = Documento::create([
+        'codigo' => 'DOC-SP-014',
+        'nombre' => 'Documento de un área sin equivalente real',
+        'area' => 'Gerencia de Talento y Cultura',
+        'tipo_documento' => 'Formato',
+        'estatus' => 'vigente',
+    ]);
+
+    $version = DocumentoVersion::create([
+        'documento_id' => $doc->id,
+        'version' => 'VER-1',
+        'estatus' => 'obsoleto',
+        'revision_actual' => '0',
+        'sp_item_id' => 'item-area-rara',
+        'sp_folder_path' => 'ubicación-original',
+    ]);
+
+    app(\App\Actions\SharePoint\PublishDocumentoVersion::class)->moverAObsoletos($doc, $version);
+
+    $version->refresh();
+
+    // No cambió: no se movió nada.
+    expect($version->sp_folder_path)->toBe('ubicación-original');
+
+    Http::assertNotSent(fn ($request) => $request->method() === 'PATCH');
 });
 
 test('un archivo de más de 4 MB usa upload session en vez de subida simple', function () {
-    fakeGraphParaPublicar();
+    fakeGraphGenerico();
 
     $doc = Documento::create([
         'codigo' => 'DOC-SP-003',
         'nombre' => 'Documento con archivo grande',
         'area' => 'Calidad',
+        'tipo_documento' => 'Formato',
         'estatus' => 'vigente',
     ]);
 
@@ -153,6 +419,7 @@ test('un archivo de más de 4 MB usa upload session en vez de subida simple', fu
         'version' => 'VER-1',
         'estatus' => 'vigente',
         'revision_actual' => '0',
+        'sp_folder_path' => RAIZ . '/Formatos',
     ]);
 
     // UploadedFile::fake()->create() no escribe bytes reales en disco (solo
@@ -189,6 +456,7 @@ test('un error 5xx persistente deja sp_estado=error, notifica al administrador_s
         'codigo' => 'DOC-SP-004',
         'nombre' => 'Documento con falla de publicación',
         'area' => 'Calidad',
+        'tipo_documento' => 'Formato',
         'estatus' => 'vigente',
     ]);
 
@@ -197,6 +465,7 @@ test('un error 5xx persistente deja sp_estado=error, notifica al administrador_s
         'version' => 'VER-1',
         'estatus' => 'vigente',
         'revision_actual' => '0',
+        'sp_folder_path' => RAIZ . '/Formatos',
     ]);
 
     $doc->update(['version_vigente_id' => $version->id]);
