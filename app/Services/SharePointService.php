@@ -164,7 +164,42 @@ class SharePointService
         return $parentId;
     }
 
+    /**
+     * Busca una ruta de carpetas ya existente, sin crear nada. Regresa el
+     * driveItem de la carpeta final, o null si algún tramo no existe.
+     * $path ejemplo: "Sistema de Gestión de Inocuidad/SGI".
+     */
+    public function buscarCarpeta(string $driveId, string $path): ?array
+    {
+        $parts = array_values(array_filter(explode('/', trim($path, '/'))));
+        $parentId = 'root';
+        $folder = null;
+
+        foreach ($parts as $name) {
+            $folder = $this->findChildFolder($driveId, $parentId, $name);
+
+            if (!$folder) {
+                return null;
+            }
+
+            $parentId = $folder['id'];
+        }
+
+        return $folder;
+    }
+
     private function findChildFolder(string $driveId, string $parentId, string $name): ?array
+    {
+        return collect($this->listarHijos($driveId, $parentId))
+            ->first(fn ($i) => isset($i['folder']) && Str::lower($i['name']) === Str::lower($name));
+    }
+
+    /**
+     * Lista los hijos directos (carpetas y archivos) de una carpeta, sin
+     * crear ni modificar nada. Público para explorar/navegar la estructura
+     * real (diagnóstico, selector de carpetas).
+     */
+    public function listarHijos(string $driveId, string $parentId = 'root'): array
     {
         $res = $this->send(fn () => $this->graph()->get("/drives/{$driveId}/items/{$parentId}/children?\$select=id,name,folder,file"));
 
@@ -172,8 +207,7 @@ class SharePointService
             $this->fallar('No se pudo leer el contenido de una carpeta en SharePoint.', $res, 'No se pudo conectar con SharePoint.');
         }
 
-        return collect($res->json('value'))
-            ->first(fn ($i) => isset($i['folder']) && Str::lower($i['name']) === Str::lower($name));
+        return $res->json('value') ?? [];
     }
 
     private function createFolder(string $driveId, string $parentId, string $name): array
