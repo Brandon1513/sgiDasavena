@@ -25,8 +25,9 @@
             </div>
             @endif
 
-            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}" 
-                method="POST" 
+            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}"
+                method="POST"
+                enctype="multipart/form-data"
                 class="space-y-8"
                 x-data="{ 
                     accionFinal: 'atender',
@@ -216,6 +217,21 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Medio de archivo (Liga SharePoint) <span class="text-red-500" x-show="isAtender()">*</span></label>
                             <input type="text" name="liga_archivo" value="{{ old('liga_archivo', $solicitud->liga_archivo ?? $verVigente?->liga_archivo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="https://..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">Solo como referencia externa; no se usa para publicar el archivo en SharePoint.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Archivo oficial de esta versión</label>
+                            <input type="file" name="archivo_oficial" :disabled="isRechazar()" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">
+                                Se sube automáticamente a SharePoint al atender. Si no se adjunta aquí, se usa el
+                                archivo que el solicitante ya había subido con su solicitud
+                                @if($solicitud->archivo_adjunto)
+                                    ({{ basename($solicitud->archivo_adjunto) }}).
+                                @else
+                                    ; si tampoco existe, la versión queda sin publicar en SharePoint.
+                                @endif
+                            </p>
                         </div>
                     </div>
                 </div>

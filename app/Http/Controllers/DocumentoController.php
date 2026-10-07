@@ -197,7 +197,7 @@ class DocumentoController extends Controller
             abort(403, 'No tienes permiso para dar de baja documentos.');
         }
 
-        DB::transaction(function () use ($id, $user) {
+        $doc = DB::transaction(function () use ($id, $user) {
 
             $doc = Documento::with('versiones')->findOrFail($id);
 
@@ -218,7 +218,17 @@ class DocumentoController extends Controller
             )->update([
                 'estatus' => 'obsoleta'
             ]);
+
+            return $doc;
         });
+
+        // Las versiones con archivo ya publicado en SharePoint se mueven a
+        // Obsoletos (en segundo plano, no bloquea la respuesta).
+        foreach ($doc->versiones as $version) {
+            if ($version->sp_item_id) {
+                \App\Jobs\MoverVersionASharePointObsoletos::dispatch($doc->id, $version->id)->afterCommit();
+            }
+        }
 
         return back()->with('success', 'Documento dado de baja correctamente.');
     }

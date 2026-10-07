@@ -321,6 +321,7 @@ $request->validate($rules);
                 'codigo_documento' => 'required|string',
                 'fecha_version' => 'required|date',
                 'vigencia_version_dias' => 'required|integer|min:1',
+                'archivo_oficial' => 'nullable|file|max:102400|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
             ];
 
             if ($tipoCambio === 'revision') {
@@ -331,8 +332,27 @@ $request->validate($rules);
             $request->validate($rules);
         }
 
+        // Archivo oficial de la versión que se publica en SharePoint: el que
+        // suba aquí el administrador SGI tiene prioridad; si no sube nada, se
+        // usa como respaldo el archivo que el solicitante ya había adjuntado.
+        // liga_archivo se conserva solo como referencia externa y no se usa
+        // para descargar/subir nada automáticamente.
+        $archivoOficialPublic = null;
+
+        if ($accion === 'atender' && $solicitud->accion !== 'baja') {
+            if ($request->hasFile('archivo_oficial')) {
+                $archivoOficialPublic = $request->file('archivo_oficial')->store('documentos-oficiales', 'public');
+            } elseif ($solicitud->archivo_adjunto) {
+                $archivoOficialPublic = $solicitud->archivo_adjunto;
+            }
+        }
+
+        $nuevaVersionParaPublicar = null;
+        $documentoParaPublicar = null;
+        $versionAnteriorParaPublicar = null;
+
         try {
-            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
+            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion, &$nuevaVersionParaPublicar, &$documentoParaPublicar, &$versionAnteriorParaPublicar) {
 
                 // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
                 if ($accion !== 'atender') {
@@ -391,6 +411,7 @@ $request->validate($rules);
                 );
 
                 $vigenteAnterior = $doc->versionVigente;
+                $versionAnteriorParaPublicar = $vigenteAnterior;
 
                 // 4. Lógica de Revisiones
                 if ($tipoCambio === 'revision') {
@@ -473,7 +494,26 @@ $request->validate($rules);
                     'version_vigente_id' => $nuevaVersion->id,
                     'estatus' => 'vigente',
                 ]);
+
+                $nuevaVersionParaPublicar = $nuevaVersion;
+                $documentoParaPublicar = $doc;
             });
+
+            if ($archivoOficialPublic && $nuevaVersionParaPublicar && $documentoParaPublicar) {
+                // archivo_storage queda como referencia del archivo local
+                // usado para publicar, por si hay que reintentar más tarde.
+                $nuevaVersionParaPublicar->update([
+                    'sp_estado' => 'pendiente',
+                    'archivo_storage' => $archivoOficialPublic,
+                ]);
+
+                \App\Jobs\PublicarVersionEnSharePoint::dispatch(
+                    $documentoParaPublicar->id,
+                    $nuevaVersionParaPublicar->id,
+                    $archivoOficialPublic,
+                    $versionAnteriorParaPublicar?->id,
+                )->afterCommit();
+            }
 
             // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
             if ($accion === 'atender' && $request->has('usuarios_notificados')) {

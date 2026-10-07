@@ -36,6 +36,10 @@ public function marcarObsoleto(DocumentoVersion $version)
         'estatus' => 'obsoleto'
     ]);
 
+    if ($version->sp_item_id) {
+        \App\Jobs\MoverVersionASharePointObsoletos::dispatch($version->documento_id, $version->id)->afterCommit();
+    }
+
     // enviar correo a admins SGI
     $documento = $version->documento;
     $admins = User::role('administrador_sgi')->get();
@@ -56,4 +60,32 @@ public function marcarObsoleto(DocumentoVersion $version)
 
     return back()->with('success', 'Versión marcada como obsoleta y notificada');
 }
+
+    /**
+     * Reintenta publicar en SharePoint una versión cuyo sp_estado quedó en
+     * "error" (o que nunca se llegó a publicar), reusando el archivo local
+     * que se guardó en archivo_storage al despachar el job por primera vez.
+     */
+    public function reintentarPublicacion(DocumentoVersion $version)
+    {
+        $user = auth()->user();
+
+        if (!$user->hasRole('administrador_sgi')) {
+            abort(403);
+        }
+
+        if (!$version->archivo_storage) {
+            return back()->withErrors('Esta versión no tiene un archivo local guardado para reintentar la publicación.');
+        }
+
+        $version->update(['sp_estado' => 'pendiente', 'sp_error' => null]);
+
+        \App\Jobs\PublicarVersionEnSharePoint::dispatch(
+            $version->documento_id,
+            $version->id,
+            $version->archivo_storage,
+        )->afterCommit();
+
+        return back()->with('success', 'Se volvió a encolar la publicación en SharePoint.');
+    }
 }

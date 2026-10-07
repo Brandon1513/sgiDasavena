@@ -90,6 +90,11 @@ Route::middleware(['auth'])->group(function () {
             [DocumentoVersionController::class, 'marcarObsoleto']
         )->name('documento_versiones.marcar_obsoleto');
 
+        Route::post(
+            '/documento-versiones/{version}/sharepoint/reintentar',
+            [DocumentoVersionController::class, 'reintentarPublicacion']
+        )->name('documento_versiones.sharepoint.reintentar');
+
         Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
             ->name('documento_versiones.revisiones.create');
 
