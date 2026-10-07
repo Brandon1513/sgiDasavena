@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    // Login delegado con Microsoft (Socialite) — reutiliza la misma app de
+    // Entra ID ya registrada para el envío de correo vía Graph (config/graph.php).
+    'microsoft' => [
+        'client_id' => env('MS_CLIENT_ID'),
+        'client_secret' => env('MS_CLIENT_SECRET'),
+        'redirect' => env('MS_REDIRECT_URI'),
+        'tenant' => env('MS_TENANT_ID'),
+    ],
+
 ];

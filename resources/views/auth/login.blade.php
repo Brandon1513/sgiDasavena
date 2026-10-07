@@ -78,6 +78,23 @@
                         </svg>
                     </span>
                 </button>
+
+                <div class="flex items-center gap-3 pt-1">
+                    <span class="h-px flex-1 bg-[#6A2C75]/10"></span>
+                    <span class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#5a4a65]/60">o continúa con</span>
+                    <span class="h-px flex-1 bg-[#6A2C75]/10"></span>
+                </div>
+
+                <a href="{{ route('login.microsoft') }}"
+                   class="flex w-full items-center justify-center gap-3 rounded-xl border border-purple-900/10 bg-white/80 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-[#2d1033] shadow-sm transition-all hover:-translate-y-0.5 hover:bg-white">
+                    <svg class="h-4 w-4" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                    Microsoft
+                </a>
             </form>
         </div>
 

@@ -25,6 +25,7 @@ class User extends Authenticatable
         'area',
         'puesto',
         'jefe_id',
+        'microsoft_id',
     ];
 
     /**
