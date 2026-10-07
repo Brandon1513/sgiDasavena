@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\PublicarVersionEnSharePoint;
 use App\Models\DocumentoVersion;
+use App\Services\SharePoint\ClasificadorDocumentoSharePoint as Clasificador;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -49,18 +50,29 @@ class PublicarDocumentosExistentesEnSharePoint extends Command
                 continue;
             }
 
+            $tipoCanonico = Clasificador::normalizarTipo($doc->tipo_documento);
+
+            if (!$tipoCanonico) {
+                $this->line("[sin tipo identificable] {$doc->codigo} (versión #{$version->id}) — tipo_documento='{$doc->tipo_documento}', requiere asignar la carpeta a mano.");
+                $reportadas++;
+
+                continue;
+            }
+
+            $carpetaVigentePath = trim((config('sharepoint.root_folder') ? config('sharepoint.root_folder') . '/' : '') . Clasificador::carpetaVigente($tipoCanonico), '/');
+
             if ($dryRun) {
-                $this->line("[dry-run] {$doc->codigo} (versión #{$version->id}) — se publicaría con '{$version->archivo_storage}'.");
+                $this->line("[dry-run] {$doc->codigo} (versión #{$version->id}) — se publicaría en '{$carpetaVigentePath}' con '{$version->archivo_storage}'.");
                 $despachadas++;
 
                 continue;
             }
 
-            $version->update(['sp_estado' => 'pendiente']);
+            $version->update(['sp_estado' => 'pendiente', 'sp_folder_path' => $carpetaVigentePath]);
 
             PublicarVersionEnSharePoint::dispatch($doc->id, $version->id, $version->archivo_storage);
 
-            $this->line("[encolada] {$doc->codigo} (versión #{$version->id}).");
+            $this->line("[encolada] {$doc->codigo} (versión #{$version->id}) → {$carpetaVigentePath}.");
             $despachadas++;
         }
 
