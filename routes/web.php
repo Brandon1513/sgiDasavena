@@ -17,6 +17,7 @@ use App\Http\Controllers\BusquedaController;
 use App\Http\Controllers\NotificacionController;
 use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
 use App\Http\Controllers\Auth\MicrosoftLoginController;
+use App\Http\Controllers\SharePointCarpetasController;
 
 
 
@@ -94,6 +95,9 @@ Route::middleware(['auth'])->group(function () {
             '/documento-versiones/{version}/sharepoint/reintentar',
             [DocumentoVersionController::class, 'reintentarPublicacion']
         )->name('documento_versiones.sharepoint.reintentar');
+
+        Route::get('/sharepoint/carpetas', [SharePointCarpetasController::class, 'hijos'])
+            ->name('sharepoint.carpetas');
 
         Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
             ->name('documento_versiones.revisiones.create');
