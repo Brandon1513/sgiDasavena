@@ -1,3 +1,4 @@
+<!-- sp-explorador-build: a80a4d4-v2 -->
 <x-app-layout>
     <x-slot name="header">
         <div>
