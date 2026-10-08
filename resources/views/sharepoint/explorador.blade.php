@@ -1,4 +1,4 @@
-<!-- sp-explorador-build: carpetas-simple-v2-dataattr -->
+<!-- sp-explorador-build: carpetas-y-archivos-v1 -->
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -32,17 +32,29 @@
                     <p class="text-sm text-gray-400 py-10 text-center">No se encontró la carpeta raíz configurada.</p>
                 </template>
 
-                <template x-if="!cargando && raizId && carpetas.length === 0">
-                    <p class="text-sm text-gray-400 py-10 text-center">Esta carpeta no tiene subcarpetas.</p>
+                <template x-if="!cargando && raizId && items.length === 0">
+                    <p class="text-sm text-gray-400 py-10 text-center">Esta carpeta está vacía.</p>
                 </template>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" x-show="!cargando">
-                    <template x-for="carpeta in carpetas" :key="carpeta.id">
-                        <button type="button" @click="entrar(carpeta)"
-                            class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 text-left hover:border-[#6A2C75]/30 hover:shadow-sm transition">
-                            <span class="text-2xl shrink-0">📁</span>
-                            <span class="text-sm text-gray-700 font-medium truncate" x-text="carpeta.name"></span>
-                        </button>
+                    <template x-for="item in items" :key="item.id">
+                        <template x-if="item.type === 'folder'">
+                            <button type="button" @click="entrar(item)"
+                                class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 text-left hover:border-[#6A2C75]/30 hover:shadow-sm transition">
+                                <span class="text-2xl shrink-0">📁</span>
+                                <span class="text-sm text-gray-700 font-medium truncate" x-text="item.name"></span>
+                            </button>
+                        </template>
+                        <template x-if="item.type === 'file'">
+                            <a :href="item.web_url" target="_blank"
+                                class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-[#6A2C75]/30 hover:shadow-sm transition group">
+                                <span class="text-2xl shrink-0" x-text="iconoArchivo(item.name)"></span>
+                                <span class="min-w-0 flex-1">
+                                    <span class="block text-sm text-gray-700 font-medium truncate group-hover:text-[#6A2C75] group-hover:underline" x-text="item.name"></span>
+                                    <span class="block text-xs text-gray-400" x-text="formatearTamano(item.size)"></span>
+                                </span>
+                            </a>
+                        </template>
                     </template>
                 </div>
             </div>
@@ -55,7 +67,7 @@
                 raizId: null,
                 cargando: false,
                 breadcrumb: [],
-                carpetas: [],
+                items: [],
                 urlBase: '{{ route('sharepoint.explorador.contenido') }}',
 
                 init() {
@@ -70,8 +82,8 @@
                     this.cargando = true;
                     fetch(`${this.urlBase}?folder_id=${encodeURIComponent(folderId)}`, { headers: { 'Accept': 'application/json' } })
                         .then(r => r.json())
-                        .then(data => { this.carpetas = data.carpetas || []; this.cargando = false; })
-                        .catch(() => { this.carpetas = []; this.cargando = false; });
+                        .then(data => { this.items = data.items || []; this.cargando = false; })
+                        .catch(() => { this.items = []; this.cargando = false; });
                 },
 
                 entrar(carpeta) {
@@ -94,6 +106,26 @@
                     const destino = this.breadcrumb[idx];
                     this.breadcrumb = this.breadcrumb.slice(0, idx + 1);
                     this.cargarCarpeta(destino.id);
+                },
+
+                iconoArchivo(nombre) {
+                    const ext = (nombre.split('.').pop() || '').toLowerCase();
+                    const iconos = {
+                        pdf: '📕',
+                        doc: '📘', docx: '📘',
+                        xls: '📗', xlsx: '📗',
+                        ppt: '📙', pptx: '📙',
+                        jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️',
+                        zip: '🗜️', rar: '🗜️',
+                    };
+                    return iconos[ext] || '📄';
+                },
+
+                formatearTamano(bytes) {
+                    if (!bytes) return '';
+                    const kb = bytes / 1024;
+                    if (kb < 1024) return Math.round(kb) + ' KB';
+                    return (kb / 1024).toFixed(1) + ' MB';
                 },
             };
         }

@@ -42,7 +42,7 @@ function fakeArbolExplorador(): void
     });
 }
 
-test('el explorador carga bien la página (solo lectura, solo carpetas)', function () {
+test('el explorador carga bien la página (solo lectura)', function () {
     fakeArbolExplorador();
 
     $this->actingAs($this->adminSgi)
@@ -67,7 +67,7 @@ test('un invitado sin sesión no puede entrar al explorador', function () {
         ->assertRedirect(route('login'));
 });
 
-test('el endpoint de contenido regresa solo carpetas (sin archivos), ordenadas alfabéticamente', function () {
+test('el endpoint de contenido regresa carpetas y archivos, carpetas primero y alfabético', function () {
     fakeArbolExplorador();
 
     $response = $this->actingAs($this->adminSgi)
@@ -75,10 +75,14 @@ test('el endpoint de contenido regresa solo carpetas (sin archivos), ordenadas a
         ->assertOk()
         ->json();
 
-    expect($response['carpetas'])->toHaveCount(1)
-        ->and($response['carpetas'][0]['id'])->toBe('id-formatos')
-        ->and($response['carpetas'][0]['name'])->toBe('Formatos')
-        ->and($response['carpetas'][0]['has_children'])->toBeTrue();
+    expect($response['items'])->toHaveCount(2)
+        ->and($response['items'][0]['name'])->toBe('Formatos')
+        ->and($response['items'][0]['type'])->toBe('folder')
+        ->and($response['items'][0]['has_children'])->toBeTrue()
+        ->and($response['items'][1]['name'])->toBe('Política de prueba.pdf')
+        ->and($response['items'][1]['type'])->toBe('file')
+        ->and($response['items'][1]['web_url'])->toBe('https://sharepoint.example/politica.pdf')
+        ->and($response['items'][1]['size'])->toBe(2048);
 });
 
 test('el endpoint de contenido requiere folder_id', function () {
@@ -87,11 +91,11 @@ test('el endpoint de contenido requiere folder_id', function () {
         ->assertSessionHasErrors('folder_id');
 });
 
-test('un nombre de carpeta con comillas y & llega intacto en la respuesta JSON (no es HTML embebido)', function () {
+test('un nombre de archivo con comillas y & llega intacto en la respuesta JSON (no es HTML embebido)', function () {
     Http::fake(function ($request) {
         if (str_contains($request->url(), '/items/id-area-calidad/children')) {
             return Http::response(['value' => [
-                ['id' => 'id-area-rara', 'name' => 'I+D & "Calidad"', 'folder' => ['childCount' => 0]],
+                ['id' => 'id-archivo-raro', 'name' => 'I+D & "Calidad".pdf', 'size' => 100, 'file' => ['mimeType' => 'application/pdf'], 'webUrl' => 'https://sharepoint.example/raro.pdf'],
             ]], 200);
         }
 
@@ -103,5 +107,5 @@ test('un nombre de carpeta con comillas y & llega intacto en la respuesta JSON (
         ->assertOk()
         ->json();
 
-    expect($response['carpetas'][0]['name'])->toBe('I+D & "Calidad"');
+    expect($response['items'][0]['name'])->toBe('I+D & "Calidad".pdf');
 });
