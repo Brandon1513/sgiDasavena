@@ -27,13 +27,16 @@ class PublicarVersionEnSharePoint implements ShouldQueue
      */
     public array $backoff = [60, 300, 900];
 
+    // NO usar "readonly" aquí: rompe la (de)serialización de la cola — un
+    // job real llegó a tronar en el worker con "must not be accessed before
+    // initialization" en cuanto se marcaron readonly estas propiedades.
     public function __construct(
-        public readonly int $documentoId,
-        public readonly int $documentoVersionId,
-        public readonly string $filePathPublic,
-        public readonly ?int $versionAnteriorId = null,
-        public readonly bool $crearSubcarpetaCodigo = true,
-        public readonly ?string $nombreArchivoManual = null,
+        public int $documentoId,
+        public int $documentoVersionId,
+        public string $filePathPublic,
+        public ?int $versionAnteriorId = null,
+        public bool $crearSubcarpetaCodigo = true,
+        public ?string $nombreArchivoManual = null,
     ) {
     }
 
