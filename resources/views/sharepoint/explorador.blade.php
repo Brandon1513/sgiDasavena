@@ -8,8 +8,8 @@
 
     <div class="py-10 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen"
         x-data="sharepointExplorador(
-            @json($departamentos, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            @json($raizId)
+            @json($departamentos, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT),
+            @json($raizId, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)
         )"
         x-init="init()">
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

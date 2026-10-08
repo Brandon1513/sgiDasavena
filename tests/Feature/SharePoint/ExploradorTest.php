@@ -107,3 +107,34 @@ test('el endpoint de contenido regresa carpetas y archivos ordenados (carpetas p
         ->and($response['items'][1]['size'])->toBe(2048)
         ->and($response['items'][1]['extension'])->toBe('pdf');
 });
+
+test('un nombre de departamento con comillas no rompe el x-data embebido (regresión)', function () {
+    Http::fake(function ($request) {
+        if (preg_match('#/items/root/children#', $request->url())) {
+            return Http::response(['value' => [
+                ['id' => 'id-raiz-inocuidad', 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        if (str_contains($request->url(), '/items/id-raiz-inocuidad/children')) {
+            return Http::response(['value' => [
+                ['id' => 'id-area-rara', 'name' => 'I+D & "Calidad"', 'folder' => ['childCount' => 1]],
+            ]], 200);
+        }
+
+        return Http::response(['value' => []], 200);
+    });
+
+    $html = $this->actingAs($this->adminSgi)
+        ->get(route('sharepoint.explorador'))
+        ->assertOk()
+        ->getContent();
+
+    // El bloque x-data no debe contener la comilla ni el & crudos: romperían
+    // el atributo HTML y la expresión que evalúa Alpine (ver JSON_HEX_*).
+    preg_match('/x-data="(sharepointExplorador\(.*?\))"\s/s', $html, $match);
+
+    expect($match)->not->toBeEmpty()
+        ->and($match[1])->not->toContain('"Calidad"')
+        ->and($match[1])->not->toContain(' & ');
+});
