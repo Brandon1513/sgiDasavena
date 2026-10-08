@@ -27,6 +27,31 @@ services:
             - meilisearch
             - mailpit
             - selenium
+    queue:
+        build:
+            context: './vendor/laravel/sail/runtimes/8.4'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: 'sail-8.4/app'
+        entrypoint:
+            - php
+            - artisan
+            - queue:work
+            - '--tries=3'
+            - '--backoff=60'
+            - '--sleep=3'
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        restart: unless-stopped
+        depends_on:
+            - mysql
+            - redis
     mysql:
         image: 'mysql/mysql-server:8.0'
         ports:

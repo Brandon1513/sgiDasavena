@@ -269,7 +269,7 @@
                                             <p class="text-sm text-gray-400 px-3 py-2">Esta carpeta no tiene subcarpetas.</p>
                                         </template>
                                         <template x-for="carpeta in carpetas" :key="carpeta.id">
-                                            <button type="button" @click="entrar(carpeta)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 text-sm text-gray-700 hover:bg-slate-50 rounded-lg">
+                                            <button type="button" @click="entrar(carpeta)" :disabled="cargando" class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 text-sm text-gray-700 hover:bg-slate-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <span class="flex items-center gap-2">📁 <span x-text="carpeta.name"></span></span>
                                                 <span class="text-gray-300" x-show="carpeta.has_children">›</span>
                                             </button>
@@ -358,6 +358,16 @@
             },
 
             entrar(carpeta) {
+                // Un doble clic (muy natural al navegar carpetas) dispara
+                // dos eventos de clic antes de que la lista se refresque;
+                // sin esta guarda, la misma carpeta quedaba empujada dos
+                // veces al breadcrumb y terminaba creando una subcarpeta
+                // duplicada real en SharePoint (p. ej. "Sistemas/Sistemas").
+                if (this.cargando) return;
+
+                const ultimo = this.breadcrumb[this.breadcrumb.length - 1];
+                if (ultimo && ultimo.id === carpeta.id) return;
+
                 this.breadcrumb.push({ id: carpeta.id, name: carpeta.name });
                 this.cargar(carpeta.id);
             },
