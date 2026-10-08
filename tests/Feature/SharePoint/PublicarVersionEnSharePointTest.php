@@ -180,6 +180,38 @@ function fakeArbolVigentePorArea(): void
     });
 }
 
+test('finalize_form muestra explícitamente el archivo ya adjuntado en la solicitud', function () {
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Doc con adjunto',
+        'archivo_adjunto' => 'solicitudes/original.docx',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->get(route('solicitudes.finalize_form', $solicitud))
+        ->assertOk()
+        ->assertSee('original.docx')
+        ->assertSee('Se publicará en SharePoint este archivo');
+});
+
+test('finalize_form advierte cuando la solicitud no tiene archivo adjunto', function () {
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Doc sin adjunto',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->get(route('solicitudes.finalize_form', $solicitud))
+        ->assertOk()
+        ->assertSee('La solicitud no tiene un archivo adjunto');
+});
+
 test('finalize_form muestra la ubicación sugerida cuando el área y el tipo son identificables', function () {
     fakeArbolVigentePorArea();
 
