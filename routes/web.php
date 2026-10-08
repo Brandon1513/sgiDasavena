@@ -18,6 +18,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
 use App\Http\Controllers\Auth\MicrosoftLoginController;
 use App\Http\Controllers\SharePointCarpetasController;
+use App\Http\Controllers\SharePointExploradorController;
 
 
 
@@ -98,6 +99,12 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/sharepoint/carpetas', [SharePointCarpetasController::class, 'hijos'])
             ->name('sharepoint.carpetas');
+
+        Route::get('/sharepoint/explorador', [SharePointExploradorController::class, 'index'])
+            ->name('sharepoint.explorador');
+
+        Route::get('/sharepoint/explorador/contenido', [SharePointExploradorController::class, 'contenido'])
+            ->name('sharepoint.explorador.contenido');
 
         Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
             ->name('documento_versiones.revisiones.create');
