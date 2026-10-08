@@ -1,4 +1,4 @@
-<!-- sp-explorador-build: carpetas-y-archivos-v1 -->
+<!-- sp-explorador-build: fix-xfor-single-root-v1 -->
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -38,23 +38,25 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" x-show="!cargando">
                     <template x-for="item in items" :key="item.id">
-                        <template x-if="item.type === 'folder'">
-                            <button type="button" @click="entrar(item)"
-                                class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 text-left hover:border-[#6A2C75]/30 hover:shadow-sm transition">
-                                <span class="text-2xl shrink-0">📁</span>
-                                <span class="text-sm text-gray-700 font-medium truncate" x-text="item.name"></span>
-                            </button>
-                        </template>
-                        <template x-if="item.type === 'file'">
-                            <a :href="item.web_url" target="_blank"
-                                class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-[#6A2C75]/30 hover:shadow-sm transition group">
-                                <span class="text-2xl shrink-0" x-text="iconoArchivo(item.name)"></span>
-                                <span class="min-w-0 flex-1">
-                                    <span class="block text-sm text-gray-700 font-medium truncate group-hover:text-[#6A2C75] group-hover:underline" x-text="item.name"></span>
-                                    <span class="block text-xs text-gray-400" x-text="formatearTamano(item.size)"></span>
-                                </span>
-                            </a>
-                        </template>
+                        <div>
+                            <template x-if="item.type === 'folder'">
+                                <button type="button" @click="entrar(item)"
+                                    class="w-full border border-gray-200 rounded-xl p-4 flex items-center gap-3 text-left hover:border-[#6A2C75]/30 hover:shadow-sm transition">
+                                    <span class="text-2xl shrink-0">📁</span>
+                                    <span class="text-sm text-gray-700 font-medium truncate" x-text="item.name"></span>
+                                </button>
+                            </template>
+                            <template x-if="item.type === 'file'">
+                                <a :href="item.web_url" target="_blank"
+                                    class="border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:border-[#6A2C75]/30 hover:shadow-sm transition group">
+                                    <span class="text-2xl shrink-0" x-text="iconoArchivo(item.name)"></span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm text-gray-700 font-medium truncate group-hover:text-[#6A2C75] group-hover:underline" x-text="item.name"></span>
+                                        <span class="block text-xs text-gray-400" x-text="formatearTamano(item.size)"></span>
+                                    </span>
+                                </a>
+                            </template>
+                        </div>
                     </template>
                 </div>
             </div>
