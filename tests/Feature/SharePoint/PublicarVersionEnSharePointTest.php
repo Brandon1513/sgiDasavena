@@ -252,6 +252,73 @@ test('finalizar una solicitud con archivo oficial despacha el job y deja la vers
     Queue::assertPushed(PublicarVersionEnSharePoint::class);
 });
 
+test('finalizar con "crear subcarpeta" desmarcado despacha el job sin crear subcarpeta de código', function () {
+    Queue::fake();
+
+    $solicitante = User::factory()->create();
+    $solicitud = SolicitudFormato::create([
+        'user_id' => $solicitante->id,
+        'accion' => 'nuevo_documento',
+        'estado' => 'aprobado_jefe',
+        'nombre_documento' => 'Procedimiento suelto',
+        'tipo_documento' => 'Procedimiento',
+    ]);
+
+    $this->actingAs($this->adminSgi)
+        ->post(route('solicitudes.finalize', $solicitud), [
+            'accion' => 'atender',
+            'tipo_cambio' => 'version',
+            'liga_archivo' => 'https://example.com/referencia-externa.pdf',
+            'fecha_alta_sgi' => now()->toDateString(),
+            'codigo_documento' => 'DOC-SP-020',
+            'fecha_version' => now()->toDateString(),
+            'vigencia_version_dias' => 365,
+            'archivo_oficial' => UploadedFile::fake()->create('oficial.pdf', 500, 'application/pdf'),
+            'sp_carpeta_vigente_path' => RAIZ . '/Procedimientos',
+            'sp_crear_subcarpeta_codigo' => '0',
+            'sp_nombre_archivo' => 'mi-nombre-personalizado',
+        ])
+        ->assertRedirect(route('solicitudes.index'));
+
+    Queue::assertPushed(PublicarVersionEnSharePoint::class, function ($job) {
+        return $job->crearSubcarpetaCodigo === false
+            && $job->nombreArchivoManual === 'mi-nombre-personalizado';
+    });
+});
+
+test('al publicar, un nombre de archivo manual se respeta (conservando la extensión) y no se crea subcarpeta de código si se desmarca', function () {
+    fakeGraphGenerico();
+
+    $doc = Documento::create([
+        'codigo' => 'DOC-SP-021',
+        'nombre' => 'Documento con nombre manual',
+        'area' => 'Calidad',
+        'tipo_documento' => 'Formato',
+        'estatus' => 'vigente',
+    ]);
+
+    $version = DocumentoVersion::create([
+        'documento_id' => $doc->id,
+        'version' => 'VER-1',
+        'estatus' => 'vigente',
+        'revision_actual' => '0',
+        'sp_folder_path' => RAIZ . '/Formatos',
+    ]);
+
+    $archivo = UploadedFile::fake()->create('oficial.pdf', 500, 'application/pdf');
+    $path = $archivo->store('documentos-oficiales', 'public');
+
+    (new PublicarVersionEnSharePoint($doc->id, $version->id, $path, null, false, 'mi-nombre-personalizado'))
+        ->handle(app(\App\Actions\SharePoint\PublishDocumentoVersion::class));
+
+    $version->refresh();
+
+    // Sin subcarpeta de código: la base ("RAIZ/Formatos") es la carpeta final.
+    expect($version->sp_folder_path)->toBe(RAIZ . '/Formatos');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'mi-nombre-personalizado.pdf'));
+});
+
 test('finalizar sin elegir ubicación cuando no hay sugerencia automática falla con un error claro', function () {
     Queue::fake();
 

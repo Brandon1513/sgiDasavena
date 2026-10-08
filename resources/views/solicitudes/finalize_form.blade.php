@@ -234,6 +234,12 @@
                             </p>
                         </div>
 
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del archivo en SharePoint</label>
+                            <input type="text" name="sp_nombre_archivo" :disabled="isRechazar()" placeholder="Se autogenera si lo dejas vacío (código_V_R_fecha)" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">La extensión real del archivo se conserva aunque no la escribas.</p>
+                        </div>
+
                         <div x-data="carpetaSharePoint({{ json_encode($carpetaSugerida, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }})" x-init="init()">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación en SharePoint</label>
 
@@ -250,6 +256,17 @@
                             @error('sp_carpeta_vigente_path')
                                 <p class="mt-1 text-xs text-red-600 font-semibold">{{ $message }}</p>
                             @enderror
+
+                            <label class="mt-3 flex items-start gap-2 cursor-pointer">
+                                {{-- El hidden con valor 0 va primero: si el checkbox queda desmarcado,
+                                     el navegador no manda nada por él y se envía este 0 en su lugar. --}}
+                                <input type="hidden" name="sp_crear_subcarpeta_codigo" value="0">
+                                <input type="checkbox" name="sp_crear_subcarpeta_codigo" value="1" x-model="crearSubcarpeta" class="mt-0.5 w-4 h-4 rounded text-[#6A2C75] focus:ring-2 focus:ring-[#6A2C75]">
+                                <span class="text-xs text-gray-600">
+                                    Crear una subcarpeta con el código del documento dentro de la ubicación elegida
+                                    (<span x-text="crearSubcarpeta ? 'se subirá en .../{código}/' : 'el archivo se subirá suelto, directo en la carpeta elegida'"></span>).
+                                </span>
+                            </label>
 
                             {{-- Modal selector de carpetas reales de SharePoint --}}
                             <div x-show="modalAbierto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style="display:none;">
@@ -330,6 +347,7 @@
         return {
             rutaRaiz: @json(config('sharepoint.root_folder')),
             rutaSeleccionada: sugerida || '',
+            crearSubcarpeta: true,
             modalAbierto: false,
             cargando: false,
             carpetas: [],

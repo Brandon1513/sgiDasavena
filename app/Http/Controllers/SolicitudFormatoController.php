@@ -374,6 +374,16 @@ $request->validate($rules);
                 ->withInput();
         }
 
+        // El administrador decide explícitamente si se crea una subcarpeta
+        // con el código del documento dentro de la ubicación elegida (patrón
+        // {Área}/{Tipo}/{Código}), o si el archivo se sube suelto
+        // directamente ahí (patrón {Área}/{Tipo}, como ya existe en SGI).
+        $crearSubcarpetaCodigo = $request->boolean('sp_crear_subcarpeta_codigo', true);
+
+        // Nombre de archivo en SharePoint: si el administrador no escribe
+        // uno, se autogenera (código_V_R_fecha) conservando la extensión real.
+        $nombreArchivoManual = trim((string) $request->input('sp_nombre_archivo')) ?: null;
+
         $nuevaVersionParaPublicar = null;
         $documentoParaPublicar = null;
         $versionAnteriorParaPublicar = null;
@@ -542,6 +552,8 @@ $request->validate($rules);
                     $nuevaVersionParaPublicar->id,
                     $archivoOficialPublic,
                     $versionAnteriorParaPublicar?->id,
+                    $crearSubcarpetaCodigo,
+                    $nombreArchivoManual,
                 )->afterCommit();
             }
 

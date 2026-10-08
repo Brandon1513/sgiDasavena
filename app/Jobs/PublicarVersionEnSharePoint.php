@@ -28,10 +28,12 @@ class PublicarVersionEnSharePoint implements ShouldQueue
     public array $backoff = [60, 300, 900];
 
     public function __construct(
-        private int $documentoId,
-        private int $documentoVersionId,
-        private string $filePathPublic,
-        private ?int $versionAnteriorId = null,
+        public readonly int $documentoId,
+        public readonly int $documentoVersionId,
+        public readonly string $filePathPublic,
+        public readonly ?int $versionAnteriorId = null,
+        public readonly bool $crearSubcarpetaCodigo = true,
+        public readonly ?string $nombreArchivoManual = null,
     ) {
     }
 
@@ -41,7 +43,14 @@ class PublicarVersionEnSharePoint implements ShouldQueue
         $version = DocumentoVersion::findOrFail($this->documentoVersionId);
         $versionAnterior = $this->versionAnteriorId ? DocumentoVersion::find($this->versionAnteriorId) : null;
 
-        $publicar->handle($documento, $version, $this->filePathPublic, $versionAnterior);
+        $publicar->handle(
+            $documento,
+            $version,
+            $this->filePathPublic,
+            $versionAnterior,
+            $this->crearSubcarpetaCodigo,
+            $this->nombreArchivoManual,
+        );
     }
 
     public function failed(?Throwable $exception): void

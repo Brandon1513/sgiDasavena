@@ -62,16 +62,24 @@ class PublishDocumentoVersion
     }
 
     /**
-     * Sube el archivo oficial de $newVer dentro de la carpeta de Código que
-     * cuelga de la base ya decidida en $newVer->sp_folder_path (sugerida
-     * automáticamente como {Raíz}/{Área}/{Tipo}, o elegida a mano por el
-     * administrador_sgi con el selector de carpetas). El administrador nunca
-     * ve ni elige la subcarpeta de Código: siempre la gestiona el sistema.
-     * Si había una versión vigente anterior distinta, intenta moverla a
-     * Obsoletos automáticamente (tampoco es una elección manual).
+     * Sube el archivo oficial de $newVer a la base ya decidida en
+     * $newVer->sp_folder_path (sugerida automáticamente como
+     * {Raíz}/{Área}/{Tipo}, o elegida a mano por el administrador_sgi con
+     * el selector de carpetas). Si $crearSubcarpetaCodigo es true (default),
+     * se crea/usa además una subcarpeta con el código del documento dentro
+     * de esa base — el administrador decide esto explícitamente en el
+     * formulario, nunca es automático sin preguntar. Si había una versión
+     * vigente anterior distinta, intenta moverla a Obsoletos
+     * automáticamente (eso sí nunca es una elección manual).
      */
-    public function handle(Documento $doc, DocumentoVersion $newVer, string $filePathPublic, ?DocumentoVersion $versionAnterior = null): DocumentoVersion
-    {
+    public function handle(
+        Documento $doc,
+        DocumentoVersion $newVer,
+        string $filePathPublic,
+        ?DocumentoVersion $versionAnterior = null,
+        bool $crearSubcarpetaCodigo = true,
+        ?string $nombreArchivoManual = null,
+    ): DocumentoVersion {
         if (!$newVer->sp_folder_path) {
             throw new \RuntimeException('La versión no tiene una carpeta de destino asignada en SharePoint.');
         }
@@ -80,8 +88,8 @@ class PublishDocumentoVersion
         $driveId = $this->sp->getDriveId($siteId);
 
         $carpetaBase = $newVer->sp_folder_path;
-        $carpetaCompleta = "{$carpetaBase}/{$doc->codigo}";
-        $vigFolderId = $this->sp->ensureFolderPath($driveId, $carpetaCompleta);
+        $carpetaDestino = $crearSubcarpetaCodigo ? "{$carpetaBase}/{$doc->codigo}" : $carpetaBase;
+        $vigFolderId = $this->sp->ensureFolderPath($driveId, $carpetaDestino);
 
         // 1) La vigente anterior se mueve a Obsoletos automáticamente (el
         // administrador nunca elige esto a mano). Si no se puede resolver
@@ -91,16 +99,17 @@ class PublishDocumentoVersion
             $this->moverAObsoletos($doc, $versionAnterior, $driveId);
         }
 
-        // 2) Subir el archivo nuevo (renombrado, conservando su extensión real).
+        // 2) Subir el archivo nuevo (nombre elegido a mano, o autogenerado
+        // conservando la extensión real).
         $localPath = Storage::disk('public')->path($filePathPublic);
-        $filename = $this->buildFilename($doc, $newVer, $filePathPublic);
+        $filename = $this->buildFilename($doc, $newVer, $filePathPublic, $nombreArchivoManual);
 
         $item = $this->sp->uploadFileToFolder($driveId, $vigFolderId, $filename, $localPath);
 
         $newVer->sp_drive_id = $driveId;
         $newVer->sp_item_id = $item['id'] ?? null;
         $newVer->sp_web_url = $item['webUrl'] ?? null;
-        $newVer->sp_folder_path = $carpetaCompleta;
+        $newVer->sp_folder_path = $carpetaDestino;
         $newVer->sp_estado = 'publicado';
         $newVer->sp_error = null;
         $newVer->save();
@@ -184,14 +193,22 @@ class PublishDocumentoVersion
         $version->update(['sp_folder_path' => "{$obsoletoRootPath}/{$nombreArea}/" . ($nombreExistente ?? Clasificador::nombreObsoletosFallback($tipoCanonico))]);
     }
 
-    private function buildFilename(Documento $doc, DocumentoVersion $ver, string $filePathPublic): string
+    private function buildFilename(Documento $doc, DocumentoVersion $ver, string $filePathPublic, ?string $nombreManual = null): string
     {
+        $extensionReal = pathinfo($filePathPublic, PATHINFO_EXTENSION);
+
+        if ($nombreManual) {
+            $yaTieneExtension = pathinfo($nombreManual, PATHINFO_EXTENSION) !== '';
+            $nombre = $yaTieneExtension ? $nombreManual : "{$nombreManual}.{$extensionReal}";
+
+            return $this->limpiar($nombre);
+        }
+
         $codigo = $doc->codigo;
         $v = $ver->version ?? 'v?';
         $rev = $ver->revision_actual ?? 'rev?';
         $date = optional($ver->publicado_en)->format('Y-m-d') ?? now()->format('Y-m-d');
-        $extension = pathinfo($filePathPublic, PATHINFO_EXTENSION);
-        $extension = $extension ? '.' . $extension : '';
+        $extension = $extensionReal ? '.' . $extensionReal : '';
 
         return $this->limpiar("{$codigo}_V{$v}_R{$rev}_{$date}{$extension}");
     }
