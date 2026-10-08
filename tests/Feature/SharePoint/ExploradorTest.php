@@ -38,30 +38,17 @@ function fakeArbolExplorador(): void
             ]], 200);
         }
 
-        if (str_contains($url, '/items/id-formatos/children') && $method === 'GET') {
-            return Http::response(['value' => [
-                ['id' => 'id-solo-carpeta', 'name' => 'F-CAL-01', 'folder' => ['childCount' => 1]],
-            ]], 200);
-        }
-
-        if (str_contains($url, '/items/id-solo-carpeta/children') && $method === 'GET') {
-            return Http::response(['value' => [
-                ['id' => 'id-archivo-final', 'name' => 'F-CAL-01 Rev.02.pdf', 'size' => 1024, 'file' => ['mimeType' => 'application/pdf'], 'webUrl' => 'https://sharepoint.example/f-cal-01.pdf'],
-            ]], 200);
-        }
-
-        return Http::response(['error' => 'unhandled: ' . $method . ' ' . $url], 404);
+        return Http::response(['error' => 'unhandled: '.$method.' '.$url], 404);
     });
 }
 
-test('el explorador muestra los departamentos como carpetas de la raíz, sin distinguir vigentes/obsoletos', function () {
+test('el explorador carga bien la página (solo lectura, solo carpetas)', function () {
     fakeArbolExplorador();
 
     $this->actingAs($this->adminSgi)
         ->get(route('sharepoint.explorador'))
         ->assertOk()
-        ->assertSee('Calidad')
-        ->assertDontSee('Obsoletos');
+        ->assertSee('sharepointExplorador', false);
 });
 
 test('cualquier usuario con cuenta puede entrar al explorador (es solo visualización)', function () {
@@ -72,8 +59,7 @@ test('cualquier usuario con cuenta puede entrar al explorador (es solo visualiza
 
     $this->actingAs($usuario)
         ->get(route('sharepoint.explorador'))
-        ->assertOk()
-        ->assertSee('Calidad');
+        ->assertOk();
 });
 
 test('un invitado sin sesión no puede entrar al explorador', function () {
@@ -81,16 +67,7 @@ test('un invitado sin sesión no puede entrar al explorador', function () {
         ->assertRedirect(route('login'));
 });
 
-test('el endpoint de contenido pide webUrl y size a Graph (antes se perdían por el $select)', function () {
-    fakeArbolExplorador();
-
-    $this->actingAs($this->adminSgi)
-        ->get(route('sharepoint.explorador.contenido', ['folder_id' => 'id-area-calidad']));
-
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'webUrl') && str_contains($request->url(), 'size'));
-});
-
-test('el endpoint de contenido regresa carpetas y archivos ordenados (carpetas primero, alfabético)', function () {
+test('el endpoint de contenido regresa solo carpetas (sin archivos), ordenadas alfabéticamente', function () {
     fakeArbolExplorador();
 
     $response = $this->actingAs($this->adminSgi)
@@ -98,43 +75,33 @@ test('el endpoint de contenido regresa carpetas y archivos ordenados (carpetas p
         ->assertOk()
         ->json();
 
-    expect($response['items'])->toHaveCount(2)
-        ->and($response['items'][0]['name'])->toBe('Formatos')
-        ->and($response['items'][0]['type'])->toBe('folder')
-        ->and($response['items'][1]['name'])->toBe('Política de prueba.pdf')
-        ->and($response['items'][1]['type'])->toBe('file')
-        ->and($response['items'][1]['web_url'])->toBe('https://sharepoint.example/politica.pdf')
-        ->and($response['items'][1]['size'])->toBe(2048)
-        ->and($response['items'][1]['extension'])->toBe('pdf');
+    expect($response['carpetas'])->toHaveCount(1)
+        ->and($response['carpetas'][0]['id'])->toBe('id-formatos')
+        ->and($response['carpetas'][0]['name'])->toBe('Formatos')
+        ->and($response['carpetas'][0]['has_children'])->toBeTrue();
 });
 
-test('un nombre de departamento con comillas no rompe el x-data embebido (regresión)', function () {
-    Http::fake(function ($request) {
-        if (preg_match('#/items/root/children#', $request->url())) {
-            return Http::response(['value' => [
-                ['id' => 'id-raiz-inocuidad', 'name' => 'Sistema de Gestión de Inocuidad', 'folder' => ['childCount' => 1]],
-            ]], 200);
-        }
+test('el endpoint de contenido requiere folder_id', function () {
+    $this->actingAs($this->adminSgi)
+        ->get(route('sharepoint.explorador.contenido'))
+        ->assertSessionHasErrors('folder_id');
+});
 
-        if (str_contains($request->url(), '/items/id-raiz-inocuidad/children')) {
+test('un nombre de carpeta con comillas y & llega intacto en la respuesta JSON (no es HTML embebido)', function () {
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/items/id-area-calidad/children')) {
             return Http::response(['value' => [
-                ['id' => 'id-area-rara', 'name' => 'I+D & "Calidad"', 'folder' => ['childCount' => 1]],
+                ['id' => 'id-area-rara', 'name' => 'I+D & "Calidad"', 'folder' => ['childCount' => 0]],
             ]], 200);
         }
 
         return Http::response(['value' => []], 200);
     });
 
-    $html = $this->actingAs($this->adminSgi)
-        ->get(route('sharepoint.explorador'))
+    $response = $this->actingAs($this->adminSgi)
+        ->get(route('sharepoint.explorador.contenido', ['folder_id' => 'id-area-calidad']))
         ->assertOk()
-        ->getContent();
+        ->json();
 
-    // El bloque x-data no debe contener la comilla ni el & crudos: romperían
-    // el atributo HTML y la expresión que evalúa Alpine (ver JSON_HEX_*).
-    preg_match('/x-data="(sharepointExplorador\(.*?\))"\s/s', $html, $match);
-
-    expect($match)->not->toBeEmpty()
-        ->and($match[1])->not->toContain('"Calidad"')
-        ->and($match[1])->not->toContain(' & ');
+    expect($response['carpetas'][0]['name'])->toBe('I+D & "Calidad"');
 });
