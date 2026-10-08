@@ -201,7 +201,7 @@ class SharePointService
      */
     public function listarHijos(string $driveId, string $parentId = 'root'): array
     {
-        $res = $this->send(fn () => $this->graph()->get("/drives/{$driveId}/items/{$parentId}/children?\$select=id,name,folder,file"));
+        $res = $this->send(fn () => $this->graph()->get("/drives/{$driveId}/items/{$parentId}/children?\$select=id,name,folder,file,webUrl,size"));
 
         if (!$res->successful()) {
             $this->fallar('No se pudo leer el contenido de una carpeta en SharePoint.', $res, 'No se pudo conectar con SharePoint.');

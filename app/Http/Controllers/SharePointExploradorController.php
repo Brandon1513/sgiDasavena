@@ -18,22 +18,15 @@ class SharePointExploradorController extends Controller
         $siteId = $sp->getSiteId();
         $driveId = $sp->getDriveId($siteId);
 
-        $raizVigente = $sp->buscarCarpeta($driveId, config('sharepoint.root_folder'));
-        $raizObsoleto = $sp->buscarCarpeta($driveId, config('sharepoint.obsoleto_root_folder'));
+        $raiz = $sp->buscarCarpeta($driveId, config('sharepoint.root_folder'));
 
-        $departamentosVigente = $raizVigente
-            ? $this->mapearItems($sp->listarHijos($driveId, $raizVigente['id']), soloCarpetas: true)
-            : collect();
-
-        $departamentosObsoleto = $raizObsoleto
-            ? $this->mapearItems($sp->listarHijos($driveId, $raizObsoleto['id']), soloCarpetas: true)
+        $departamentos = $raiz
+            ? $this->mapearItems($sp->listarHijos($driveId, $raiz['id']), soloCarpetas: true)
             : collect();
 
         return view('sharepoint.explorador', [
-            'raizVigenteId' => $raizVigente['id'] ?? null,
-            'raizObsoletoId' => $raizObsoleto['id'] ?? null,
-            'departamentosVigente' => $departamentosVigente,
-            'departamentosObsoleto' => $departamentosObsoleto,
+            'raizId' => $raiz['id'] ?? null,
+            'departamentos' => $departamentos,
             'driveName' => config('sharepoint.drive_name'),
             'rootFolderLabel' => config('sharepoint.root_folder'),
         ]);
