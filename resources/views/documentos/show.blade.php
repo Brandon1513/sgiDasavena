@@ -164,6 +164,24 @@
                     @else
                     <span class="text-gray-400 mt-1">—</span>
                     @endif
+
+                    @if($vigente?->sp_estado === 'pendiente')
+                    <span class="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
+                        Publicando en SharePoint…
+                    </span>
+                    @elseif($vigente?->sp_estado === 'error')
+                    <span class="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700" title="{{ $vigente->sp_error }}">
+                        Error al publicar en SharePoint
+                    </span>
+                        @if($user && $user->hasRole('administrador_sgi'))
+                        <form action="{{ route('documento_versiones.sharepoint.reintentar', $vigente->id) }}" method="POST" class="mt-1">
+                            @csrf
+                            <button type="submit" class="text-[11px] font-bold text-[#6A2C75] hover:underline">
+                                Reintentar publicación
+                            </button>
+                        </form>
+                        @endif
+                    @endif
                 </div>
             </div>
 
@@ -257,6 +275,18 @@
                                 </a>
                                 @else
                                 <span class="text-gray-400">—</span>
+                                @endif
+
+                                @if($ver->sp_estado === 'pendiente')
+                                <span class="mt-1 block text-[10px] font-bold text-amber-600">Publicando…</span>
+                                @elseif($ver->sp_estado === 'error')
+                                <span class="mt-1 block text-[10px] font-bold text-red-600" title="{{ $ver->sp_error }}">Error SharePoint</span>
+                                    @if($user && $user->hasRole('administrador_sgi'))
+                                    <form action="{{ route('documento_versiones.sharepoint.reintentar', $ver->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="text-[10px] font-bold text-[#6A2C75] hover:underline">Reintentar</button>
+                                    </form>
+                                    @endif
                                 @endif
                             </td>
                             <td class="p-4 text-right">

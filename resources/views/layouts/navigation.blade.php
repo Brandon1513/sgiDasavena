@@ -534,6 +534,15 @@
                             </x-dropdown-link>
                             @endrole
 
+                            <x-dropdown-link :href="route('sharepoint.explorador')" class="nav-dropdown-item">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-[#D4A018]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+                                    </svg>
+                                    {{ __('Explorador SharePoint') }}
+                                </div>
+                            </x-dropdown-link>
+
                             <x-dropdown-link :href="route('dashboard.user')" class="nav-dropdown-item">
                                 <div class="flex items-center gap-2">
                                     <svg class="w-4 h-4 text-[#D4A018]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -719,6 +728,10 @@
                 {{ __('Calendario') }}
             </a>
             @endrole
+            <a href="{{ route('sharepoint.explorador') }}"
+                class="nav-mobile-link {{ request()->routeIs('sharepoint.explorador') ? 'nav-mobile-link-active' : '' }}">
+                {{ __('Explorador SharePoint') }}
+            </a>
             <a href="{{ route('dashboard.user') }}"
                 class="nav-mobile-link {{ request()->routeIs('dashboard.user') ? 'nav-mobile-link-active' : '' }}">
                 {{ __('Documentación por área') }}

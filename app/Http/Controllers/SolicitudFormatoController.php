@@ -319,8 +319,23 @@ $request->validate($rules);
         }
 
         $usuarios = User::where('activo', 1)->get();
-        $solicitud->load('documento.versionVigente');
-        return view('solicitudes.finalize_form', compact('solicitud', 'usuarios'));
+        $solicitud->load('documento.versionVigente', 'usuario');
+
+        $tipoDocumento = $solicitud->tipo_documento ?? $solicitud->documento?->tipo_documento;
+        $area = $solicitud->documento?->area ?? $solicitud->usuario?->area;
+        $carpetaSugerida = null;
+
+        try {
+            $carpetaSugerida = app(\App\Actions\SharePoint\PublishDocumentoVersion::class)
+                ->sugerirCarpetaVigente($area, $tipoDocumento);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('No se pudo calcular la ubicación sugerida en SharePoint.', [
+                'solicitud_id' => $solicitud->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return view('solicitudes.finalize_form', compact('solicitud', 'usuarios', 'carpetaSugerida'));
     }
 
     public function finalize(Request $request, SolicitudFormato $solicitud)
@@ -346,6 +361,7 @@ $request->validate($rules);
                 'codigo_documento' => 'required|string',
                 'fecha_version' => 'required|date',
                 'vigencia_version_dias' => 'required|integer|min:1',
+                'archivo_oficial' => 'nullable|file|max:102400|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png',
             ];
 
             if ($tipoCambio === 'revision') {
@@ -356,8 +372,49 @@ $request->validate($rules);
             $request->validate($rules);
         }
 
+        // Archivo oficial de la versión que se publica en SharePoint: el que
+        // suba aquí el administrador SGI tiene prioridad; si no sube nada, se
+        // usa como respaldo el archivo que el solicitante ya había adjuntado.
+        // liga_archivo se conserva solo como referencia externa y no se usa
+        // para descargar/subir nada automáticamente.
+        $archivoOficialPublic = null;
+
+        if ($accion === 'atender' && $solicitud->accion !== 'baja') {
+            if ($request->hasFile('archivo_oficial')) {
+                $archivoOficialPublic = $request->file('archivo_oficial')->store('documentos-oficiales', 'public');
+            } elseif ($solicitud->archivo_adjunto) {
+                $archivoOficialPublic = $solicitud->archivo_adjunto;
+            }
+        }
+
+        // Carpeta de SharePoint donde se publica: la sugerida automáticamente
+        // por tipo de documento (precargada en el form), o la que el
+        // administrador_sgi haya elegido a mano con el selector/navegador de
+        // carpetas reales. Nunca es texto libre: siempre viene de ahí.
+        $carpetaVigentePath = trim((string) $request->input('sp_carpeta_vigente_path'));
+
+        if ($archivoOficialPublic && $carpetaVigentePath === '') {
+            return back()
+                ->withErrors(['sp_carpeta_vigente_path' => 'No se pudo sugerir una ubicación automática para este tipo de documento: selecciona una carpeta de SharePoint.'])
+                ->withInput();
+        }
+
+        // El administrador decide explícitamente si se crea una subcarpeta
+        // con el código del documento dentro de la ubicación elegida (patrón
+        // {Área}/{Tipo}/{Código}), o si el archivo se sube suelto
+        // directamente ahí (patrón {Área}/{Tipo}, como ya existe en SGI).
+        $crearSubcarpetaCodigo = $request->boolean('sp_crear_subcarpeta_codigo', true);
+
+        // Nombre de archivo en SharePoint: si el administrador no escribe
+        // uno, se autogenera (código_V_R_fecha) conservando la extensión real.
+        $nombreArchivoManual = trim((string) $request->input('sp_nombre_archivo')) ?: null;
+
+        $nuevaVersionParaPublicar = null;
+        $documentoParaPublicar = null;
+        $versionAnteriorParaPublicar = null;
+
         try {
-            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion) {
+            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion, &$nuevaVersionParaPublicar, &$documentoParaPublicar, &$versionAnteriorParaPublicar) {
 
                 // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
                 if ($accion !== 'atender') {
@@ -416,6 +473,7 @@ $request->validate($rules);
                 );
 
                 $vigenteAnterior = $doc->versionVigente;
+                $versionAnteriorParaPublicar = $vigenteAnterior;
 
                 // 4. Lógica de Revisiones
                 if ($tipoCambio === 'revision') {
@@ -498,7 +556,31 @@ $request->validate($rules);
                     'version_vigente_id' => $nuevaVersion->id,
                     'estatus' => 'vigente',
                 ]);
+
+                $nuevaVersionParaPublicar = $nuevaVersion;
+                $documentoParaPublicar = $doc;
             });
+
+            if ($archivoOficialPublic && $nuevaVersionParaPublicar && $documentoParaPublicar) {
+                // archivo_storage queda como referencia del archivo local
+                // usado para publicar, por si hay que reintentar más tarde.
+                // sp_folder_path ya trae la carpeta decidida (sugerida o
+                // elegida a mano): el job/la acción ya no la calculan.
+                $nuevaVersionParaPublicar->update([
+                    'sp_estado' => 'pendiente',
+                    'sp_folder_path' => $carpetaVigentePath,
+                    'archivo_storage' => $archivoOficialPublic,
+                ]);
+
+                \App\Jobs\PublicarVersionEnSharePoint::dispatch(
+                    $documentoParaPublicar->id,
+                    $nuevaVersionParaPublicar->id,
+                    $archivoOficialPublic,
+                    $versionAnteriorParaPublicar?->id,
+                    $crearSubcarpetaCodigo,
+                    $nombreArchivoManual,
+                )->afterCommit();
+            }
 
             // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
             if ($accion === 'atender' && $request->has('usuarios_notificados')) {

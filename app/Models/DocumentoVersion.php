@@ -34,6 +34,8 @@ class DocumentoVersion extends Model
     'sp_item_id',
     'sp_web_url',
     'sp_folder_path',
+    'sp_estado',
+    'sp_error',
     'fecha_publicacion',
     ];
 

@@ -17,6 +17,8 @@ use App\Http\Controllers\BusquedaController;
 use App\Http\Controllers\NotificacionController;
 use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
 use App\Http\Controllers\Auth\MicrosoftLoginController;
+use App\Http\Controllers\SharePointCarpetasController;
+use App\Http\Controllers\SharePointExploradorController;
 
 
 
@@ -42,6 +44,14 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/notificaciones/{id}/ir', [NotificacionController::class, 'ir'])->name('notificaciones.ir');
     Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcar-todas');
+
+    // Explorador de SharePoint: solo lectura, abierto a cualquier usuario
+    // con cuenta (no es una acción administrativa, solo visualización).
+    Route::get('/sharepoint/explorador', [SharePointExploradorController::class, 'index'])
+        ->name('sharepoint.explorador');
+
+    Route::get('/sharepoint/explorador/contenido', [SharePointExploradorController::class, 'contenido'])
+        ->name('sharepoint.explorador.contenido');
 
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
@@ -89,6 +99,14 @@ Route::middleware(['auth'])->group(function () {
             '/documento-versiones/{version}/marcar-obsoleto',
             [DocumentoVersionController::class, 'marcarObsoleto']
         )->name('documento_versiones.marcar_obsoleto');
+
+        Route::post(
+            '/documento-versiones/{version}/sharepoint/reintentar',
+            [DocumentoVersionController::class, 'reintentarPublicacion']
+        )->name('documento_versiones.sharepoint.reintentar');
+
+        Route::get('/sharepoint/carpetas', [SharePointCarpetasController::class, 'hijos'])
+            ->name('sharepoint.carpetas');
 
         Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
             ->name('documento_versiones.revisiones.create');

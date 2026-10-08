@@ -25,8 +25,9 @@
             </div>
             @endif
 
-            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}" 
-                method="POST" 
+            <form action="{{ route('solicitudes.finalize', $solicitud->id) }}"
+                method="POST"
+                enctype="multipart/form-data"
                 class="space-y-8"
                 x-data="{ 
                     accionFinal: 'atender',
@@ -216,6 +217,104 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Medio de archivo (Liga SharePoint) <span class="text-red-500" x-show="isAtender()">*</span></label>
                             <input type="text" name="liga_archivo" value="{{ old('liga_archivo', $solicitud->liga_archivo ?? $verVigente?->liga_archivo) }}" :disabled="isRechazar()" :required="isAtender()" placeholder="https://..." class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">Solo como referencia externa; no se usa para publicar el archivo en SharePoint.</p>
+                        </div>
+
+                        <div x-data="{ usarAdjunto: {{ $solicitud->archivo_adjunto ? 'true' : 'false' }} }">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Archivo oficial de esta versión</label>
+
+                            @if($solicitud->archivo_adjunto)
+                                <div x-show="usarAdjunto" class="flex items-center justify-between gap-3 p-3 bg-slate-50 border border-gray-300 rounded-lg">
+                                    <a href="{{ Storage::url($solicitud->archivo_adjunto) }}" target="_blank" class="text-sm text-[#6A2C75] underline truncate">
+                                        📎 {{ basename($solicitud->archivo_adjunto) }}
+                                    </a>
+                                    <button type="button" @click="usarAdjunto = false" :disabled="isRechazar()" class="text-xs font-bold text-gray-500 hover:text-gray-700 shrink-0">
+                                        Reemplazar
+                                    </button>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500" x-show="usarAdjunto">
+                                    Se publicará en SharePoint este archivo, el que el solicitante ya adjuntó con su solicitud.
+                                </p>
+                            @endif
+
+                            <div x-show="!usarAdjunto" @if($solicitud->archivo_adjunto) x-cloak style="display:none;" @endif>
+                                <input type="file" name="archivo_oficial" :disabled="isRechazar()" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                @if($solicitud->archivo_adjunto)
+                                    <button type="button" @click="usarAdjunto = true" class="mt-1 text-xs font-bold text-[#6A2C75] hover:underline">
+                                        ← Usar mejor el archivo de la solicitud
+                                    </button>
+                                @else
+                                    <p class="mt-1 text-xs text-red-600 font-semibold">
+                                        La solicitud no tiene un archivo adjunto: si no subes uno aquí, la versión queda sin publicar en SharePoint.
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del archivo en SharePoint</label>
+                            <input type="text" name="sp_nombre_archivo" :disabled="isRechazar()" placeholder="Se autogenera si lo dejas vacío (código_V_R_fecha)" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <p class="mt-1 text-xs text-gray-500">La extensión real del archivo se conserva aunque no la escribas.</p>
+                        </div>
+
+                        <div x-data="carpetaSharePoint({{ json_encode($carpetaSugerida, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }})" x-init="init()">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación en SharePoint</label>
+
+                            <input type="hidden" name="sp_carpeta_vigente_path" x-model="rutaSeleccionada">
+
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <span class="px-3 py-2 bg-slate-50 border border-gray-300 rounded-lg text-sm text-gray-700 font-mono" x-text="rutaSeleccionada || 'No se pudo sugerir una ubicación automática'"></span>
+                                <button type="button" @click="abrir()" class="px-3 py-2 text-xs font-bold text-[#6A2C75] bg-[#6A2C75]/10 hover:bg-[#6A2C75]/20 rounded-lg transition">
+                                    Cambiar ubicación
+                                </button>
+                            </div>
+
+                            <p class="mt-1 text-xs" :class="rutaSeleccionada ? 'text-gray-500' : 'text-red-600 font-semibold'" x-text="rutaSeleccionada ? 'Sugerida automáticamente según el tipo de documento. Puedes cambiarla.' : 'No se identificó el tipo de documento: debes seleccionar la carpeta manualmente.'"></p>
+                            @error('sp_carpeta_vigente_path')
+                                <p class="mt-1 text-xs text-red-600 font-semibold">{{ $message }}</p>
+                            @enderror
+
+                            <label class="mt-3 flex items-start gap-2 cursor-pointer">
+                                {{-- El hidden con valor 0 va primero: si el checkbox queda desmarcado,
+                                     el navegador no manda nada por él y se envía este 0 en su lugar. --}}
+                                <input type="hidden" name="sp_crear_subcarpeta_codigo" value="0">
+                                <input type="checkbox" name="sp_crear_subcarpeta_codigo" value="1" x-model="crearSubcarpeta" class="mt-0.5 w-4 h-4 rounded text-[#6A2C75] focus:ring-2 focus:ring-[#6A2C75]">
+                                <span class="text-xs text-gray-600">
+                                    Crear una subcarpeta con el código del documento dentro de la ubicación elegida
+                                    (<span x-text="crearSubcarpeta ? 'se subirá en .../{código}/' : 'el archivo se subirá suelto, directo en la carpeta elegida'"></span>).
+                                </span>
+                            </label>
+
+                            {{-- Modal selector de carpetas reales de SharePoint --}}
+                            <div x-show="modalAbierto" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style="display:none;">
+                                <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col" @click.outside="modalAbierto = false">
+                                    <div class="px-5 py-4 border-b border-gray-200">
+                                        <h4 class="font-bold text-gray-900">Seleccionar carpeta de SharePoint</h4>
+                                        <p class="text-xs text-gray-500 mt-1 font-mono" x-text="breadcrumbTexto()"></p>
+                                    </div>
+                                    <div class="flex-1 overflow-y-auto px-5 py-3">
+                                        <button type="button" x-show="breadcrumb.length > 0" @click="subirNivel()" class="w-full text-left px-3 py-2 mb-2 text-sm text-[#6A2C75] hover:bg-slate-50 rounded-lg font-semibold">
+                                            ← Subir un nivel
+                                        </button>
+                                        <template x-if="cargando">
+                                            <p class="text-sm text-gray-400 px-3 py-2">Cargando…</p>
+                                        </template>
+                                        <template x-if="!cargando && carpetas.length === 0">
+                                            <p class="text-sm text-gray-400 px-3 py-2">Esta carpeta no tiene subcarpetas.</p>
+                                        </template>
+                                        <template x-for="carpeta in carpetas" :key="carpeta.id">
+                                            <button type="button" @click="entrar(carpeta)" :disabled="cargando" class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 text-sm text-gray-700 hover:bg-slate-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                                                <span class="flex items-center gap-2">📁 <span x-text="carpeta.name"></span></span>
+                                                <span class="text-gray-300" x-show="carpeta.has_children">›</span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                    <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-between gap-3">
+                                        <button type="button" @click="modalAbierto = false" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+                                        <button type="button" @click="elegirCarpetaActual()" class="px-4 py-2 text-sm font-bold text-white bg-[#6A2C75] hover:bg-[#53225c] rounded-lg">Usar esta carpeta</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -261,6 +360,70 @@
 </x-app-layout>
 
 <script>
+    function carpetaSharePoint(sugerida) {
+        return {
+            rutaRaiz: @json(config('sharepoint.root_folder')),
+            rutaSeleccionada: sugerida || '',
+            crearSubcarpeta: true,
+            modalAbierto: false,
+            cargando: false,
+            carpetas: [],
+            breadcrumb: [], // [{id, name}]
+            urlBase: '{{ route('sharepoint.carpetas') }}',
+
+            init() {},
+
+            abrir() {
+                this.breadcrumb = [];
+                this.modalAbierto = true;
+                this.cargar(null);
+            },
+
+            cargar(folderId) {
+                this.cargando = true;
+                const url = folderId ? `${this.urlBase}?folder_id=${encodeURIComponent(folderId)}` : this.urlBase;
+
+                fetch(url, { headers: { 'Accept': 'application/json' } })
+                    .then(r => r.json())
+                    .then(data => {
+                        this.carpetas = data.folders || [];
+                        this.cargando = false;
+                    })
+                    .catch(() => { this.cargando = false; this.carpetas = []; });
+            },
+
+            entrar(carpeta) {
+                // Un doble clic (muy natural al navegar carpetas) dispara
+                // dos eventos de clic antes de que la lista se refresque;
+                // sin esta guarda, la misma carpeta quedaba empujada dos
+                // veces al breadcrumb y terminaba creando una subcarpeta
+                // duplicada real en SharePoint (p. ej. "Sistemas/Sistemas").
+                if (this.cargando) return;
+
+                const ultimo = this.breadcrumb[this.breadcrumb.length - 1];
+                if (ultimo && ultimo.id === carpeta.id) return;
+
+                this.breadcrumb.push({ id: carpeta.id, name: carpeta.name });
+                this.cargar(carpeta.id);
+            },
+
+            subirNivel() {
+                this.breadcrumb.pop();
+                const anterior = this.breadcrumb.length ? this.breadcrumb[this.breadcrumb.length - 1].id : null;
+                this.cargar(anterior);
+            },
+
+            breadcrumbTexto() {
+                return [this.rutaRaiz, ...this.breadcrumb.map(b => b.name)].join('/');
+            },
+
+            elegirCarpetaActual() {
+                this.rutaSeleccionada = this.breadcrumbTexto();
+                this.modalAbierto = false;
+            },
+        };
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const busqueda = document.getElementById('busqueda-usuario');
         busqueda?.addEventListener('input', function() {
