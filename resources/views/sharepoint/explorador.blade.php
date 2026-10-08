@@ -1,4 +1,4 @@
-<!-- sp-explorador-build: carpetas-simple-v1 -->
+<!-- sp-explorador-build: carpetas-simple-v2-dataattr -->
 <x-app-layout>
     <x-slot name="header">
         <div>
@@ -8,8 +8,8 @@
     </x-slot>
 
     <div class="py-10 bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen"
-        x-data="sharepointExplorador(@json($raizId))"
-        x-init="init()">
+        data-raiz-id="{{ $raizId }}"
+        x-data="sharepointExplorador()">
         <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
             <div class="bg-white/70 backdrop-blur-2xl rounded-[28px] border border-white/80 shadow-[0_8px_30px_rgba(0,0,0,0.06)] p-6 min-h-[50vh]">
 
@@ -50,15 +50,17 @@
     </div>
 
     <script>
-        function sharepointExplorador(raizId) {
+        function sharepointExplorador() {
             return {
-                raizId: raizId,
+                raizId: null,
                 cargando: false,
                 breadcrumb: [],
                 carpetas: [],
                 urlBase: '{{ route('sharepoint.explorador.contenido') }}',
 
                 init() {
+                    this.raizId = this.$el.dataset.raizId || null;
+
                     if (this.raizId) {
                         this.cargarCarpeta(this.raizId);
                     }
