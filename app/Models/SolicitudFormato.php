@@ -45,6 +45,11 @@ class SolicitudFormato extends Model
         'fecha_vencimiento_revision',
         'lugar_almacenamiento',
         'motivo_baja',
+
+        // SLA: faltaban en fillable, así que update() las descartaba en
+        // silencio — aprobado_jefe_at/atendido_at nunca se llegaban a guardar.
+        'aprobado_jefe_at',
+        'atendido_at',
     ];
 
     protected $casts = [
@@ -53,6 +58,8 @@ class SolicitudFormato extends Model
         'fecha_revision' => 'date',
         'fecha_vencimiento_version' => 'date',
         'fecha_vencimiento_revision' => 'date',
+        'aprobado_jefe_at' => 'datetime',
+        'atendido_at' => 'datetime',
     ];
 
     public function recalcularVencimientos(): void

@@ -158,12 +158,18 @@ $request->validate($rules);
             }
         }
 
+        // Gerencia no tiene un jefe por encima que apruebe sus solicitudes:
+        // quedan autoaprobadas desde que se crean y pasan directo a SGI
+        // (solo administrador_sgi puede finalizarlas).
+        $esAutoaprobada = $user->hasRole('gerencia');
+
         //  crear solicitud
         $solicitud = \App\Models\SolicitudFormato::create([
             'user_id' => $user->id,
             'accion' => $request->accion,
             'archivo_adjunto' => $archivoPath,
-            'estado' => 'pendiente',
+            'estado' => $esAutoaprobada ? 'aprobado_jefe' : 'pendiente',
+            'aprobado_jefe_at' => $esAutoaprobada ? now() : null,
             'jefe_id' => $user->jefe_id,
             'comentarios' => $request->comentarios,
 
@@ -188,12 +194,22 @@ $request->validate($rules);
             'estatus_documento' => $doc?->estatus,
         ]);
 
-        // 📧 notificar jefe
-        $jefe = $user->jefe;
-        if ($jefe && $jefe->email) {
-            \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
+        if ($esAutoaprobada) {
+            $administradores = User::role('administrador_sgi')->get();
+            foreach ($administradores as $admin) {
+                if ($admin->email) {
+                    Mail::to($admin->email)->send(new SolicitudAprobadaSgiMailable($solicitud));
+                }
+                $admin->notify(new SolicitudNotificacion($solicitud, "{$user->name} (gerencia) envió una solicitud aprobada automáticamente; espera atención de SGI."));
+            }
+        } else {
+            // 📧 notificar jefe
+            $jefe = $user->jefe;
+            if ($jefe && $jefe->email) {
+                \Mail::to($jefe->email)->send(new \App\Mail\NuevaSolicitudMailable($solicitud));
+            }
+            $jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una nueva solicitud que requiere tu aprobación."));
         }
-        $jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una nueva solicitud que requiere tu aprobación."));
 
         return redirect()
             ->route('solicitudes.show', $solicitud->id)
@@ -542,13 +558,19 @@ $request->validate($rules);
 
         $archivoPath = $request->file('archivo')->store('solicitudes', 'public');
 
+        // Gerencia no tiene un jefe por encima que apruebe sus solicitudes:
+        // quedan autoaprobadas desde que se crean y pasan directo a SGI
+        // (solo administrador_sgi puede finalizarlas).
+        $esAutoaprobada = $user->hasRole('gerencia');
+
         $solicitud = SolicitudFormato::create([
             'documento_id'    => $doc->id,
             'user_id'         => $user->id,
             'accion'          => 'actualizacion',
             'archivo_adjunto' => $archivoPath,
             'comentarios'     => $request->comentarios,
-            'estado'          => 'pendiente',
+            'estado'          => $esAutoaprobada ? 'aprobado_jefe' : 'pendiente',
+            'aprobado_jefe_at' => $esAutoaprobada ? now() : null,
             'jefe_id'         => $user->jefe_id,
 
 
@@ -560,7 +582,17 @@ $request->validate($rules);
             'estatus_documento' => $doc->estatus,
         ]);
 
-        $user->jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una solicitud de actualización que requiere tu aprobación."));
+        if ($esAutoaprobada) {
+            $administradores = User::role('administrador_sgi')->get();
+            foreach ($administradores as $admin) {
+                if ($admin->email) {
+                    Mail::to($admin->email)->send(new SolicitudAprobadaSgiMailable($solicitud));
+                }
+                $admin->notify(new SolicitudNotificacion($solicitud, "{$user->name} (gerencia) envió una solicitud de actualización aprobada automáticamente; espera atención de SGI."));
+            }
+        } else {
+            $user->jefe?->notify(new SolicitudNotificacion($solicitud, "{$user->name} envió una solicitud de actualización que requiere tu aprobación."));
+        }
 
         return redirect()
             ->route('solicitudes.show', $solicitud->id)

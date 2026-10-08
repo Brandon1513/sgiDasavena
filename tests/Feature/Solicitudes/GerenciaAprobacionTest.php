@@ -1,10 +1,39 @@
 <?php
 
+use App\Mail\SolicitudAprobadaSgiMailable;
 use App\Models\SolicitudFormato;
 use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 
 beforeEach(function () {
     $this->seed(\Database\Seeders\RolesSeeder::class);
+});
+
+test('una solicitud creada por gerencia queda aprobada automáticamente, sin pasar por pendiente', function () {
+    Mail::fake();
+
+    $gerente = User::factory()->create();
+    $gerente->assignRole('gerencia');
+
+    $admin = User::factory()->create();
+    $admin->assignRole('administrador_sgi');
+
+    $this->actingAs($gerente)
+        ->post(route('solicitudes.store'), [
+            'accion' => 'nuevo_documento',
+            'comentarios' => 'Solicitud de prueba de gerencia.',
+            'nombre_documento' => 'Doc nuevo de gerencia',
+        ])
+        ->assertRedirect();
+
+    $solicitud = SolicitudFormato::where('user_id', $gerente->id)->firstOrFail();
+
+    expect($solicitud->estado)->toBe('aprobado_jefe')
+        ->and($solicitud->aprobado_jefe_at)->not->toBeNull();
+
+    Mail::assertSent(SolicitudAprobadaSgiMailable::class, function ($mail) use ($admin) {
+        return $mail->hasTo($admin->email);
+    });
 });
 
 test('un usuario de gerencia puede auto-aprobar su propia solicitud', function () {
