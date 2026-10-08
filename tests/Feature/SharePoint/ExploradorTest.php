@@ -64,16 +64,24 @@ test('el explorador muestra los departamentos como carpetas de la raíz', functi
         ->assertSee('Calidad');
 });
 
-test('un usuario sin rol administrador_sgi no puede entrar al explorador', function () {
+test('cualquier usuario con cuenta puede entrar al explorador (es solo visualización)', function () {
+    fakeArbolExplorador();
+
     $usuario = User::factory()->create();
     $usuario->assignRole('usuario');
 
     $this->actingAs($usuario)
         ->get(route('sharepoint.explorador'))
-        ->assertForbidden();
+        ->assertOk()
+        ->assertSee('Calidad');
 });
 
-test('el endpoint de contenido regresa carpetas y archivos de una carpeta dada', function () {
+test('un invitado sin sesión no puede entrar al explorador', function () {
+    $this->get(route('sharepoint.explorador'))
+        ->assertRedirect(route('login'));
+});
+
+test('el endpoint de contenido regresa carpetas y archivos ordenados (carpetas primero, alfabético)', function () {
     fakeArbolExplorador();
 
     $response = $this->actingAs($this->adminSgi)
@@ -81,13 +89,12 @@ test('el endpoint de contenido regresa carpetas y archivos de una carpeta dada',
         ->assertOk()
         ->json();
 
-    expect($response['items'])->toHaveCount(2);
-
-    $folder = collect($response['items'])->firstWhere('name', 'Formatos');
-    $file = collect($response['items'])->firstWhere('name', 'Política de prueba.pdf');
-
-    expect($folder['type'])->toBe('folder')
-        ->and($file['type'])->toBe('file')
-        ->and($file['web_url'])->toBe('https://sharepoint.example/politica.pdf')
-        ->and($file['size'])->toBe(2048);
+    expect($response['items'])->toHaveCount(2)
+        ->and($response['items'][0]['name'])->toBe('Formatos')
+        ->and($response['items'][0]['type'])->toBe('folder')
+        ->and($response['items'][1]['name'])->toBe('Política de prueba.pdf')
+        ->and($response['items'][1]['type'])->toBe('file')
+        ->and($response['items'][1]['web_url'])->toBe('https://sharepoint.example/politica.pdf')
+        ->and($response['items'][1]['size'])->toBe(2048)
+        ->and($response['items'][1]['extension'])->toBe('pdf');
 });

@@ -45,6 +45,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notificaciones/{id}/ir', [NotificacionController::class, 'ir'])->name('notificaciones.ir');
     Route::post('/notificaciones/marcar-todas', [NotificacionController::class, 'marcarTodasLeidas'])->name('notificaciones.marcar-todas');
 
+    // Explorador de SharePoint: solo lectura, abierto a cualquier usuario
+    // con cuenta (no es una acción administrativa, solo visualización).
+    Route::get('/sharepoint/explorador', [SharePointExploradorController::class, 'index'])
+        ->name('sharepoint.explorador');
+
+    Route::get('/sharepoint/explorador/contenido', [SharePointExploradorController::class, 'contenido'])
+        ->name('sharepoint.explorador.contenido');
+
     Route::middleware('role:administrador_sgi')->group(function () {
         Route::get('/solicitudes/calendario', [SolicitudesCalendarController::class, 'index'])
             ->name('solicitudes.calendar');
@@ -99,12 +107,6 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/sharepoint/carpetas', [SharePointCarpetasController::class, 'hijos'])
             ->name('sharepoint.carpetas');
-
-        Route::get('/sharepoint/explorador', [SharePointExploradorController::class, 'index'])
-            ->name('sharepoint.explorador');
-
-        Route::get('/sharepoint/explorador/contenido', [SharePointExploradorController::class, 'contenido'])
-            ->name('sharepoint.explorador.contenido');
 
         Route::get('/documento-versiones/{version}/revisiones/nueva', [DocumentoRevisionController::class, 'create'])
             ->name('documento_versiones.revisiones.create');

@@ -34,6 +34,8 @@ class SharePointExploradorController extends Controller
             'raizObsoletoId' => $raizObsoleto['id'] ?? null,
             'departamentosVigente' => $departamentosVigente,
             'departamentosObsoleto' => $departamentosObsoleto,
+            'driveName' => config('sharepoint.drive_name'),
+            'rootFolderLabel' => config('sharepoint.root_folder'),
         ]);
     }
 
@@ -62,7 +64,10 @@ class SharePointExploradorController extends Controller
                 'has_children' => isset($item['folder']) && (int) ($item['folder']['childCount'] ?? 0) > 0,
                 'web_url' => $item['webUrl'] ?? null,
                 'size' => $item['size'] ?? null,
+                'extension' => isset($item['folder']) ? null : strtolower(pathinfo($item['name'], PATHINFO_EXTENSION)),
             ])
+            // Organizado: carpetas primero, luego archivos; alfabético dentro de cada grupo.
+            ->sortBy(fn ($item) => ($item['type'] === 'folder' ? '0_' : '1_') . mb_strtolower($item['name']))
             ->values();
     }
 }

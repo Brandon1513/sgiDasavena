@@ -532,6 +532,7 @@
                                     {{ __('Calendario') }}
                                 </div>
                             </x-dropdown-link>
+                            @endrole
 
                             <x-dropdown-link :href="route('sharepoint.explorador')" class="nav-dropdown-item">
                                 <div class="flex items-center gap-2">
@@ -541,7 +542,6 @@
                                     {{ __('Explorador SharePoint') }}
                                 </div>
                             </x-dropdown-link>
-                            @endrole
 
                             <x-dropdown-link :href="route('dashboard.user')" class="nav-dropdown-item">
                                 <div class="flex items-center gap-2">
@@ -727,11 +727,11 @@
                 class="nav-mobile-link {{ request()->routeIs('solicitudes.calendar') ? 'nav-mobile-link-active' : '' }}">
                 {{ __('Calendario') }}
             </a>
+            @endrole
             <a href="{{ route('sharepoint.explorador') }}"
                 class="nav-mobile-link {{ request()->routeIs('sharepoint.explorador') ? 'nav-mobile-link-active' : '' }}">
                 {{ __('Explorador SharePoint') }}
             </a>
-            @endrole
             <a href="{{ route('dashboard.user') }}"
                 class="nav-mobile-link {{ request()->routeIs('dashboard.user') ? 'nav-mobile-link-active' : '' }}">
                 {{ __('Documentación por área') }}
