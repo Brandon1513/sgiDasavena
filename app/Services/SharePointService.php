@@ -330,6 +330,21 @@ class SharePointService
     }
 
     /**
+     * Consulta un driveItem por id (solo lectura) — útil para verificar que
+     * una subida realmente existe en SharePoint después de publicarla.
+     */
+    public function obtenerItem(string $driveId, string $itemId): array
+    {
+        $res = $this->send(fn () => $this->graph()->get("/drives/{$driveId}/items/{$itemId}"));
+
+        if (!$res->successful()) {
+            $this->fallar('No se pudo consultar un archivo en SharePoint.', $res, 'No se pudo verificar el archivo en SharePoint.');
+        }
+
+        return $res->json();
+    }
+
+    /**
      * Limpia caracteres que SharePoint no acepta en nombres de archivo y
      * conserva la extensión real (nunca se fuerza a .pdf).
      */
