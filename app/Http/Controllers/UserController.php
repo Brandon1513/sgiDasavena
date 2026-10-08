@@ -26,7 +26,7 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::all();
-        $usuarios = User::role('jefe')->get(); // Solo mostrar usuarios con rol jefe
+        $usuarios = User::role(['jefe', 'gerencia'])->get(); // Jefe o gerencia pueden ser asignados como jefe_id
         return view('usuarios.create', compact('roles', 'usuarios'));
     }
 
@@ -59,7 +59,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::all();
-        $usuarios = User::role('jefe')->get(); // Solo mostrar usuarios con rol jefe
+        $usuarios = User::role(['jefe', 'gerencia'])->get(); // Jefe o gerencia pueden ser asignados como jefe_id
         return view('usuarios.edit', compact('user', 'roles', 'usuarios'));
     }
 

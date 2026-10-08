@@ -31,8 +31,9 @@ class SolicitudFormatoController extends Controller
 
         $coleccionFinal = collect();
 
-        // Jefe
-        if ($user->hasRole('jefe')) {
+        // Jefe (gerencia ve la misma bandeja: sus propias solicitudes y las
+        // de quienes la tengan asignada como jefe_id)
+        if ($user->hasRole('jefe') || $user->hasRole('gerencia')) {
             $jefeSolicitudes = SolicitudFormato::where(function ($query) use ($user) {
                 $query->where('jefe_id', $user->id)
                     ->orWhere('user_id', $user->id);
@@ -220,15 +221,21 @@ $request->validate($rules);
     {
         $user = auth()->user();
 
-        if (!$user->hasRole('jefe')) {
+        if (!$user->hasRole('jefe') && !$user->hasRole('gerencia')) {
             abort(403, 'No tienes permiso para aprobar o rechazar esta solicitud.');
         }
 
-        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi')) {
+        // Gerencia nunca tiene un jefe por encima que apruebe sus propias
+        // solicitudes, así que se le exime de ambas reglas únicamente para
+        // las suyas; para las de alguien más sigue haciendo falta ser el
+        // jefe_id asignado, igual que un jefe normal.
+        $puedeAutoAprobar = $solicitud->user_id === $user->id && $user->hasRole('gerencia');
+
+        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi') && !$puedeAutoAprobar) {
             abort(403, 'No puedes aprobar o rechazar tus propias solicitudes.');
         }
 
-        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi')) {
+        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi') && !$puedeAutoAprobar) {
             abort(403, 'No estás asignado como jefe de esta solicitud.');
         }
 
@@ -239,15 +246,17 @@ $request->validate($rules);
     {
         $user = auth()->user();
 
-        if (!$user->hasRole('jefe')) {
+        if (!$user->hasRole('jefe') && !$user->hasRole('gerencia')) {
             abort(403, 'No tienes permiso para aprobar o rechazar esta solicitud.');
         }
 
-        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi')) {
+        $puedeAutoAprobar = $solicitud->user_id === $user->id && $user->hasRole('gerencia');
+
+        if ($solicitud->user_id === $user->id && !$user->hasRole('administrador_sgi') && !$puedeAutoAprobar) {
             return redirect()->route('solicitudes.index')
                 ->withErrors('No puedes aprobar o rechazar tus propias solicitudes.');
         }
-        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi')) {
+        if ($solicitud->jefe_id !== $user->id && !$user->hasRole('administrador_sgi') && !$puedeAutoAprobar) {
             return redirect()->route('solicitudes.index')
                 ->withErrors('No estás asignado como jefe de esta solicitud.');
         }

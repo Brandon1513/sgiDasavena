@@ -100,7 +100,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Solicitud de cambios: restringido a los roles que participan en el flujo
     // (se había perdido este middleware; en `main` envolvía todo este bloque).
-    Route::middleware('role:usuario|administrador|administrador_sgi|jefe')->group(function () {
+    Route::middleware('role:usuario|administrador|administrador_sgi|jefe|gerencia')->group(function () {
 
         // ✅ Alias opcional si tú quieres /solicitudes/crear (para tu botón)
         // OJO: el resource default es /solicitudes/create
