@@ -30,8 +30,8 @@ Route::get('/dashboard', SgiDashboardController::class)
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+// Pública: cualquiera puede ver la cultura Dasavena, con o sin sesión.
 Route::get('/cultura', [CulturaController::class, 'index'])
-    ->middleware(['auth', 'verified'])
     ->name('cultura.index');
 
 Route::middleware(['auth'])->group(function () {

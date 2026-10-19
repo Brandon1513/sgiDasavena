@@ -198,16 +198,29 @@ class SharePointService
      * Lista los hijos directos (carpetas y archivos) de una carpeta, sin
      * crear ni modificar nada. Público para explorar/navegar la estructura
      * real (diagnóstico, selector de carpetas).
+     *
+     * Graph pagina los resultados (200 por página por defecto): se siguen
+     * los @odata.nextLink para no perder elementos en carpetas grandes. Sin
+     * esto, findChildFolder podía no ver una carpeta existente y crearla
+     * duplicada.
      */
     public function listarHijos(string $driveId, string $parentId = 'root'): array
     {
-        $res = $this->send(fn () => $this->graph()->get("/drives/{$driveId}/items/{$parentId}/children?\$select=id,name,folder,file,webUrl,size"));
+        $url = "/drives/{$driveId}/items/{$parentId}/children?\$select=id,name,folder,file,webUrl,size,lastModifiedDateTime&\$top=999";
+        $items = [];
 
-        if (!$res->successful()) {
-            $this->fallar('No se pudo leer el contenido de una carpeta en SharePoint.', $res, 'No se pudo conectar con SharePoint.');
-        }
+        do {
+            $res = $this->send(fn () => $this->graph()->get($url));
 
-        return $res->json('value') ?? [];
+            if (!$res->successful()) {
+                $this->fallar('No se pudo leer el contenido de una carpeta en SharePoint.', $res, 'No se pudo conectar con SharePoint.');
+            }
+
+            array_push($items, ...($res->json('value') ?? []));
+            $url = $res->json('@odata.nextLink');
+        } while ($url);
+
+        return $items;
     }
 
     private function createFolder(string $driveId, string $parentId, string $name): array
@@ -308,9 +321,12 @@ class SharePointService
     }
 
     /**
-     * Mueve un item a otra carpeta (itemId destino).
+     * Mueve un item a otra carpeta (itemId destino). Con $renombrarSiExiste,
+     * si en el destino ya hay un archivo con el mismo nombre (algo común en
+     * Obsoletos, donde se acumulan versiones), Graph lo renombra en vez de
+     * rechazar el movimiento con 409.
      */
-    public function moveItem(string $driveId, string $itemId, string $destFolderItemId, ?string $newName = null): array
+    public function moveItem(string $driveId, string $itemId, string $destFolderItemId, ?string $newName = null, bool $renombrarSiExiste = false): array
     {
         $payload = [
             'parentReference' => ['id' => $destFolderItemId],
@@ -320,7 +336,9 @@ class SharePointService
             $payload['name'] = $newName;
         }
 
-        $res = $this->send(fn () => $this->graph()->patch("/drives/{$driveId}/items/{$itemId}", $payload));
+        $url = "/drives/{$driveId}/items/{$itemId}" . ($renombrarSiExiste ? '?@microsoft.graph.conflictBehavior=rename' : '');
+
+        $res = $this->send(fn () => $this->graph()->patch($url, $payload));
 
         if (!$res->successful()) {
             $this->fallar('No se pudo mover un archivo en SharePoint.', $res, 'No se pudo mover el archivo en SharePoint.');

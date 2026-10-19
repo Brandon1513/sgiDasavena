@@ -27,6 +27,15 @@ class PublicarVersionEnSharePoint implements ShouldQueue
      */
     public array $backoff = [60, 300, 900];
 
+    /**
+     * IDs de archivos previos al sistema que el administrador marcó para
+     * mover a Obsoletos al publicar. Declarada aparte, con valor por
+     * defecto, a propósito: un job ya encolado antes de que existiera esta
+     * propiedad se deserializa sin ella y, si fuera un parámetro promovido,
+     * quedaría sin inicializar y tronaría igual que con "readonly".
+     */
+    public array $itemsObsoletos = [];
+
     // NO usar "readonly" aquí: rompe la (de)serialización de la cola — un
     // job real llegó a tronar en el worker con "must not be accessed before
     // initialization" en cuanto se marcaron readonly estas propiedades.
@@ -37,7 +46,9 @@ class PublicarVersionEnSharePoint implements ShouldQueue
         public ?int $versionAnteriorId = null,
         public bool $crearSubcarpetaCodigo = true,
         public ?string $nombreArchivoManual = null,
+        array $itemsObsoletos = [],
     ) {
+        $this->itemsObsoletos = $itemsObsoletos;
     }
 
     public function handle(PublishDocumentoVersion $publicar): void
@@ -53,6 +64,7 @@ class PublicarVersionEnSharePoint implements ShouldQueue
             $versionAnterior,
             $this->crearSubcarpetaCodigo,
             $this->nombreArchivoManual,
+            $this->itemsObsoletos,
         );
     }
 

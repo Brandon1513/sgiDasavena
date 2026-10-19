@@ -39,7 +39,7 @@ class SolicitudFormatoController extends Controller
                     ->orWhere('user_id', $user->id);
             })
                 ->whereIn('estado', ['atendido', 'pendiente', 'aprobado_jefe', 'rechazado_jefe'])
-                ->with('usuario')
+                ->with(['usuario', 'jefe', 'documento'])
                 ->get();
 
             $coleccionFinal = $coleccionFinal->merge($jefeSolicitudes);
@@ -48,7 +48,7 @@ class SolicitudFormatoController extends Controller
         // Usuario
         if ($user->hasRole('usuario')) {
             $usuarioSolicitudes = SolicitudFormato::where('user_id', $user->id)
-                ->with('usuario')
+                ->with(['usuario', 'jefe', 'documento'])
                 ->get();
 
             $coleccionFinal = $coleccionFinal->merge($usuarioSolicitudes);
@@ -57,7 +57,7 @@ class SolicitudFormatoController extends Controller
         // Administrador SGI
         if ($user->hasRole('administrador_sgi')) {
             $sgiSolicitudes = SolicitudFormato::whereIn('estado', ['aprobado_jefe', 'atendido', 'rechazado_sgi'])
-                ->with('usuario')
+                ->with(['usuario', 'jefe', 'documento'])
                 ->get();
 
             $coleccionFinal = $coleccionFinal->merge($sgiSolicitudes);
@@ -66,17 +66,45 @@ class SolicitudFormatoController extends Controller
         // Eliminar duplicados
         $coleccionFinal = $coleccionFinal->unique('id')->sortByDesc('created_at');
 
+        // Resumen por estado de todo lo que el usuario puede ver (antes de los filtros),
+        // para los KPI del encabezado.
+        $resumen = [
+            'total'         => $coleccionFinal->count(),
+            'pendientes'    => $coleccionFinal->where('estado', 'pendiente')->count(),
+            'aprobado_jefe' => $coleccionFinal->where('estado', 'aprobado_jefe')->count(),
+            'atendidas'     => $coleccionFinal->where('estado', 'atendido')->count(),
+            'rechazadas'    => $coleccionFinal->whereIn('estado', ['rechazado_jefe', 'rechazado_sgi'])->count(),
+            'vencidas_sla'  => $coleccionFinal
+                ->filter(fn ($s) => $s->estado === 'pendiente' && $s->created_at <= now()->subDays(3))
+                ->count(),
+        ];
+
         // Filtros
         $nombre = request('nombre');
         $estado = request('estado');
+        $accion = request('accion');
         $desde  = request('desde');
         $hasta  = request('hasta');
 
-        $coleccionFinal = $coleccionFinal->filter(function ($item) use ($nombre, $estado, $desde, $hasta) {
-            if ($nombre && !str_contains(strtolower(optional($item->usuario)->name), strtolower($nombre))) return false;
+        $coleccionFinal = $coleccionFinal->filter(function ($item) use ($nombre, $estado, $accion, $desde, $hasta) {
+            if ($nombre) {
+                // Busca por solicitante, documento o folio
+                $texto = mb_strtolower(implode(' ', [
+                    optional($item->usuario)->name,
+                    $item->nombre_documento,
+                    $item->codigo_documento,
+                    optional($item->documento)->nombre,
+                    optional($item->documento)->codigo,
+                    'SOL-' . str_pad($item->id, 5, '0', STR_PAD_LEFT),
+                ]));
+                if (!str_contains($texto, mb_strtolower($nombre))) return false;
+            }
             if ($estado && $item->estado !== $estado) return false;
-            if ($desde && $item->created_at->lt($desde)) return false;
-            if ($hasta && $item->created_at->gt($hasta)) return false;
+            if ($accion && $item->accion !== $accion) return false;
+            // startOfDay/endOfDay: antes "hasta" comparaba contra la medianoche y dejaba
+            // fuera las solicitudes creadas ese mismo día.
+            if ($desde && $item->created_at->lt(Carbon::parse($desde)->startOfDay())) return false;
+            if ($hasta && $item->created_at->gt(Carbon::parse($hasta)->endOfDay())) return false;
             return true;
         });
 
@@ -90,7 +118,7 @@ class SolicitudFormatoController extends Controller
             'query' => request()->query(),
         ]);
 
-        return view('solicitudes.index', compact('solicitudes'));
+        return view('solicitudes.index', compact('solicitudes', 'resumen'));
     }
 
     public function create()
@@ -372,6 +400,22 @@ $request->validate($rules);
             $request->validate($rules);
         }
 
+        // Archivos ya existentes en SharePoint (subidos antes del sistema,
+        // sin sp_item_id) que el administrador marcó en el selector para
+        // retirarlos a Obsoletos. Aplica tanto al publicar una versión nueva
+        // como al atender una baja. La acción vuelve a verificar en
+        // SharePoint que cada uno sea un archivo dentro de la rama de vigentes.
+        $itemsObsoletos = [];
+
+        if ($accion === 'atender') {
+            $request->validate([
+                'sp_obsoletos_items' => 'nullable|array|max:20',
+                'sp_obsoletos_items.*' => ['string', 'max:120', 'regex:/^[A-Za-z0-9!_.\-]+$/'],
+            ]);
+
+            $itemsObsoletos = array_values(array_unique($request->input('sp_obsoletos_items', [])));
+        }
+
         // Archivo oficial de la versión que se publica en SharePoint: el que
         // suba aquí el administrador SGI tiene prioridad; si no sube nada, se
         // usa como respaldo el archivo que el solicitante ya había adjuntado.
@@ -412,9 +456,10 @@ $request->validate($rules);
         $nuevaVersionParaPublicar = null;
         $documentoParaPublicar = null;
         $versionAnteriorParaPublicar = null;
+        $documentoDadoDeBaja = null;
 
         try {
-            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion, &$nuevaVersionParaPublicar, &$documentoParaPublicar, &$versionAnteriorParaPublicar) {
+            DB::transaction(function () use ($solicitud, $request, $tipoCambio, $accion, &$nuevaVersionParaPublicar, &$documentoParaPublicar, &$versionAnteriorParaPublicar, &$documentoDadoDeBaja) {
 
                 // Si la acción es RECHAZAR, solo actualizamos estatus y salimos de la transacción
                 if ($accion !== 'atender') {
@@ -436,7 +481,8 @@ $request->validate($rules);
                         throw new \Exception('La solicitud de baja no tiene documento asociado');
                     }
 
-                    $doc = Documento::with('versiones')->findOrFail($solicitud->documento_id);
+                    $doc = Documento::with('versiones', 'versionVigente')->findOrFail($solicitud->documento_id);
+                    $documentoDadoDeBaja = $doc;
 
                     $doc->versiones()->update(['estatus' => 'obsoleto']);
                     DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
@@ -579,7 +625,35 @@ $request->validate($rules);
                     $versionAnteriorParaPublicar?->id,
                     $crearSubcarpetaCodigo,
                     $nombreArchivoManual,
+                    $itemsObsoletos,
                 )->afterCommit();
+            } elseif ($documentoParaPublicar) {
+                // Se atendió sin archivo nuevo que publicar: la versión
+                // anterior ya quedó obsoleta en el SGI, así que su archivo
+                // también se retira de vigentes (antes se quedaba ahí porque
+                // ese movimiento solo ocurría dentro de la publicación).
+                $this->retirarArchivosAObsoletos($documentoParaPublicar, $versionAnteriorParaPublicar, $itemsObsoletos);
+            }
+
+            // Baja atendida: igual que la baja desde Documentos, los archivos
+            // ya publicados se mueven a Obsoletos, más los que el
+            // administrador haya marcado a mano en el selector.
+            if ($documentoDadoDeBaja) {
+                foreach ($documentoDadoDeBaja->versiones as $version) {
+                    if ($version->sp_item_id) {
+                        \App\Jobs\MoverVersionASharePointObsoletos::dispatch($documentoDadoDeBaja->id, $version->id)->afterCommit();
+                    }
+                }
+
+                if ($itemsObsoletos) {
+                    $vigente = $documentoDadoDeBaja->versionVigente;
+
+                    \App\Jobs\MoverArchivosSharePointAObsoletos::dispatch(
+                        $documentoDadoDeBaja->id,
+                        $itemsObsoletos,
+                        $vigente && !$vigente->sp_item_id ? $vigente->id : null,
+                    )->afterCommit();
+                }
             }
 
             // === ENVIAR CORREOS MASIVOS USANDO TU PROPIO MAILABLE ===
@@ -598,6 +672,26 @@ $request->validate($rules);
             return redirect()->route('solicitudes.index')->with('success', 'Proceso completado correctamente.');
         } catch (\Exception $e) {
             return back()->withErrors('Error al finalizar: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Retira de vigentes en SharePoint lo que quedó obsoleto cuando no hay
+     * una publicación nueva que lo haga: el archivo ya ligado a la versión
+     * anterior (si lo tiene) y los archivos marcados a mano en el selector.
+     */
+    private function retirarArchivosAObsoletos(Documento $doc, ?DocumentoVersion $versionAnterior, array $itemsObsoletos): void
+    {
+        if ($versionAnterior?->sp_item_id) {
+            \App\Jobs\MoverVersionASharePointObsoletos::dispatch($doc->id, $versionAnterior->id)->afterCommit();
+        }
+
+        if ($itemsObsoletos) {
+            \App\Jobs\MoverArchivosSharePointAObsoletos::dispatch(
+                $doc->id,
+                $itemsObsoletos,
+                $versionAnterior && !$versionAnterior->sp_item_id ? $versionAnterior->id : null,
+            )->afterCommit();
         }
     }
 

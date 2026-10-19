@@ -69,8 +69,15 @@ class PublishDocumentoVersion
      * se crea/usa además una subcarpeta con el código del documento dentro
      * de esa base — el administrador decide esto explícitamente en el
      * formulario, nunca es automático sin preguntar. Si había una versión
-     * vigente anterior distinta, intenta moverla a Obsoletos
-     * automáticamente (eso sí nunca es una elección manual).
+     * vigente anterior con archivo ya ligado (sp_item_id), se mueve a
+     * Obsoletos automáticamente.
+     *
+     * $itemsObsoletos son archivos que ya estaban en SharePoint antes del
+     * sistema (subidos a mano, sin sp_item_id) y que el administrador marcó
+     * en el selector para retirarlos: se mueven a Obsoletos ANTES de subir
+     * el archivo nuevo, para que una subida con el mismo nombre no los
+     * sobrescriba. El primero queda ligado a la versión anterior si esta no
+     * tenía archivo, para conservar la trazabilidad.
      */
     public function handle(
         Documento $doc,
@@ -79,6 +86,7 @@ class PublishDocumentoVersion
         ?DocumentoVersion $versionAnterior = null,
         bool $crearSubcarpetaCodigo = true,
         ?string $nombreArchivoManual = null,
+        array $itemsObsoletos = [],
     ): DocumentoVersion {
         if (!$newVer->sp_folder_path) {
             throw new \RuntimeException('La versión no tiene una carpeta de destino asignada en SharePoint.');
@@ -91,12 +99,19 @@ class PublishDocumentoVersion
         $carpetaDestino = $crearSubcarpetaCodigo ? "{$carpetaBase}/{$doc->codigo}" : $carpetaBase;
         $vigFolderId = $this->sp->ensureFolderPath($driveId, $carpetaDestino);
 
-        // 1) La vigente anterior se mueve a Obsoletos automáticamente (el
-        // administrador nunca elige esto a mano). Si no se puede resolver
-        // Área o tipo con confianza, se omite el movimiento (se deja el
-        // archivo donde está) en vez de arriesgar una carpeta equivocada.
-        if ($versionAnterior && $versionAnterior->id !== $newVer->id && $versionAnterior->sp_item_id) {
-            $this->moverAObsoletos($doc, $versionAnterior, $driveId);
+        $anteriorDistinta = $versionAnterior && $versionAnterior->id !== $newVer->id ? $versionAnterior : null;
+
+        // 1) La vigente anterior se mueve a Obsoletos automáticamente. Si no
+        // se puede resolver Área o tipo con confianza, se omite el
+        // movimiento (se deja el archivo donde está) en vez de arriesgar una
+        // carpeta equivocada.
+        if ($anteriorDistinta?->sp_item_id) {
+            $this->moverAObsoletos($doc, $anteriorDistinta, $driveId);
+        }
+
+        // 1b) Archivos previos al sistema que el administrador marcó a mano.
+        if ($itemsObsoletos) {
+            $this->moverArchivosAObsoletos($doc, $itemsObsoletos, $anteriorDistinta, $driveId);
         }
 
         // 2) Subir el archivo nuevo (nombre elegido a mano, o autogenerado
@@ -133,6 +148,94 @@ class PublishDocumentoVersion
 
         $driveId ??= $this->sp->getDriveId($this->sp->getSiteId());
 
+        $destino = $this->carpetaObsoletos($doc, $driveId, ['documento_version_id' => $version->id]);
+
+        if (!$destino) {
+            return;
+        }
+
+        $this->sp->moveItem($driveId, $version->sp_item_id, $destino['id'], renombrarSiExiste: true);
+
+        $version->update(['sp_folder_path' => $destino['path']]);
+    }
+
+    /**
+     * Mueve a Obsoletos archivos de SharePoint elegidos a mano por el
+     * administrador (archivos previos al sistema, sin sp_item_id). Por
+     * seguridad solo mueve archivos (no carpetas) que estén dentro de la
+     * rama de vigentes; lo que ya esté en Obsoletos o fuera de esa rama se
+     * omite, lo que además hace seguro reintentar el job. Un archivo que
+     * falle no detiene a los demás ni la publicación.
+     *
+     * Si $ligarA (la versión que queda obsoleta) no tenía archivo ligado, se
+     * le liga el primer archivo movido para conservar la trazabilidad.
+     */
+    public function moverArchivosAObsoletos(Documento $doc, array $itemIds, ?DocumentoVersion $ligarA = null, ?string $driveId = null): void
+    {
+        $itemIds = array_values(array_unique(array_filter($itemIds, 'is_string')));
+
+        if (!$itemIds) {
+            return;
+        }
+
+        $driveId ??= $this->sp->getDriveId($this->sp->getSiteId());
+
+        $destino = $this->carpetaObsoletos($doc, $driveId, ['documento_id' => $doc->id, 'items' => $itemIds]);
+
+        if (!$destino) {
+            return;
+        }
+
+        foreach ($itemIds as $itemId) {
+            try {
+                $item = $this->sp->obtenerItem($driveId, $itemId);
+
+                if (!isset($item['file']) || !$this->estaEnVigentes($item)) {
+                    Log::warning('Se omitió mover a Obsoletos un elemento que no es un archivo vigente.', [
+                        'documento_id' => $doc->id,
+                        'item_id' => $itemId,
+                        'ruta' => $item['parentReference']['path'] ?? null,
+                    ]);
+
+                    continue;
+                }
+
+                $movido = $this->sp->moveItem($driveId, $itemId, $destino['id'], renombrarSiExiste: true);
+
+                if ($ligarA && !$ligarA->sp_item_id) {
+                    $ligarA->update([
+                        'sp_drive_id' => $driveId,
+                        'sp_item_id' => $movido['id'] ?? $itemId,
+                        'sp_web_url' => $movido['webUrl'] ?? null,
+                        'sp_folder_path' => $destino['path'],
+                    ]);
+                }
+
+                Log::info('Archivo de SharePoint movido a Obsoletos a petición del administrador.', [
+                    'documento_id' => $doc->id,
+                    'item_id' => $itemId,
+                    'nombre' => $item['name'] ?? null,
+                    'destino' => $destino['path'],
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('No se pudo mover a Obsoletos un archivo de SharePoint.', [
+                    'documento_id' => $doc->id,
+                    'item_id' => $itemId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Carpeta de Obsoletos que le corresponde al documento dentro de la
+     * estructura real "Sistema de Gestión Obsoleto/{Área}/{Tipo} obsoletos":
+     * ['id' => ..., 'path' => ...]. Si no se puede identificar el Área o el
+     * tipo con confianza, regresa null (y lo registra para revisión manual)
+     * — nunca crea una carpeta de Área nueva por su cuenta.
+     */
+    private function carpetaObsoletos(Documento $doc, string $driveId, array $contexto): ?array
+    {
         // Ruta fija e independiente de la raíz de vigentes: "Sistema de
         // Gestión Obsoleto" vive en una rama aparte que no se mueve si
         // cambia sharepoint.root_folder.
@@ -141,12 +244,11 @@ class PublishDocumentoVersion
         $obsoletoRoot = $this->sp->buscarCarpeta($driveId, $obsoletoRootPath);
 
         if (!$obsoletoRoot) {
-            Log::warning('No se encontró la carpeta de Obsoletos configurada: no se movió el archivo.', [
-                'documento_version_id' => $version->id,
+            Log::warning('No se encontró la carpeta de Obsoletos configurada: no se movió el archivo.', $contexto + [
                 'obsoleto_root_folder' => $obsoletoRootPath,
             ]);
 
-            return;
+            return null;
         }
 
         $carpetasArea = $this->sp->listarHijos($driveId, $obsoletoRoot['id']);
@@ -154,23 +256,21 @@ class PublishDocumentoVersion
         $nombreArea = Clasificador::buscarNombreAreaExistente($nombresArea, $doc->area);
 
         if (!$nombreArea) {
-            Log::warning('No se pudo identificar con confianza la carpeta de Área en "Sistema de Gestión Obsoleto": no se movió el archivo.', [
-                'documento_version_id' => $version->id,
+            Log::warning('No se pudo identificar con confianza la carpeta de Área en "Sistema de Gestión Obsoleto": no se movió el archivo.', $contexto + [
                 'area' => $doc->area,
             ]);
 
-            return;
+            return null;
         }
 
         $tipoCanonico = Clasificador::normalizarTipo($doc->tipo_documento);
 
         if (!$tipoCanonico) {
-            Log::warning('No se pudo identificar el tipo de documento para archivarlo en Obsoletos: no se movió el archivo.', [
-                'documento_version_id' => $version->id,
+            Log::warning('No se pudo identificar el tipo de documento para archivarlo en Obsoletos: no se movió el archivo.', $contexto + [
                 'tipo_documento' => $doc->tipo_documento,
             ]);
 
-            return;
+            return null;
         }
 
         $carpetaArea = collect($carpetasArea)->first(fn ($i) => $i['name'] === $nombreArea);
@@ -180,17 +280,45 @@ class PublishDocumentoVersion
         $nombreExistente = Clasificador::buscarNombreObsoletosExistente($nombresObsoletos, $tipoCanonico);
 
         if ($nombreExistente) {
-            $destinoId = collect($hijosArea)->first(fn ($i) => $i['name'] === $nombreExistente)['id'];
-        } else {
-            // Nunca existió esa combinación Área+Tipo: se crea siguiendo el
-            // patrón más común observado ("{Tipo plural} obsoletos").
-            $nombreFallback = Clasificador::nombreObsoletosFallback($tipoCanonico);
-            $destinoId = $this->sp->ensureFolderPath($driveId, "{$obsoletoRootPath}/{$nombreArea}/{$nombreFallback}");
+            return [
+                'id' => collect($hijosArea)->first(fn ($i) => $i['name'] === $nombreExistente)['id'],
+                'path' => "{$obsoletoRootPath}/{$nombreArea}/{$nombreExistente}",
+            ];
         }
 
-        $this->sp->moveItem($driveId, $version->sp_item_id, $destinoId);
+        // Nunca existió esa combinación Área+Tipo: se crea siguiendo el
+        // patrón más común observado ("{Tipo plural} obsoletos").
+        $nombreFallback = Clasificador::nombreObsoletosFallback($tipoCanonico);
+        $path = "{$obsoletoRootPath}/{$nombreArea}/{$nombreFallback}";
 
-        $version->update(['sp_folder_path' => "{$obsoletoRootPath}/{$nombreArea}/" . ($nombreExistente ?? Clasificador::nombreObsoletosFallback($tipoCanonico))]);
+        return ['id' => $this->sp->ensureFolderPath($driveId, $path), 'path' => $path];
+    }
+
+    /**
+     * Si el item vive dentro de la rama de vigentes (root_folder) y no en la
+     * de Obsoletos. parentReference.path tiene la forma
+     * "/drives/{id}/root:/Carpeta/Subcarpeta".
+     */
+    private function estaEnVigentes(array $item): bool
+    {
+        $ruta = rawurldecode((string) ($item['parentReference']['path'] ?? ''));
+        $pos = strpos($ruta, 'root:');
+
+        if ($pos === false) {
+            return false;
+        }
+
+        $ruta = mb_strtolower(trim(substr($ruta, $pos + 5), '/'));
+        $dentroDe = fn (string $base) => $base === '' || $ruta === $base || str_starts_with($ruta, "{$base}/");
+
+        $vigentes = mb_strtolower(trim((string) config('sharepoint.root_folder'), '/'));
+        $obsoletos = mb_strtolower(trim((string) config('sharepoint.obsoleto_root_folder'), '/'));
+
+        if ($obsoletos !== '' && $dentroDe($obsoletos)) {
+            return false;
+        }
+
+        return $dentroDe($vigentes);
     }
 
     private function buildFilename(Documento $doc, DocumentoVersion $ver, string $filePathPublic, ?string $nombreManual = null): string

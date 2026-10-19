@@ -1,0 +1,384 @@
+/* ──────────────────────────────────────────────────────────────
+ * Cultura Dasavena: caja 3D que se arma con el scroll (vista /cultura).
+ * Lo importa resources/js/cultura-caja/main.js; Vite lo incluye junto
+ * al JS. El lienzo WebGL es transparente: el fondo kraft vive aquí.
+ *
+ * Modos:
+ *   (sin clase)   sin JS: lista legible de valores con la foto del frente.
+ *   .is-fallback  sin WebGL: igual que sin JS.
+ *   .is-live      sección alta con escenario fijo; main.js anima los textos.
+ *
+ * El reparto de pantalla coincide con FRAMING en main.js: en escritorio
+ * el texto ocupa el 42 % izquierdo; en móvil, el 32 % inferior.
+ * ────────────────────────────────────────────────────────────── */
+
+.caja3d {
+    --c3-purple: #6a2c75;
+    --c3-purple-dark: #4a1f55;
+    --c3-gold: #b38600;
+    --c3-ink: #3d2a33;
+    --c3-text: #5a4a65;
+    --c3-font: 'Century Gothic', 'Trebuchet MS', sans-serif;
+    --c3-mono: 'SFMono-Regular', ui-monospace, 'Consolas', monospace;
+
+    position: relative;
+    background:
+        radial-gradient(ellipse 50% 45% at 68% 48%, rgba(106, 44, 117, .08), transparent 70%),
+        radial-gradient(ellipse 90% 80% at 60% 38%, #fbf5ea 0%, #f3e6d1 55%, #e6d2b5 100%);
+}
+
+.caja3d-sticky {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(32px, 6vw, 72px) clamp(20px, 6vw, 96px);
+}
+
+/* Horizonte del estudio: un piso cálido apenas perceptible */
+.caja3d-sticky::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 32%;
+    background: linear-gradient(to bottom, rgba(214, 190, 156, 0), rgba(214, 190, 156, .38));
+    pointer-events: none;
+}
+
+.caja3d-stage,
+.caja3d-loader,
+.caja3d-rail,
+.caja3d-hint,
+.caja3d-progress { display: none; }
+
+/* ── Textos ── */
+.caja3d-copy {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 48px;
+    max-width: 34rem;
+}
+
+.caja3d-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--c3-purple);
+}
+
+.caja3d-eyebrow::before {
+    content: '';
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--c3-purple);
+}
+
+.caja3d-title {
+    margin: 0;
+    font-family: var(--c3-font);
+    font-weight: 800;
+    font-size: clamp(2rem, 4.2vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -.02em;
+    color: var(--c3-purple-dark);
+}
+
+.caja3d-title em { font-style: normal; color: var(--c3-purple); }
+
+.caja3d-lead {
+    margin: 18px 0 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--c3-text);
+    max-width: 26rem;
+}
+
+.caja3d-num {
+    margin: 0 0 10px;
+    font-family: var(--c3-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    color: var(--c3-purple);
+}
+
+.caja3d-num span { opacity: .45; }
+
+.caja3d-value-title {
+    margin: 0;
+    font-family: var(--c3-font);
+    font-weight: 800;
+    font-size: clamp(2.2rem, 4.6vw, 3.8rem);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    color: var(--c3-purple-dark);
+}
+
+.caja3d-value-sub {
+    position: relative;
+    display: inline-block;
+    margin: 14px 0 0;
+    padding-bottom: 10px;
+    font-size: 1.08rem;
+    font-weight: 700;
+    color: var(--c3-purple);
+}
+
+.caja3d-value-sub::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, currentColor, transparent);
+}
+
+.caja3d-value-text {
+    margin: 16px 0 0;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--c3-text);
+}
+
+.caja3d-tone-gold .caja3d-num,
+.caja3d-tone-gold .caja3d-value-sub { color: var(--c3-gold); }
+
+/* ── Respaldo (sin JS / sin WebGL) ── */
+.caja3d-fallback {
+    display: block;
+    position: relative;
+    z-index: 1;
+    width: min(320px, 70vw);
+    height: auto;
+    margin: 0 auto 48px;
+    filter: drop-shadow(0 24px 30px rgba(58, 34, 20, .25));
+}
+
+/* ══════════════════════════════════════════════════════════════
+ * Modo scroll
+ * ══════════════════════════════════════════════════════════════ */
+
+.caja3d.is-live { height: calc(var(--caja3d-screens, 8) * 100svh); }
+
+.caja3d.is-live .caja3d-sticky {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    padding: 0;
+}
+
+.caja3d.is-live .caja3d-fallback { display: none; }
+
+.caja3d.is-live .caja3d-stage {
+    display: block;
+    position: absolute;
+    inset: 0;
+}
+
+.caja3d-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* Todos los textos en la misma celda; main.js controla opacidad y desplazamiento */
+.caja3d.is-live .caja3d-copy {
+    position: absolute;
+    left: clamp(28px, 6vw, 96px);
+    top: 50%;
+    width: min(36vw, 32rem);
+    transform: translateY(-50%);
+    gap: 0;
+    pointer-events: none;
+}
+
+.caja3d.is-live .caja3d-slot {
+    grid-area: 1 / 1;
+    align-self: center;
+    opacity: 0;
+    will-change: opacity, transform;
+}
+
+.caja3d.is-live .caja3d-slot.is-visible { pointer-events: auto; }
+
+/* Carga */
+.caja3d.is-live .caja3d-loader {
+    display: grid;
+    position: absolute;
+    inset: 0 0 0 42%;
+    place-items: center;
+    pointer-events: none;
+    transition: opacity .4s ease;
+}
+
+.caja3d-loader span {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid rgba(106, 44, 117, .15);
+    border-top-color: var(--c3-purple);
+    animation: caja3d-spin .9s linear infinite;
+}
+
+.caja3d.is-ready .caja3d-loader { opacity: 0; }
+
+@keyframes caja3d-spin { to { transform: rotate(360deg); } }
+
+/* Riel de valores (escritorio) */
+.caja3d.is-live .caja3d-rail {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: absolute;
+    right: clamp(20px, 2.6vw, 36px);
+    top: 50%;
+    z-index: 3;
+    transform: translateY(-50%);
+}
+
+.caja3d-rail-dot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+}
+
+.caja3d-rail-mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(106, 44, 117, .22);
+    transition: transform .3s cubic-bezier(.22, 1, .36, 1), background .3s ease, box-shadow .3s ease;
+}
+
+.caja3d-rail-label {
+    font-family: var(--c3-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--c3-purple-dark);
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, .82);
+    border: 1px solid rgba(255, 255, 255, .9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(6px);
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+.caja3d-rail-dot:hover .caja3d-rail-label,
+.caja3d-rail-dot:focus-visible .caja3d-rail-label,
+.caja3d-rail-dot.is-active .caja3d-rail-label { opacity: 1; transform: none; }
+
+.caja3d-rail-dot:hover .caja3d-rail-mark { background: rgba(106, 44, 117, .5); }
+
+.caja3d-rail-dot.is-active .caja3d-rail-mark {
+    background: var(--c3-purple);
+    transform: scale(1.4);
+    box-shadow: 0 0 0 4px rgba(106, 44, 117, .14);
+}
+
+.caja3d-rail-dot:focus-visible { outline: none; }
+.caja3d-rail-dot:focus-visible .caja3d-rail-mark { box-shadow: 0 0 0 3px var(--c3-purple); }
+
+/* Indicación de scroll */
+.caja3d.is-live .caja3d-hint {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    z-index: 2;
+    transform: translateX(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--c3-purple);
+    pointer-events: none;
+}
+
+.caja3d-hint i {
+    position: relative;
+    width: 1px;
+    height: 34px;
+    overflow: hidden;
+    background: rgba(106, 44, 117, .18);
+}
+
+.caja3d-hint i::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: -40%;
+    width: 1px;
+    height: 40%;
+    background: var(--c3-purple);
+    animation: caja3d-scroll 1.8s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+
+@keyframes caja3d-scroll { to { top: 100%; } }
+
+/* Barra de avance */
+.caja3d.is-live .caja3d-progress {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    height: 3px;
+    background: rgba(106, 44, 117, .08);
+}
+
+.caja3d-progress span {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, var(--c3-purple), #d6a644);
+    transform: scaleX(0);
+    transform-origin: left;
+}
+
+/* ── Móvil / pantallas verticales: producto arriba, texto abajo ── */
+@media not all and (min-width: 900px) and (min-aspect-ratio: 1/1) {
+    .caja3d.is-live .caja3d-copy {
+        left: 22px;
+        right: 22px;
+        top: auto;
+        bottom: 34px;
+        width: auto;
+        transform: none;
+    }
+
+    .caja3d.is-live .caja3d-slot { align-self: end; }
+    .caja3d.is-live .caja3d-loader { inset: 0 0 32% 0; }
+    .caja3d.is-live .caja3d-rail { display: none; }
+    .caja3d.is-live .caja3d-hint { display: none; }
+
+    .caja3d-title { font-size: clamp(1.7rem, 7vw, 2.4rem); }
+    .caja3d-lead { font-size: .95rem; margin-top: 12px; }
+    .caja3d-value-title { font-size: clamp(1.9rem, 8vw, 2.6rem); }
+    .caja3d-value-sub { font-size: 1rem; margin-top: 10px; }
+    .caja3d-value-text { font-size: .93rem; line-height: 1.65; margin-top: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .caja3d-loader span { animation-duration: 2.4s; }
+    .caja3d-hint i::after { animation: none; top: 30%; }
+}

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
  * Explorador de SharePoint (solo lectura): navega la estructura real de
  * carpetas y documentos por Área/departamento, sin crear ni mover nada.
  * Independiente del selector de ubicación de finalize_form
- * (SharePointCarpetasController), que solo necesita carpetas.
+ * (SharePointCarpetasController).
  */
 class SharePointExploradorController extends Controller
 {
