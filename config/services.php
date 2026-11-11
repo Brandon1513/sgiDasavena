@@ -43,5 +43,8 @@ return [
         'redirect' => env('MS_REDIRECT_URI'),
         'tenant' => env('MS_TENANT_ID'),
     ],
+    'cron' => [
+    'token' => env('CRON_TOKEN'),
+],
 
 ];
