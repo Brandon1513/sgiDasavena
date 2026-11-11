@@ -158,13 +158,11 @@ public function data(Request $request)
         };
     })->values();
     // --- AGREGA ESTO: FILTRADO POR ÁREA ---
-if ($area && $area !== 'all') {
-    $list = $list->filter(function ($e) use ($area) {
-        // Importante: El valor del select (ej: 'ti') debe coincidir 
-        // con lo que hay en $e['area'] (ej: 'ti')
-        return strtolower($e['area']) == strtolower($area);
-    })->values();
-}
+    if ($area && $area !== 'all') {
+        $list = $list->filter(function ($e) use ($area) {
+            return mb_strtolower((string) $e['area']) === mb_strtolower($area);
+        })->values();
+    }
     //  ############################################filtro por área#####################
    
 

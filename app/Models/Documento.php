@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use App\Models\User;
 
 class Documento extends Model
 {
@@ -73,5 +74,15 @@ class Documento extends Model
         };
     }
 
+    public function scopeVisiblePara($query, User $user)
+{
+    if ($user->hasRole('administrador_sgi')) {
+        return $query;
+    }
+
+    return filled($user->area)
+        ? $query->where('area', $user->area)
+        : $query->whereRaw('1 = 0'); // sin área, no ve nada
+}
    
 }

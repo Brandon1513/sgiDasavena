@@ -15,8 +15,6 @@ use App\Http\Controllers\SoporteTicketController;
 use App\Http\Controllers\CulturaController;
 use App\Http\Controllers\BusquedaController;
 use App\Http\Controllers\NotificacionController;
-use App\Domains\Incidencias\Actions\ProponerCausaRaiz;
-use App\Http\Controllers\Auth\MicrosoftLoginController;
 use App\Http\Controllers\SharePointCarpetasController;
 use App\Http\Controllers\SharePointExploradorController;
 
@@ -297,15 +295,6 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{accionCorrectiva}/analisis/cinco-porques/iniciar', [AccionCorrectivaController::class, 'iniciarCincoPorques'])
                 ->name('cinco-porques.iniciar');
         });
-    Route::get('/auth/microsoft/redirect', [
-        MicrosoftLoginController::class,
-        'redirect'
-    ])->name('microsoft.redirect');
-
-    Route::get('/auth/microsoft/callback', [
-        MicrosoftLoginController::class,
-        'callback'
-    ])->name('microsoft.callback');
 });
 
 require __DIR__ . '/auth.php';

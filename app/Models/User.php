@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Str;
+
 
 class User extends Authenticatable
 {
@@ -63,5 +65,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(User::class, 'jefe_id');
     }
+
+    public function puedeVerArea(?string $area): bool
+{
+    if ($this->hasRole('administrador_sgi')) {
+        return true;
+    }
+
+    if (blank($this->area) || blank($area)) {
+        return false;
+    }
+
+    $norm = fn ($v) => Str::lower(Str::ascii(trim($v)));
+
+    return $norm($this->area) === $norm($area);
+}
 
 }
