@@ -1,22 +1,23 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AccionCorrectivaController;
+use App\Http\Controllers\BusquedaController;
+use App\Http\Controllers\CronController;
+use App\Http\Controllers\CulturaController;
+use App\Http\Controllers\DocumentoController;
+use App\Http\Controllers\DocumentoRevisionController;
+use App\Http\Controllers\DocumentoUsuarioController;
+use App\Http\Controllers\DocumentoVersionController;
+use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SgiDashboardController;
-use App\Http\Controllers\SolicitudFormatoController;
-use App\Http\Controllers\SolicitudesCalendarController;
-use App\Http\Controllers\DocumentoController;
-use App\Http\Controllers\DocumentoVersionController;
-use App\Http\Controllers\DocumentoRevisionController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\DocumentoUsuarioController;
-use App\Http\Controllers\AccionCorrectivaController;
-use App\Http\Controllers\SoporteTicketController;
-use App\Http\Controllers\CulturaController;
-use App\Http\Controllers\BusquedaController;
-use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\SharePointCarpetasController;
 use App\Http\Controllers\SharePointExploradorController;
+use App\Http\Controllers\SolicitudesCalendarController;
+use App\Http\Controllers\SolicitudFormatoController;
+use App\Http\Controllers\SoporteTicketController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Route;
 
 
 
@@ -296,5 +297,10 @@ Route::middleware(['auth'])->group(function () {
                 ->name('cinco-porques.iniciar');
         });
 });
+
+
+
+Route::get('/cron/cola', [CronController::class, 'cola'])->middleware('throttle:3,1');
+Route::get('/cron/diarios', [CronController::class, 'diarios'])->middleware('throttle:2,1');
 
 require __DIR__ . '/auth.php';
