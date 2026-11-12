@@ -5,9 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 use App\Models\User;
+use App\Models\Concerns\RegistraAuditoria;
 
 class Documento extends Model
 {
+    use RegistraAuditoria;
+
+    protected string $auditoriaNombre = 'Documento';
+
     protected $fillable = [
         'codigo',
         'nombre',

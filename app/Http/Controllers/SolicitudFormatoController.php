@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\SolicitudFormato;
@@ -75,7 +76,7 @@ class SolicitudFormatoController extends Controller
             'atendidas'     => $coleccionFinal->where('estado', 'atendido')->count(),
             'rechazadas'    => $coleccionFinal->whereIn('estado', ['rechazado_jefe', 'rechazado_sgi'])->count(),
             'vencidas_sla'  => $coleccionFinal
-                ->filter(fn ($s) => $s->estado === 'pendiente' && $s->created_at <= now()->subDays(3))
+                ->filter(fn($s) => $s->estado === 'pendiente' && $s->created_at <= now()->subDays(3))
                 ->count(),
         ];
 
@@ -147,23 +148,23 @@ class SolicitudFormatoController extends Controller
     public function store(Request $request)
     {
         $rules = [
-    'accion' => 'required|in:actualizacion,baja,nuevo_documento',
+            'accion' => 'required|in:actualizacion,baja,nuevo_documento',
 
-    'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
+            'archivo' => 'nullable|file|max:10240|mimes:pdf,doc,docx,xlsx,xls',
 
-    'comentarios' => 'required|string|max:2000',
+            'comentarios' => 'required|string|max:2000',
 
-    'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
+            'nombre_documento' => 'required_if:accion,nuevo_documento|nullable|string|max:255',
 
-    'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
-];
+            'motivo_baja' => 'required_if:accion,baja|nullable|string|max:2000',
+        ];
 
-// Solo validar documento_id cuando aplica
-if (in_array($request->accion, ['actualizacion', 'baja'])) {
-    $rules['documento_id'] = 'required|exists:documentos,id';
-}
+        // Solo validar documento_id cuando aplica
+        if (in_array($request->accion, ['actualizacion', 'baja'])) {
+            $rules['documento_id'] = 'required|exists:documentos,id';
+        }
 
-$request->validate($rules);
+        $request->validate($rules);
 
 
         $user = auth()->user();
@@ -206,7 +207,7 @@ $request->validate($rules);
                 ? $request->documento_id
                 : null,
 
-            
+
             'nombre_documento' => in_array($request->accion, ['actualizacion', 'baja'])
                 ? ($doc?->nombre)
                 : $request->nombre_documento,
@@ -214,7 +215,7 @@ $request->validate($rules);
             // baja
             'motivo_baja' => $request->motivo_baja,
 
-            
+
             'codigo_documento' => $doc?->codigo,
             'tipo_documento' => $doc?->tipo_documento,
             'formato_el_pa' => $doc?->formato_el_pa,
@@ -484,11 +485,19 @@ $request->validate($rules);
                     $doc = Documento::with('versiones', 'versionVigente')->findOrFail($solicitud->documento_id);
                     $documentoDadoDeBaja = $doc;
 
-                    $doc->versiones()->update(['estatus' => 'obsoleto']);
+                    $doc->versiones->each(fn($v) => $v->update(['estatus' => 'obsoleto']));
+
                     DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
-                        ->update(['estatus' => 'obsoleta']);
+                        ->get()
+                        ->each(fn($r) => $r->update(['estatus' => 'obsoleta']));
 
                     $doc->update(['estatus' => 'baja']);
+
+                    activity('documentos')
+                        ->performedOn($doc)
+                        ->causedBy(auth()->user())
+                        ->withProperties(['solicitud_id' => $solicitud->id])
+                        ->log('Baja de documento por solicitud');
 
                     $solicitud->update([
                         'documento_id' => $doc->id,
@@ -588,20 +597,32 @@ $request->validate($rules);
                     ]);
                 }
 
-                $versionesViejasIds = $doc->versiones()->where('id', '!=', $nuevaVersion->id)->pluck('id');
+                $versionesViejas = $doc->versiones()->where('id', '!=', $nuevaVersion->id)->get();
 
-                $doc->versiones()->whereIn('id', $versionesViejasIds)->update(['estatus' => 'obsoleto']);
+                // Modelo por modelo para que cada cambio quede en la auditoría.
+                $versionesViejas->each(fn($v) => $v->update(['estatus' => 'obsoleto']));
 
                 // Las revisiones de las versiones que acaban de quedar obsoletas
-                // también se marcan como obsoletas: antes se quedaban "vigente"
-                // colgando de una versión ya retirada.
-                DocumentoRevision::whereIn('documento_version_id', $versionesViejasIds)
-                    ->update(['estatus' => 'obsoleta']);
+                // también se marcan como obsoletas.
+                DocumentoRevision::whereIn('documento_version_id', $versionesViejas->pluck('id'))
+                    ->get()
+                    ->each(fn($r) => $r->update(['estatus' => 'obsoleta']));
 
                 $doc->update([
                     'version_vigente_id' => $nuevaVersion->id,
                     'estatus' => 'vigente',
                 ]);
+
+                activity('documentos')
+                    ->performedOn($doc)
+                    ->causedBy(auth()->user())
+                    ->withProperties([
+                        'solicitud_id'        => $solicitud->id,
+                        'tipo_cambio'         => $tipoCambio,
+                        'version_nueva_id'    => $nuevaVersion->id,
+                        'versiones_obsoletas' => $versionesViejas->pluck('id'),
+                    ])
+                    ->log('Nueva versión publicada por solicitud');
 
                 $nuevaVersionParaPublicar = $nuevaVersion;
                 $documentoParaPublicar = $doc;

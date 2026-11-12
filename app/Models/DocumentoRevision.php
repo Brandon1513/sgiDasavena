@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\RegistraAuditoria;
 
 class DocumentoRevision extends Model
 {
+    use RegistraAuditoria;
+    protected string $auditoriaNombre = 'DocumentoRevision';
+
     protected $table = 'documento_revisiones';
 
     protected $fillable = [
