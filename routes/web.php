@@ -112,6 +112,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/documento-versiones/{version}/revisiones', [DocumentoRevisionController::class, 'store'])
             ->name('documento_versiones.revisiones.store');
+
+          Route::get('/documentos/{documento}/historial', [DocumentoController::class, 'historial'])
+    ->name('documentos.historial');  
     });
 
 

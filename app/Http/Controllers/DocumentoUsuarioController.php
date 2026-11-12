@@ -15,14 +15,9 @@ class DocumentoUsuarioController extends Controller
         $query = DocumentoRevision::with('version.documento')
             ->where('estatus', 'vigente');
 
-        // 🔒 FILTRO POR ÁREA
-        if (!$user->hasRole('administrador') && !$user->hasRole('administrador_sgi')) {
-            $query->whereHas('version.documento', function ($q) use ($user) {
-                if (!empty($user->area)) {
-                    $q->where('area', $user->area);
-                }
-            });
-        }
+        // Misma regla que el resto del sistema: solo administrador_sgi ve todo,
+        // los demás ven su área, y sin área no ven nada.
+        $query->whereHas('version.documento', fn($q) => $q->visiblePara($user));
 
         $revisiones = $query->get();
 
@@ -47,7 +42,7 @@ class DocumentoUsuarioController extends Controller
         $stats = [
             'critico' => $list->filter(fn($e) => $e['days_left'] >= 0 && $e['days_left'] <= 30)->count(),
             'alerta'  => $list->filter(fn($e) => $e['days_left'] >= 31 && $e['days_left'] <= 60)->count(),
-            'en_regla'=> $list->filter(fn($e) => $e['days_left'] > 60)->count(),
+            'en_regla' => $list->filter(fn($e) => $e['days_left'] > 60)->count(),
         ];
 
         // 🔥 FILTRO

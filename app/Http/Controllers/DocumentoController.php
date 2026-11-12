@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Models\DocumentoVersion;
+use Spatie\Activitylog\Models\Activity;
 
 class DocumentoController extends Controller
 {
@@ -381,5 +383,26 @@ class DocumentoController extends Controller
         return redirect()
             ->route('documentos.show', $documento->id)
             ->with('success', 'Documento y versión actualizados correctamente.');
+    }
+
+    public function historial(Documento $documento)
+    {
+        $documento->load('versiones');
+
+        $versionIds  = $documento->versiones->pluck('id');
+        $revisionIds = DocumentoRevision::whereIn('documento_version_id', $versionIds)->pluck('id');
+
+        // Todo lo del documento: él mismo, sus versiones y sus revisiones.
+        $actividades = Activity::inLog('documentos')
+            ->where(function ($q) use ($documento, $versionIds, $revisionIds) {
+                $q->where(fn($q) => $q->where('subject_type', Documento::class)->where('subject_id', $documento->id))
+                    ->orWhere(fn($q) => $q->where('subject_type', DocumentoVersion::class)->whereIn('subject_id', $versionIds))
+                    ->orWhere(fn($q) => $q->where('subject_type', DocumentoRevision::class)->whereIn('subject_id', $revisionIds));
+            })
+            ->with(['causer:id,name', 'subject'])
+            ->latest()
+            ->paginate(25);
+
+        return view('documentos.historial', compact('documento', 'actividades'));
     }
 }
