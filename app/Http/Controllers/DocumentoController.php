@@ -50,7 +50,7 @@ class DocumentoController extends Controller
 
         $documento->load([
             'versionVigente',
-            'versiones' => fn ($q) => $q->orderByDesc('id'),
+            'versiones' => fn($q) => $q->orderByDesc('id'),
         ]);
 
         $versiones = $documento->versiones;
@@ -160,7 +160,7 @@ class DocumentoController extends Controller
             // Usuarios del área con rol jefe. whereHas no truena si el rol
             // no existe (User::role() lanza RoleDoesNotExist).
             if ($documento->area) {
-                $emails = User::whereHas('roles', fn ($q) => $q->where('name', 'jefe'))
+                $emails = User::whereHas('roles', fn($q) => $q->where('name', 'jefe'))
                     ->where('activo', 1)
                     ->where('area', $documento->area)
                     ->whereNotNull('email')
@@ -203,18 +203,25 @@ class DocumentoController extends Controller
             abort(403, 'No tienes permiso para dar de baja documentos.');
         }
 
-        $doc = DB::transaction(function () use ($id) {
+        $doc = DB::transaction(function () use ($id, $user) {
             $doc = Documento::with('versiones')->findOrFail($id);
 
-            // Documento
+            // Modelo por modelo para que cada cambio quede en la auditoría
+            // (un ->update() masivo no dispara eventos y no se registraría).
             $doc->update(['estatus' => 'baja']);
 
-            // Versiones
-            $doc->versiones()->update(['estatus' => 'obsoleto']);
+            $doc->versiones->each(fn($v) => $v->update(['estatus' => 'obsoleto']));
 
-            // Revisiones
             DocumentoRevision::whereIn('documento_version_id', $doc->versiones->pluck('id'))
-                ->update(['estatus' => 'obsoleta']);
+                ->get()
+                ->each(fn($r) => $r->update(['estatus' => 'obsoleta']));
+
+            // Registro resumen de la acción completa
+            activity('documentos')
+                ->performedOn($doc)
+                ->causedBy($user)
+                ->withProperties(['versiones' => $doc->versiones->pluck('id')])
+                ->log('Baja de documento');
 
             return $doc;
         });
