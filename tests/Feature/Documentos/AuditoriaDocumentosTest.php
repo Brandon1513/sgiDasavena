@@ -33,3 +33,30 @@ test('dar de baja un documento deja en la auditoría quién lo hizo y qué versi
         ->where('event', 'updated')
         ->exists())->toBeTrue();
 });
+
+test('el administrador_sgi ve el historial de un documento con sus cambios', function () {
+    Role::firstOrCreate(['name' => 'administrador_sgi']);
+    $admin = User::factory()->create();
+    $admin->assignRole('administrador_sgi');
+
+    $doc = Documento::create(['codigo' => 'P-HIS-01', 'nombre' => 'Prueba', 'area' => 'Calidad', 'estatus' => 'vigente']);
+    $doc->update(['nombre' => 'Prueba corregida']);
+
+    $this->actingAs($admin)
+        ->get(route('documentos.historial', $doc))
+        ->assertOk()
+        ->assertSee('Modificación: Documento')
+        ->assertSee('Prueba corregida');
+});
+
+test('un usuario que no es administrador_sgi no puede ver el historial', function () {
+    Role::firstOrCreate(['name' => 'usuario']);
+    $usuario = User::factory()->create(['area' => 'Calidad']);
+    $usuario->assignRole('usuario');
+
+    $doc = Documento::create(['codigo' => 'P-HIS-02', 'nombre' => 'Prueba', 'area' => 'Calidad', 'estatus' => 'vigente']);
+
+    $this->actingAs($usuario)
+        ->get(route('documentos.historial', $doc))
+        ->assertForbidden();
+});
